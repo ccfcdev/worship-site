@@ -416,14 +416,16 @@ async function libraryPage(modal){
   let pdfjs = null;
   const loadPdf = () => pdfjs || (pdfjs = new Promise((ok, no) => { const sc = document.createElement('script'); sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'; sc.onload = () => { window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; ok(window.pdfjsLib); }; sc.onerror = no; document.head.appendChild(sc); }));
   /* a 600px JPEG cover from the file itself: PDF first page, image, or a video frame */
-  async function coverFor(file){
+  const withTimeout = (p, ms) => Promise.race([p, new Promise(r => setTimeout(() => r(null), ms))]);
+  const coverFor = file => withTimeout(coverFrom(file), 15000);
+  async function coverFrom(file){
     const t = TYPE(extOf(file.name)); const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d');
     const fit = (w, h) => { const s = Math.min(1, 600 / Math.max(w, h)); canvas.width = Math.round(w * s); canvas.height = Math.round(h * s); return s; };
     try {
-      if (t === 'pdf'){ const lib = await loadPdf(); const doc = await lib.getDocument({ data: await file.arrayBuffer() }).promise; const page = await doc.getPage(1); const v = page.getViewport({ scale: 1 }); const s = fit(v.width, v.height); await page.render({ canvasContext: ctx, viewport: page.getViewport({ scale: s }) }).promise; return { blob: await new Promise(r => canvas.toBlob(r, 'image/jpeg', .82)), pages: doc.numPages }; }
+      if (t === 'pdf'){ const lib = await loadPdf(); const doc = await lib.getDocument({ data: await file.arrayBuffer() }).promise; const page = await doc.getPage(1); const v = page.getViewport({ scale: 1 }); const s = fit(v.width, v.height); await page.render({ canvasContext: ctx, viewport: page.getViewport({ scale: s }), intent: 'print' }).promise; return { blob: await new Promise(r => canvas.toBlob(r, 'image/jpeg', .82)), pages: doc.numPages }; }
       if (t === 'image'){ const bmp = await createImageBitmap(file); fit(bmp.width, bmp.height); ctx.drawImage(bmp, 0, 0, canvas.width, canvas.height); return { blob: await new Promise(r => canvas.toBlob(r, 'image/jpeg', .82)) }; }
       if (t === 'video'){ const v = document.createElement('video'); v.muted = true; v.preload = 'auto'; v.src = URL.createObjectURL(file); await new Promise((ok, no) => { v.onloadeddata = ok; v.onerror = no; }); v.currentTime = Math.min(2, (v.duration || 4) / 3); await new Promise(ok => { v.onseeked = ok; }); fit(v.videoWidth, v.videoHeight); ctx.drawImage(v, 0, 0, canvas.width, canvas.height); URL.revokeObjectURL(v.src); return { blob: await new Promise(r => canvas.toBlob(r, 'image/jpeg', .8)), duration: v.duration }; }
-    } catch (_) {}
+    } catch (err) { console.warn('Upper Room cover preview failed', err); }
     return null;
   }
   /* upload with real progress (the storage REST API over XHR) */
@@ -446,7 +448,7 @@ async function libraryPage(modal){
         <div class="field"><label for="upl-desc">Description <small>(optional, shared by these files)</small></label><textarea id="upl-desc" rows="2" placeholder="What is this material for?"></textarea></div></div>
       <div class="upl__foot"><span class="upl__status" aria-live="polite"></span><button type="button" class="btn btn--ghost upl__cancel">Cancel</button><button type="button" class="btn upl__go" disabled>Upload</button></div>
     </div>`;
-    document.body.appendChild(dlg); document.documentElement.style.overflow = 'hidden'; requestAnimationFrame(() => dlg.classList.add('is-in'));
+    document.body.appendChild(dlg); document.documentElement.style.overflow = 'hidden'; requestAnimationFrame(() => dlg.classList.add('is-in')); setTimeout(() => dlg.classList.add('is-in'), 60);
     const input = $('input[type=file]', dlg), drop = $('.upl__drop', dlg), filesEl = $('.upl__files', dlg), go = $('.upl__go', dlg), statusEl = $('.upl__status', dlg);
     const queue = []; let busy = false;
     const close = () => { if (busy && !confirm('Uploads are still running. Close anyway?')) return; dlg.classList.remove('is-in'); document.documentElement.style.overflow = ''; setTimeout(() => dlg.remove(), 250); };
@@ -461,7 +463,7 @@ async function libraryPage(modal){
         <div class="upf__body"><input class="upf__title" value="${esc(file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' '))}" aria-label="Title for ${esc(file.name)}"><div class="upf__meta"><select class="upf__kind" aria-label="Type">${Object.entries(KINDS).map(([k, v]) => `<option value="${k}" ${k === KIND_FOR(t) ? 'selected' : ''}>${v}</option>`).join('')}</select><span>${esc(e.toUpperCase())} &middot; ${fmtBytes(file.size)}</span><span class="upf__extra"></span></div><div class="upf__bar"><i></i></div></div>
         <button type="button" class="upf__rm" aria-label="Remove ${esc(file.name)}">&times;</button>`;
       $('.upf__rm', el).addEventListener('click', () => { if (q.state === 'uploading') return; queue.splice(queue.indexOf(q), 1); el.remove(); refresh(); });
-      filesEl.appendChild(el); queue.push(q); requestAnimationFrame(() => el.classList.add('is-in'));
+      filesEl.appendChild(el); queue.push(q); requestAnimationFrame(() => el.classList.add('is-in')); setTimeout(() => el.classList.add('is-in'), 60);
       if (['pdf', 'image', 'video'].includes(t)){ el.classList.add('is-rendering');
         coverFor(file).then(c => { el.classList.remove('is-rendering'); if (!c) return; q.cover = c.blob; const u = URL.createObjectURL(c.blob); $('.upf__thumb', el).insertAdjacentHTML('afterbegin', `<img src="${u}" alt="">`); $('.upf__thumb', el).classList.add('has-img');
           if (c.pages) $('.upf__extra', el).textContent = `${c.pages} page${c.pages > 1 ? 's' : ''}`; if (c.duration) $('.upf__extra', el).textContent = `${Math.round(c.duration / 60)} min`; }); }
@@ -509,7 +511,7 @@ async function libraryPage(modal){
     const body = t === 'pdf' ? `<iframe src="${esc(url)}#view=FitH" title="${esc(i.title)}"></iframe>` : t === 'image' ? `<img src="${esc(url)}" alt="${esc(i.title)}">` : t === 'video' ? `<video src="${esc(url)}" controls playsinline></video>` : t === 'audio' ? `<div class="lpv__audio">${art(t, e)}<audio src="${esc(url)}" controls></audio></div>` : `<div class="lpv__none">${i.cover_path ? `<img src="${esc(pub(i.cover_path))}" alt="">` : art(t, e)}<p>This ${esc(e.toUpperCase())} file opens in its own app. Download it to read.</p></div>`;
     const d = document.createElement('div'); d.className = 'upl lpv'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true'); d.setAttribute('aria-label', i.title);
     d.innerHTML = `<div class="upl__card lpv__card"><div class="upl__head"><div><span class="lpv__kind">${esc(KINDS[i.kind] || i.kind)}${i.series ? ' &middot; ' + esc(i.series) : ''}</span><h2>${esc(i.title)}</h2>${i.description ? `<p>${esc(i.description)}</p>` : ''}</div><div class="lpv__acts"><a class="btn" href="${esc(url)}" download="${esc(i.file_name)}" target="_blank" rel="noopener">Download <small>${fmtBytes(i.size_bytes)}</small></a><button type="button" class="upl__x" aria-label="Close">&times;</button></div></div><div class="lpv__body">${body}</div></div>`;
-    document.body.appendChild(d); document.documentElement.style.overflow = 'hidden'; requestAnimationFrame(() => d.classList.add('is-in')); const x = $('.upl__x', d); x.focus();
+    document.body.appendChild(d); document.documentElement.style.overflow = 'hidden'; requestAnimationFrame(() => d.classList.add('is-in')); setTimeout(() => d.classList.add('is-in'), 60); const x = $('.upl__x', d); x.focus();
     const close = () => { d.classList.remove('is-in'); document.documentElement.style.overflow = ''; setTimeout(() => d.remove(), 250); };
     x.addEventListener('click', close); d.addEventListener('click', ev => { if (ev.target === d) close(); }); d.addEventListener('keydown', ev => { if (ev.key === 'Escape') close(); });
   }
@@ -801,7 +803,7 @@ const Consent = (() => {
         <label class="consent__opt"><input type="checkbox" name="media" ${m ? 'checked' : ''}><span><b>Maps</b><small>Loads Google Maps on the visit and contact pages. Google may set cookies.</small></span></label>
       </div>
       <div class="consent__btns"><button type="button" class="btn consent__all">Accept all</button><button type="button" class="btn btn--ghost consent__min">Essential only</button><button type="button" class="consent__more" ${state ? 'hidden' : ''}>Choose</button><button type="button" class="btn consent__save" ${state ? '' : 'hidden'}>Save my choices</button></div></div>`;
-    document.body.appendChild(el); document.body.classList.add('has-consent'); requestAnimationFrame(() => requestAnimationFrame(() => el && el.classList.add('is-in')));
+    document.body.appendChild(el); document.body.classList.add('has-consent'); requestAnimationFrame(() => requestAnimationFrame(() => el && el.classList.add('is-in'))); setTimeout(() => el && el.classList.add('is-in'), 80);
     $('.consent__all', el).addEventListener('click', () => set({ analytics: true, media: true }));
     $('.consent__min', el).addEventListener('click', () => set({ analytics: false, media: false }));
     $('.consent__more', el).addEventListener('click', e => { $('.consent__opts', el).hidden = false; e.currentTarget.hidden = true; $('.consent__save', el).hidden = false; $('input[name=analytics]', el).focus(); });
