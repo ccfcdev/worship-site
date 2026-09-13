@@ -3,6 +3,9 @@
 const fs = require('fs'), path = require('path'), crypto = require('crypto');
 const hash = f => crypto.createHash('md5').update(fs.readFileSync(path.join(__dirname, f))).digest('hex').slice(0, 8);
 const V = { css: hash('css/site.css'), js: hash('js/site.js'), fonts: hash('css/fonts.css'), core: hash('css/core.css'), corejs: hash('js/core.js') };
+const SETTINGS_URL = 'https://dcqydtkjzgilyjnjyisb.supabase.co/rest/v1/site_settings?select=key,value&site=eq.worship';
+function loadSettings(defaults){ try { const out = require('child_process').execSync(`curl -s --max-time 6 -H "apikey: sb_publishable_gPig-ePcoJIUnQ4fij6viw_ukAhlifp" "${SETTINGS_URL}"`, { encoding:'utf8' }); const rows = JSON.parse(out); const s = Object.assign({}, defaults); for (const r of rows) if (r.value && r.value.trim()) s[r.key] = r.value; console.log('settings: live'); return s; } catch (e){ console.log('settings: defaults (offline)'); return Object.assign({}, defaults); } }
+const S = loadSettings({ latest:'Koinonia 25 worship sets', rehearsal:'Ask us for the weekly slot' });
 const WA = '260975065391', MAIN = 'https://ccfczambia.org', KOI = 'https://koinonia.ccfczambia.org', YT = 'https://www.youtube.com/@christconnectfamilychurchz7833';
 const ICON = { back: '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>', arrow: '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>', play: '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>' };
 const img = (n, alt, sizes='(min-width:900px) 50vw, 100vw', eager=false) => `<img src="assets/img/${n}-1280.webp" srcset="assets/img/${n}-800.webp 800w, assets/img/${n}-1280.webp 1280w" sizes="${sizes}" alt="${alt}" ${eager ? 'fetchpriority="high"' : 'loading="lazy" decoding="async"'}>`;
@@ -76,7 +79,7 @@ const home = { file:'index.html', title:'Home', og:'worship-1', desc:'Worship Co
     <p>The praise and worship team of Christ Connect Family Church Zambia. Songs in English, Bemba and Nyanja, sung so the whole family can lift one voice.</p>
     <div class="row"><a class="btn" href="videos.html">Watch every set ${ICON.arrow}</a><a class="btn btn--ghost" href="join.html">Join the team</a></div>
   </div>
-  <div class="hero__meta" data-rv-stagger><div><b>Latest</b><span>Koinonia 25 worship sets</span></div><div><b>Where we lead</b><span>Every Sunday from 08:30, Mandevu</span></div><div><b>Rehearsals</b><span>Ask us for the weekly slot</span></div></div></div>
+  <div class="hero__meta" data-rv-stagger><div><b>Latest</b><span data-setting="latest">${S.latest}</span></div><div><b>Where we lead</b><span>Every Sunday from 08:30, Mandevu</span></div><div><b>Rehearsals</b><span data-setting="rehearsal">${S.rehearsal}</span></div></div></div>
 </section>
 <section class="sec"><div class="wrap"><h2 class="mb-2" data-split>Latest sets</h2><div class="vgrid" data-rv-stagger>${VIDEOS.map(vcard).join('')}</div><div class="row mt-2" data-rv><a class="link" href="videos.html">All videos ${ICON.arrow}</a></div></div></section>
 <section class="sec" style="padding-top:0"><div class="wrap"><h2 data-split>Songs we sing</h2><p class="lede mt-1 mb-2" data-rv>The songs from our recorded sets, so you can learn them before Sunday. Tap a song and the set plays from where that song starts.</p>

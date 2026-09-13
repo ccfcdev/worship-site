@@ -27,6 +27,7 @@ const can = {
   library: r => ['master_admin','admin','leader','blogger'].includes(r),   /* who may add to the Upper Room; reading is open to all */
   staff: r => r && r !== 'member',
   admin: r => ADMINS.includes(r),
+  master: r => r === 'master_admin',
 };
 const KINDS = { news:'News', announcement:'Announcement', photo:'Photos', video:'Video', music:'Music' };
 /* ---------- the three sites: identity, pages, what the feed is called, which post kinds it uses ---------- */
@@ -436,13 +437,13 @@ async function libraryPage(modal){
 const DASH = {
   ccfc:     { eyebrow:'Christ Connect Family Church Zambia', intro:'Everything the church posts, publishes and keeps for its leaders.',
               stats: s => [['Members', s?.users], ['New this month', s?.new_users_30d], ['Feed posts', s?.posts], ['Blog posts', s?.blogs], ['Library items', s?.library]],
-              tabs: r => [can.post(r) ? ['posts','Church feed'] : null, (can.blog(r) || can.admin(r)) ? ['blogs','Blog'] : null, can.library(r) ? ['library','Upper Room library'] : null, can.admin(r) ? ['users','Members and roles'] : null, can.admin(r) ? ['audit','Role changes'] : null, ['roles','Role guide']] },
+              tabs: r => [can.master(r) ? ['assistant','Connect Admin'] : null, can.post(r) ? ['posts','Church feed'] : null, can.admin(r) ? ['settings','Site text'] : null, (can.blog(r) || can.admin(r)) ? ['blogs','Blog'] : null, can.library(r) ? ['library','Upper Room library'] : null, can.admin(r) ? ['users','Members and roles'] : null, can.admin(r) ? ['audit','Role changes'] : null, ['roles','Role guide']] },
   koinonia: { eyebrow:'Koinonia Experience', intro:'Conference updates, videos and photos, and everyone who has registered for the next edition.',
               stats: s => [["Registered for Koi 26'", s?.regs_next], ['All registrations', s?.registrations], ['Updates posted', s?.posts], ['Reactions', s?.reactions], ['Comments', s?.comments]],
-              tabs: r => [can.staff(r) ? ['regs','Registrations'] : null, can.post(r) ? ['posts','Updates and media'] : null, can.admin(r) ? ['users','Members and roles'] : null, can.admin(r) ? ['audit','Role changes'] : null, ['roles','Role guide']] },
+              tabs: r => [can.master(r) ? ['assistant','Connect Admin'] : null, can.staff(r) ? ['regs','Registrations'] : null, can.admin(r) ? ['settings','Site text'] : null, can.post(r) ? ['posts','Updates and media'] : null, can.admin(r) ? ['users','Members and roles'] : null, can.admin(r) ? ['audit','Role changes'] : null, ['roles','Role guide']] },
   worship:  { eyebrow:'Worship Connect', intro:'The team\'s videos and music, who is on the team, and the people asking to join.',
               stats: s => [['New applications', s?.apps_new], ['All applications', s?.applications], ['Team members', s?.team], ['Videos and posts', s?.posts], ['Reactions', s?.reactions]],
-              tabs: r => [can.moderate(r) ? ['apps','Applications'] : null, can.post(r) ? ['posts','Videos and music'] : null, can.post(r) ? ['team','The team'] : null, can.admin(r) ? ['users','Members and roles'] : null, can.admin(r) ? ['audit','Role changes'] : null, ['roles','Role guide']] },
+              tabs: r => [can.master(r) ? ['assistant','Connect Admin'] : null, can.moderate(r) ? ['apps','Applications'] : null, can.admin(r) ? ['settings','Site text'] : null, can.post(r) ? ['posts','Videos and music'] : null, can.post(r) ? ['team','The team'] : null, can.admin(r) ? ['users','Members and roles'] : null, can.admin(r) ? ['audit','Role changes'] : null, ['roles','Role guide']] },
 };
 const APP_STATUS = { new:'New', contacted:'Contacted', audition:'Invited to rehearsal', accepted:'Accepted', declined:'Not now' };
 async function dashboardPage(modal){
@@ -462,7 +463,7 @@ async function dashboardPage(modal){
   const tabs = D.tabs(r).filter(Boolean);
   bar.innerHTML = tabs.map(t => `<button class="dash__tab" data-t="${t[0]}">${t[1]}</button>`).join('');
   const show = t => { $$('.dash__tab', bar).forEach(x => x.classList.toggle('is-on', x.dataset.t === t)); history.replaceState(null, '', `dashboard.html?tab=${t}`); panel.innerHTML = '<div class="skel"></div>';
-    ({ posts: postsTab, regs: regsTab, apps: appsTab, team: teamTab, blogs: blogsTab, library: () => { location.href = 'library.html'; }, users: usersTab, audit: auditTab, roles: rolesTab })[t](); };
+    ({ assistant: assistantTab, settings: settingsTab, posts: postsTab, regs: regsTab, apps: appsTab, team: teamTab, blogs: blogsTab, library: () => { location.href = 'library.html'; }, users: usersTab, audit: auditTab, roles: rolesTab })[t](); };
   $$('.dash__tab', bar).forEach(b => b.addEventListener('click', () => show(b.dataset.t)));
   const want = q.get('tab'); show(tabs.find(t => t[0] === want) ? want : tabs[0][0]);
   const csvOf = (name, cols, rows) => { const body = [cols.join(','), ...rows.map(x => cols.map(c => '"' + String(x[c] ?? '').replace(/"/g,'""') + '"').join(','))].join('\n'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([body], { type:'text/csv' })); a.download = name; a.click(); };
@@ -479,6 +480,39 @@ async function dashboardPage(modal){
       $$('.pin', l).forEach(b => b.addEventListener('click', async () => { const { error } = await sb.from('posts').update({ pinned: b.textContent === 'Pin' }).eq('id', b.closest('.drow').dataset.id); if (error) toast(friendly(error), false); else list(); }));
       $$('.del', l).forEach(b => b.addEventListener('click', async () => { if (!confirm('Delete this post?')) return; const { error } = await sb.from('posts').delete().eq('id', b.closest('.drow').dataset.id); if (error) toast(friendly(error), false); else list(); })); }
     list();
+  }
+  /* Connect Admin: the master admin's assistant. Reads live data, proposes a plan, writes only after Apply. */
+  async function assistantTab(){
+    const EP = (window.CCFC_CONFIG || {}).adminEndpoint;
+    panel.innerHTML = `<div class="agent"><div class="agent__intro"><span class="agent__badge">${ICO.spark || ''}Connect Admin</span><p>Tell me what to change on ${esc(SITE.short)}, or on any of the three sites. I look first, then show you a plan. Nothing changes until you press Apply.</p>
+      <div class="agent__examples">${['Change the Koi 26\' dates to 18 to 20 December 2026', 'Pin the latest announcement on the church feed', 'Put up an announcement: no service this Sunday, we are at Koinonia', 'Add a video post of the Koi 25\' praise medley'].map(x => `<button type="button">${esc(x)}</button>`).join('')}</div></div>
+      <div class="agent__log" aria-live="polite"></div>
+      <form class="agent__form"><textarea name="q" rows="2" placeholder="What would you like to change?" aria-label="Instruction"></textarea><button class="btn" type="submit">Send ${ICO.arrow}</button></form>
+      <p class="agent__fine">${EP ? 'Powered by Claude. Every applied change is logged under your name.' : 'The assistant endpoint is not configured yet (js/config.js adminEndpoint).'}</p></div>`;
+    const log = $('.agent__log', panel), form = $('.agent__form', panel), ta = $('textarea', form), history = []; let busy = false;
+    const add = (who, html) => { const el = document.createElement('div'); el.className = 'agent__msg is-' + who; el.innerHTML = `<div>${html}</div>`; log.appendChild(el); el.scrollIntoView({ block:'nearest', behavior:'smooth' }); return el; };
+    const call = async body => { const { data: { session: s } } = await sb.auth.getSession(); const r = await fetch(EP, { method:'POST', headers:{ 'Content-Type':'application/json', apikey: CFG.supabaseKey, Authorization: 'Bearer ' + s.access_token }, body: JSON.stringify(Object.assign({ site }, body)) }); const j = await r.json().catch(() => ({})); if (!r.ok || j.error) throw new Error(j.error || ('HTTP ' + r.status)); return j; };
+    const plan = (steps, instruction) => { const el = add('plan', `<b>Plan</b><ol>${steps.map(x => `<li>${esc(x.summary)}</li>`).join('')}</ol><div class="row"><button class="btn apply" type="button">Apply ${steps.length} change${steps.length > 1 ? 's' : ''}</button><button class="pill discard" type="button">Discard</button></div>`);
+      $('.discard', el).addEventListener('click', () => { el.querySelector('.row').innerHTML = '<span class="sub">Discarded.</span>'; });
+      $('.apply', el).addEventListener('click', async () => { const btn = $('.apply', el); btn.disabled = true; btn.textContent = 'Applying...';
+        try { const { results } = await call({ apply: steps.map(x => ({ tool: x.tool, args: x.args })), instruction });
+          el.querySelector('.row').innerHTML = `<ul class="agent__results">${results.map(x => `<li class="${x.ok ? 'is-ok' : 'is-err'}">${x.ok ? 'Done' : 'Failed'}: ${esc(x.summary || x.tool)}${x.ok ? '' : ' (' + esc(String(x.detail)) + ')'}</li>`).join('')}</ul>`;
+          history.push({ role:'user', content:'[The admin applied the plan. Results: ' + results.map(x => (x.ok ? 'ok' : 'failed') + ' ' + x.tool).join(', ') + ']' }); applySettings(); toast('Changes applied.'); }
+        catch (e){ btn.disabled = false; btn.textContent = 'Apply'; toast(e.message, false); } }); };
+    const ask = async q => { if (busy || !EP) return; busy = true; add('user', esc(q)); history.push({ role:'user', content:q }); const t = add('bot', '<span class="agent__typing"><i></i><i></i><i></i></span>');
+      try { const ans = await call({ messages: history.slice(-12) }); t.remove(); add('bot', esc(ans.text).replace(/\n/g, '<br>')); history.push({ role:'assistant', content: ans.text }); if (ans.plan && ans.plan.length) plan(ans.plan, q); }
+      catch (e){ t.remove(); add('bot', esc(e.message)); } finally { busy = false; ta.focus(); } };
+    form.addEventListener('submit', e => { e.preventDefault(); const q = ta.value.trim(); if (!q) return; ta.value = ''; ask(q); });
+    ta.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); form.requestSubmit(); } });
+    $$('.agent__examples button', panel).forEach(b => b.addEventListener('click', () => ask(b.textContent)));
+    add('bot', `Hello ${esc((profile.full_name || '').split(' ')[0] || 'there')}. What shall we change today?`);
+  }
+  /* Site text: every editable setting for this site, saved straight to the database and live within seconds */
+  async function settingsTab(){
+    const { data, error } = await sb.from('site_settings').select('*').eq('site', site).order('key'); if (error){ panel.innerHTML = `<p class="sub">${esc(friendly(error))}</p>`; return; }
+    panel.innerHTML = `<div class="dash__toolbar"><h3>Site text</h3><span class="sub">These lines appear on the pages. Edits go live within seconds, no rebuild needed.</span></div><div class="settings">${(data||[]).map(x => `<div class="setting" data-key="${esc(x.key)}"><label><b>${esc(x.label || x.key)}</b><small>${esc(x.key)}</small></label><textarea rows="2">${esc(x.value)}</textarea><div class="row"><button class="pill save" type="button">Save</button><span class="sub when">${x.updated_at ? 'Updated ' + esc(when(x.updated_at)) : ''}</span></div></div>`).join('') || '<p class="sub">No settings for this site yet.</p>'}</div>`;
+    $$('.setting', panel).forEach(el => { const ta = $('textarea', el); ta.addEventListener('input', () => el.classList.add('is-dirty'));
+      $('.save', el).addEventListener('click', async () => { const { error } = await sb.from('site_settings').update({ value: ta.value.trim(), updated_by: profile.id, updated_at: new Date().toISOString() }).eq('site', site).eq('key', el.dataset.key); if (error) toast(friendly(error), false); else { el.classList.remove('is-dirty'); $('.when', el).textContent = 'Saved just now'; toast('Saved.'); applySettings(); } }); });
   }
   async function regsTab(){
     const { data } = await sb.from('registrations').select('*').eq('site','koinonia').order('created_at', { ascending:false }).limit(2000); const all = data || [];
@@ -653,6 +687,20 @@ window.CCFC = {
   async apply(row){ if (!ready) return { offline:true }; const { error } = await sb.from('applications').insert({ site:'worship', ...row, user_id: session?.user?.id || null }); return { error }; },
 };
 
+
+/* ================================================================ SITE SETTINGS (editable text, announcement bar) */
+async function applySettings(){ if (!ready) return; try {
+  const { data } = await sb.from('site_settings').select('key, value').eq('site', SITE_KEY); if (!data) return;
+  const map = Object.fromEntries(data.map(x => [x.key, x.value]));
+  $$('[data-setting]').forEach(el => { const v = map[el.dataset.setting]; if (typeof v === 'string' && v.trim() && el.textContent.trim() !== v.trim()) el.textContent = v; });
+  const a = (map.announcement || '').trim(); let bar = $('.announce');
+  if (a && !$('#dashboard')){ let hidden = false; try { hidden = sessionStorage.getItem('ccfc:announce') === a; } catch (_) {}
+    if (!hidden){ if (!bar){ bar = document.createElement('div'); bar.className = 'announce'; const main = $('main') || document.body; main.insertBefore(bar, main.firstChild); }
+      bar.innerHTML = `<div class="wrap"><span class="announce__dot"></span><p>${esc(a)}</p><button class="announce__x" aria-label="Dismiss">&times;</button></div>`; requestAnimationFrame(() => bar.classList.add('is-in'));
+      $('.announce__x', bar).addEventListener('click', () => { bar.remove(); try { sessionStorage.setItem('ccfc:announce', a); } catch (_) {} }); } }
+  else if (bar) bar.remove();
+} catch (_) {} }
+
 /* ================================================================ BOOT */
 async function boot(){
   const modal = authModal();
@@ -671,7 +719,7 @@ async function boot(){
     });
     if (new URLSearchParams(location.search).get('reset')){ const p = prompt('Choose a new password (at least 8 characters)'); if (p && p.length >= 8){ const { error } = await sb.auth.updateUser({ password:p }); toast(error ? friendly(error) : 'Password updated.', !error); } } }
   accountUI(modal);
-  feedPage(modal); blogPage(modal); libraryPage(modal); dashboardPage(modal); teamPage(); accountPage(modal);
+  applySettings(); feedPage(modal); blogPage(modal); libraryPage(modal); dashboardPage(modal); teamPage(); accountPage(modal);
   if (new URLSearchParams(location.search).get('signin')) modal.open('in');
   if (new URLSearchParams(location.search).get('new') && $('#blog') && can.blog(role())) $('.blog__new')?.click();
 }
