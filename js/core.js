@@ -32,15 +32,15 @@ const can = {
 const KINDS = { news:'News', announcement:'Announcement', photo:'Photos', video:'Video', music:'Music' };
 /* ---------- the three sites: identity, pages, what the feed is called, which post kinds it uses ---------- */
 const SITES = {
-  ccfc:     { label:'CCFC Zambia', short:'CCFC', origin:'https://ccfczambia.org', feed:'feed.html', feedLabel:'Church feed', feedWord:'the family',
-              kinds:['news','photo','video','announcement'], logo:'assets/logo/ccfc-mark.png?v=2', dashTitle:'Church dashboard',
-              links: r => [['account.html','Account Center'], ['feed.html','Church feed'], ['blog.html','Blog'], ['library.html','Upper Room library'], can.staff(r) ? ['dashboard.html','Dashboard'] : null] },
-  koinonia: { label:'Koinonia Experience', short:'Koinonia', origin:'https://koinonia.ccfczambia.org', feed:'updates.html', feedLabel:'Conference updates', feedWord:'everyone coming to Koinonia',
-              kinds:['news','announcement','video','photo'], logo:'assets/logo/ccfc-mark.png?v=2', dashTitle:'Koinonia dashboard',
-              links: r => [['https://ccfczambia.org/account.html','Account Center'], ['updates.html','Updates'], ['k26.html#register',"Register for Koi 26'"], can.staff(r) ? ['dashboard.html','Dashboard'] : null] },
-  worship:  { label:'Worship Connect', short:'Worship', origin:'https://worship.ccfczambia.org', feed:'latest.html', feedLabel:'Latest from the team', feedWord:'the team',
-              kinds:['video','music','photo','news'], logo:'assets/logo/ccfc-mark-white.png?v=2', dashTitle:'Worship Connect dashboard',
-              links: r => [['https://ccfczambia.org/account.html','Account Center'], ['latest.html','Latest'], ['team.html','The team'], ['join.html','Join the team'], can.staff(r) ? ['dashboard.html','Dashboard'] : null] },
+  ccfc:     { label:'CCFC Zambia', short:'CCFC', origin:'https://ccfczambia.org', feed:'/feed', feedLabel:'Church feed', feedWord:'the family',
+              kinds:['news','photo','video','announcement'], logo:'/assets/logo/ccfc-mark.png?v=2', dashTitle:'Church dashboard',
+              links: r => [['/account','Account Center'], ['/feed','Church feed'], ['/blog','Blog'], ['/library','Upper Room library'], can.staff(r) ? ['/dashboard','Dashboard'] : null] },
+  koinonia: { label:'Koinonia Experience', short:'Koinonia', origin:'https://koinonia.ccfczambia.org', feed:'/updates', feedLabel:'Conference updates', feedWord:'everyone coming to Koinonia',
+              kinds:['news','announcement','video','photo'], logo:'/assets/logo/ccfc-mark.png?v=2', dashTitle:'Koinonia dashboard',
+              links: r => [['https://ccfczambia.org/account','Account Center'], ['/updates','Updates'], ['/k26#register',"Register for Koi 26'"], can.staff(r) ? ['/dashboard','Dashboard'] : null] },
+  worship:  { label:'Worship Connect', short:'Worship', origin:'https://worship.ccfczambia.org', feed:'/latest', feedLabel:'Latest from the team', feedWord:'the team',
+              kinds:['video','music','photo','news'], logo:'/assets/logo/ccfc-mark-white.png?v=2', dashTitle:'Worship Connect dashboard',
+              links: r => [['https://ccfczambia.org/account','Account Center'], ['/latest','Latest'], ['/team','The team'], ['/join','Join the team'], can.staff(r) ? ['/dashboard','Dashboard'] : null] },
 };
 const SITE_KEY = (window.CCFC_SITE && SITES[window.CCFC_SITE.key]) ? window.CCFC_SITE.key : 'ccfc';
 const SITE = Object.assign({}, SITES[SITE_KEY], window.CCFC_SITE || {});
@@ -182,7 +182,7 @@ function accountUI(modal){
       btn.addEventListener('click', () => { menu.hidden = !menu.hidden; btn.setAttribute('aria-expanded', !menu.hidden); });
       document.addEventListener('click', e => { if (!slot.contains(e.target)){ menu.hidden = true; btn.setAttribute('aria-expanded', false); } });
     }
-    $$('.nav__signout', slot).forEach(b => b.addEventListener('click', async () => { await sb.auth.signOut(); location.href = 'index.html'; }));
+    $$('.nav__signout', slot).forEach(b => b.addEventListener('click', async () => { await sb.auth.signOut(); location.href = '/'; }));
   });
   $$('[data-auth]').forEach(b => { if (b._bound) return; b._bound = true; b.addEventListener('click', e => { e.preventDefault(); modal.open(b.dataset.auth || 'in'); }); });
   $$('[data-guest]').forEach(el => { el.hidden = !!session; }); $$('[data-member]').forEach(el => { el.hidden = !session; });
@@ -364,13 +364,13 @@ async function blogPage(modal){
   const root = $('#blog'); if (!root) return; const list = $('.blog__list', root), single = $('.blog__single', root), editorSlot = $('.blog__editor', root);
   if (!ready){ list.innerHTML = `<div class="empty"><h3>The blog is almost ready</h3><p>Articles from the CCFC bloggers will appear here once accounts are switched on.</p></div>`; return; }
   const slug = new URLSearchParams(location.search).get('post');
-  if (can.blog(role())) editorSlot.innerHTML = `<div class="row"><button class="btn btn--navy blog__new">Write a post</button><a class="link" href="dashboard.html?site=ccfc&tab=blogs">Manage my posts</a></div>`;
-  $('.blog__new', root)?.addEventListener('click', () => { editorSlot.innerHTML = ''; blogEditor(editorSlot, null, () => location.href = 'blog.html'); editorSlot.scrollIntoView({ behavior:'smooth' }); });
+  if (can.blog(role())) editorSlot.innerHTML = `<div class="row"><button class="btn btn--navy blog__new">Write a post</button><a class="link" href="/dashboard?site=ccfc&tab=blogs">Manage my posts</a></div>`;
+  $('.blog__new', root)?.addEventListener('click', () => { editorSlot.innerHTML = ''; blogEditor(editorSlot, null, () => location.href = '/blog'); editorSlot.scrollIntoView({ behavior:'smooth' }); });
   if (slug){ list.hidden = true; single.hidden = false;
     const { data:b } = await sb.from('blog_feed').select('*').eq('slug', slug).maybeSingle();
-    if (!b){ single.innerHTML = `<div class="empty"><h3>Post not found</h3><p><a class="link" href="blog.html">Back to the blog</a></p></div>`; return; }
+    if (!b){ single.innerHTML = `<div class="empty"><h3>Post not found</h3><p><a class="link" href="/blog">Back to the blog</a></p></div>`; return; }
     document.title = `${b.title} | CCFC Blog`;
-    single.innerHTML = `<article class="article"><a class="link" href="blog.html">All posts</a><h1>${esc(b.title)}</h1><p class="article__meta">By ${esc(b.author_name)} &middot; ${esc(when(b.published_at || b.created_at))}${b.tags?.length ? ' &middot; ' + b.tags.map(esc).join(', ') : ''}</p>
+    single.innerHTML = `<article class="article"><a class="link" href="/blog">All posts</a><h1>${esc(b.title)}</h1><p class="article__meta">By ${esc(b.author_name)} &middot; ${esc(when(b.published_at || b.created_at))}${b.tags?.length ? ' &middot; ' + b.tags.map(esc).join(', ') : ''}</p>
       ${b.cover_url ? `<img class="article__cover" src="${esc(b.cover_url)}" alt="">` : ''}<div class="article__body">${md(b.body)}</div>
       ${(profile && (profile.id === b.author_id || can.admin(role()))) ? '<div class="row mt-2"><button class="btn btn--ghost blog__edit">Edit this post</button></div>' : ''}
       <h3 class="mt-3">Comments</h3><div class="post__comments blog__comments"></div></article>`;
@@ -380,7 +380,7 @@ async function blogPage(modal){
   const { data, error } = await sb.from('blog_feed').select('*').order('published_at', { ascending:false }).limit(30);
   if (error){ list.innerHTML = `<div class="empty"><h3>Could not load the blog</h3><p>${esc(error.message)}</p></div>`; return; }
   if (!data?.length){ list.innerHTML = `<div class="empty"><h3>No articles yet</h3><p>The first blog post will appear here.</p></div>`; return; }
-  list.innerHTML = data.map((b,i) => `<a class="bcard ${i===0?'bcard--lead':''}" href="blog.html?post=${esc(b.slug)}"><div class="ph">${b.cover_url ? `<img src="${esc(b.cover_url)}" alt="" loading="lazy">` : `<span class="bcard__mono">${esc(initials(b.title))}</span>`}</div><div class="bcard__body"><span class="bcard__meta">${esc(b.author_name)} &middot; ${esc(when(b.published_at || b.created_at))}</span><h3>${esc(b.title)}</h3><p>${esc(b.excerpt)}</p><span class="link">Read ${b.comment_count ? `&middot; ${b.comment_count} comments` : ''}</span></div></a>`).join('');
+  list.innerHTML = data.map((b,i) => `<a class="bcard ${i===0?'bcard--lead':''}" href="/blog?post=${esc(b.slug)}"><div class="ph">${b.cover_url ? `<img src="${esc(b.cover_url)}" alt="" loading="lazy">` : `<span class="bcard__mono">${esc(initials(b.title))}</span>`}</div><div class="bcard__body"><span class="bcard__meta">${esc(b.author_name)} &middot; ${esc(when(b.published_at || b.created_at))}</span><h3>${esc(b.title)}</h3><p>${esc(b.excerpt)}</p><span class="link">Read ${b.comment_count ? `&middot; ${b.comment_count} comments` : ''}</span></div></a>`).join('');
 }
 function blogEditor(slot, b, onDone){
   slot.innerHTML = `<form class="compose blogform" novalidate><div class="compose__head"><b>${b ? 'Edit post' : 'New blog post'}</b></div>
@@ -398,7 +398,7 @@ function blogEditor(slot, b, onDone){
       const { error } = b ? await sb.from('blogs').update(row).eq('id', b.id) : await sb.from('blogs').insert({ ...row, author_id: profile.id, slug: slugify(title) + '-' + Math.random().toString(36).slice(2,6) });
       if (error) throw error; toast(pub ? 'Published.' : 'Draft saved.'); onDone && onDone();
     } catch (err){ status.textContent = friendly(err); status.className='form__status is-err'; } });
-  $('.blog__delete', f)?.addEventListener('click', async () => { if (!confirm('Delete this post?')) return; const { error } = await sb.from('blogs').delete().eq('id', b.id); if (error) toast(error.message, false); else location.href = 'blog.html'; });
+  $('.blog__delete', f)?.addEventListener('click', async () => { if (!confirm('Delete this post?')) return; const { error } = await sb.from('blogs').delete().eq('id', b.id); if (error) toast(error.message, false); else location.href = '/blog'; });
 }
 
 /* ---------- UPPER ROOM LIBRARY (leaders and above) ---------- */
@@ -406,31 +406,114 @@ async function libraryPage(modal){
   const root = $('#library'); if (!root) return; const gate = $('.lib__gate', root), app = $('.lib__app', root);
   if (!ready){ gate.innerHTML = `<h2>Almost ready</h2><p class="sub">The library opens as soon as accounts are switched on.</p>`; return; }
   gate.hidden = true; app.hidden = false;
-  const list = $('.lib__list', app), up = $('.lib__upload', app), search = $('.lib__search', app), filter = $('.lib__filter', app);
+  const list = $('.lib__list', app), search = $('.lib__search', app), chips = $('.lib__chips', app), tools = $('.lib__tools', app);
   const KINDS = { book:'Book', slides:'Slides', notes:'Notes', audio:'Audio', video:'Video', other:'Other' };
-  if (can.library(role())) up.innerHTML = `<form class="compose" novalidate><div class="compose__head"><b>Add material</b><span class="pill">${esc(ROLES[role()].short)}</span></div>
-    <div class="compose__row"><div class="field"><label for="l-title">Title</label><input id="l-title" name="title" required maxlength="160"></div><div class="field"><label for="l-series">Series or topic</label><input id="l-series" name="series" placeholder="Book of Acts, Foundations, Leadership..."></div></div>
-    <div class="compose__row"><div class="field"><label for="l-kind">Type</label><select id="l-kind" name="kind">${Object.entries(KINDS).map(([k,v]) => `<option value="${k}">${v}</option>`).join('')}</select></div><div class="field"><label for="l-file">File (PDF, PowerPoint, Word, audio, up to 100 MB)</label><input id="l-file" name="file" type="file" required></div></div>
-    <div class="field"><label for="l-desc">Description</label><textarea id="l-desc" name="description" rows="3"></textarea></div>
-    <div class="row"><button class="btn" type="submit">Upload</button><span class="form__status" aria-live="polite"></span></div></form>`;
-  const f = $('form', up) || document.createElement('form'), status = $('.form__status', f) || document.createElement('span');
-  f.addEventListener('submit', async e => { e.preventDefault(); const file = f.file.files[0]; if (!f.title.value.trim() || !file){ status.textContent = 'Title and file are required.'; status.className='form__status is-err'; return; }
-    status.className='form__status'; status.textContent = 'Uploading...';
-    try { const u = await uploadTo('library', file, (f.series.value.trim() ? slugify(f.series.value) : 'general'));
-      const { error } = await sb.from('library_items').insert({ uploader_id: profile.id, kind: f.kind.value, title: f.title.value.trim(), description: f.description.value.trim(), series: f.series.value.trim(), path: u.path, file_name: file.name, size_bytes: file.size }); if (error) throw error;
-      f.reset(); status.textContent = 'Added to the library.'; status.className='form__status is-ok'; load();
-    } catch (err){ status.textContent = friendly(err); status.className='form__status is-err'; } });
-  let items = [];
-  async function load(){ const { data } = await sb.from('library_items').select('*, profiles(full_name)').order('created_at', { ascending:false }); items = data || []; render(); }
-  function render(){ const q = (search.value||'').toLowerCase(), k = filter.value;
-    const rows = items.filter(i => (!k || i.kind === k) && (!q || (i.title + i.series + i.description).toLowerCase().includes(q)));
-    if (!rows.length){ list.innerHTML = `<div class="empty"><h3>Nothing here yet</h3><p>Books, notes and slides will appear here as leaders and bloggers add them.</p></div>`; return; }
-    const groups = {}; rows.forEach(i => (groups[i.series || 'General'] ||= []).push(i));
-    list.innerHTML = Object.entries(groups).map(([s, its]) => `<h3 class="lib__series">${esc(s)}</h3><div class="lib__grid">${its.map(i => `<div class="libcard" data-id="${i.id}"><span class="libcard__kind">${esc(KINDS[i.kind]||i.kind)}</span><b>${esc(i.title)}</b><p>${esc(i.description)}</p><span class="libcard__meta">${esc(i.file_name)} &middot; ${fmtBytes(i.size_bytes)} &middot; ${esc(i.profiles?.full_name||'')} &middot; ${esc(when(i.created_at))}</span><div class="row"><button class="btn btn--navy lib__open">Open</button>${(profile.id === i.uploader_id || can.admin(role())) ? '<button class="pill lib__del">Delete</button>' : ''}</div></div>`).join('')}</div>`).join('');
-    $$('.lib__open', list).forEach(b => b.addEventListener('click', async () => { const it = items.find(x => x.id === b.closest('.libcard').dataset.id); window.open(sb.storage.from('library').getPublicUrl(it.path).data.publicUrl, '_blank'); }));
-    $$('.lib__del', list).forEach(b => b.addEventListener('click', async () => { const it = items.find(x => x.id === b.closest('.libcard').dataset.id); if (!confirm(`Delete "${it.title}"?`)) return; await sb.storage.from('library').remove([it.path]); const { error } = await sb.from('library_items').delete().eq('id', it.id); if (error) toast(error.message, false); else load(); }));
+  const pub = path => sb.storage.from('library').getPublicUrl(path).data.publicUrl;
+  const extOf = n => (String(n).split('.').pop() || '').toLowerCase();
+  const TYPE = e => ({ pdf:'pdf', ppt:'slides', pptx:'slides', key:'slides', odp:'slides', doc:'doc', docx:'doc', odt:'doc', rtf:'doc', txt:'doc', xls:'sheet', xlsx:'sheet', csv:'sheet', mp3:'audio', m4a:'audio', wav:'audio', ogg:'audio', mp4:'video', mov:'video', webm:'video', jpg:'image', jpeg:'image', png:'image', webp:'image', gif:'image' })[e] || 'file';
+  const KIND_FOR = t => ({ pdf:'book', slides:'slides', doc:'notes', sheet:'notes', audio:'audio', video:'video', image:'other', file:'other' })[t];
+  const art = (t, e) => `<span class="lcov__art lcov__art--${t}"><i>${esc(e.toUpperCase() || 'FILE')}</i></span>`;
+  let pdfjs = null;
+  const loadPdf = () => pdfjs || (pdfjs = new Promise((ok, no) => { const sc = document.createElement('script'); sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'; sc.onload = () => { window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; ok(window.pdfjsLib); }; sc.onerror = no; document.head.appendChild(sc); }));
+  /* a 600px JPEG cover from the file itself: PDF first page, image, or a video frame */
+  async function coverFor(file){
+    const t = TYPE(extOf(file.name)); const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d');
+    const fit = (w, h) => { const s = Math.min(1, 600 / Math.max(w, h)); canvas.width = Math.round(w * s); canvas.height = Math.round(h * s); return s; };
+    try {
+      if (t === 'pdf'){ const lib = await loadPdf(); const doc = await lib.getDocument({ data: await file.arrayBuffer() }).promise; const page = await doc.getPage(1); const v = page.getViewport({ scale: 1 }); const s = fit(v.width, v.height); await page.render({ canvasContext: ctx, viewport: page.getViewport({ scale: s }) }).promise; return { blob: await new Promise(r => canvas.toBlob(r, 'image/jpeg', .82)), pages: doc.numPages }; }
+      if (t === 'image'){ const bmp = await createImageBitmap(file); fit(bmp.width, bmp.height); ctx.drawImage(bmp, 0, 0, canvas.width, canvas.height); return { blob: await new Promise(r => canvas.toBlob(r, 'image/jpeg', .82)) }; }
+      if (t === 'video'){ const v = document.createElement('video'); v.muted = true; v.preload = 'auto'; v.src = URL.createObjectURL(file); await new Promise((ok, no) => { v.onloadeddata = ok; v.onerror = no; }); v.currentTime = Math.min(2, (v.duration || 4) / 3); await new Promise(ok => { v.onseeked = ok; }); fit(v.videoWidth, v.videoHeight); ctx.drawImage(v, 0, 0, canvas.width, canvas.height); URL.revokeObjectURL(v.src); return { blob: await new Promise(r => canvas.toBlob(r, 'image/jpeg', .8)), duration: v.duration }; }
+    } catch (_) {}
+    return null;
   }
-  search.addEventListener('input', render); filter.addEventListener('change', render); load();
+  /* upload with real progress (the storage REST API over XHR) */
+  function send(path, blob, type, onProgress){ return new Promise(async (ok, no) => { const { data: { session: s } } = await sb.auth.getSession();
+    const x = new XMLHttpRequest(); x.open('POST', `${CFG.supabaseUrl}/storage/v1/object/library/${path}`); x.setRequestHeader('Authorization', 'Bearer ' + s.access_token); x.setRequestHeader('apikey', CFG.supabaseKey); x.setRequestHeader('x-upsert', 'false'); x.setRequestHeader('Content-Type', type || 'application/octet-stream');
+    x.upload.onprogress = e => e.lengthComputable && onProgress && onProgress(e.loaded / e.total); x.onload = () => x.status < 300 ? ok() : no(new Error(JSON.parse(x.responseText || '{}').message || 'Upload failed (' + x.status + ')')); x.onerror = () => no(new Error('Network error while uploading')); x.send(blob); }); }
+
+  /* ---------- upload pop-up ---------- */
+  if (can.library(role())){
+    tools.insertAdjacentHTML('beforeend', `<button class="btn lib__add" type="button">${ICO.plus || '+'} Upload material</button>`);
+    $('.lib__add', tools).addEventListener('click', openUpload);
+  }
+  function openUpload(){
+    const dlg = document.createElement('div'); dlg.className = 'upl'; dlg.setAttribute('role', 'dialog'); dlg.setAttribute('aria-modal', 'true'); dlg.setAttribute('aria-labelledby', 'upl-h');
+    dlg.innerHTML = `<div class="upl__card">
+      <div class="upl__head"><div><h2 id="upl-h">Add to the Upper Room</h2><p>PDFs, slides, notes, audio or video. Up to 50 MB each.</p></div><button type="button" class="upl__x" aria-label="Close">&times;</button></div>
+      <label class="upl__drop"><input type="file" multiple accept=".pdf,.ppt,.pptx,.key,.doc,.docx,.odt,.txt,.xls,.xlsx,.mp3,.m4a,.wav,.mp4,.mov,.webm,.jpg,.jpeg,.png"><span class="upl__dropico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg></span><b>Drop files here or <u>browse</u></b><small>You can add several at once</small></label>
+      <div class="upl__files" aria-live="polite"></div>
+      <div class="upl__shared" hidden><div class="field"><label for="upl-series">Series or topic</label><input id="upl-series" list="upl-series-list" placeholder="Book of Acts, Foundations, Leadership..."><datalist id="upl-series-list">${[...new Set(items.map(i => i.series).filter(Boolean))].map(sr => `<option value="${esc(sr)}">`).join('')}</datalist></div>
+        <div class="field"><label for="upl-desc">Description <small>(optional, shared by these files)</small></label><textarea id="upl-desc" rows="2" placeholder="What is this material for?"></textarea></div></div>
+      <div class="upl__foot"><span class="upl__status" aria-live="polite"></span><button type="button" class="btn btn--ghost upl__cancel">Cancel</button><button type="button" class="btn upl__go" disabled>Upload</button></div>
+    </div>`;
+    document.body.appendChild(dlg); document.documentElement.style.overflow = 'hidden'; requestAnimationFrame(() => dlg.classList.add('is-in'));
+    const input = $('input[type=file]', dlg), drop = $('.upl__drop', dlg), filesEl = $('.upl__files', dlg), go = $('.upl__go', dlg), statusEl = $('.upl__status', dlg);
+    const queue = []; let busy = false;
+    const close = () => { if (busy && !confirm('Uploads are still running. Close anyway?')) return; dlg.classList.remove('is-in'); document.documentElement.style.overflow = ''; setTimeout(() => dlg.remove(), 250); };
+    $('.upl__x', dlg).addEventListener('click', close); $('.upl__cancel', dlg).addEventListener('click', close);
+    dlg.addEventListener('click', e => { if (e.target === dlg) close(); }); dlg.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+    const refresh = () => { go.disabled = !queue.some(q => q.state === 'ready'); $('.upl__shared', dlg).hidden = !queue.length; drop.classList.toggle('is-compact', queue.length > 0); go.textContent = queue.filter(q => q.state === 'ready').length > 1 ? `Upload ${queue.filter(q => q.state === 'ready').length} files` : 'Upload'; };
+    const addFiles = fl => { [...fl].forEach(file => {
+      if (file.size > 50 * 1048576){ statusEl.textContent = `${file.name} is larger than 50 MB, the storage limit.`; return; }
+      const e = extOf(file.name), t = TYPE(e); const q = { file, t, state: 'ready', cover: null };
+      const el = document.createElement('div'); el.className = 'upf'; q.el = el;
+      el.innerHTML = `<div class="upf__thumb">${art(t, e)}<span class="upf__spin" aria-hidden="true"></span></div>
+        <div class="upf__body"><input class="upf__title" value="${esc(file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' '))}" aria-label="Title for ${esc(file.name)}"><div class="upf__meta"><select class="upf__kind" aria-label="Type">${Object.entries(KINDS).map(([k, v]) => `<option value="${k}" ${k === KIND_FOR(t) ? 'selected' : ''}>${v}</option>`).join('')}</select><span>${esc(e.toUpperCase())} &middot; ${fmtBytes(file.size)}</span><span class="upf__extra"></span></div><div class="upf__bar"><i></i></div></div>
+        <button type="button" class="upf__rm" aria-label="Remove ${esc(file.name)}">&times;</button>`;
+      $('.upf__rm', el).addEventListener('click', () => { if (q.state === 'uploading') return; queue.splice(queue.indexOf(q), 1); el.remove(); refresh(); });
+      filesEl.appendChild(el); queue.push(q); requestAnimationFrame(() => el.classList.add('is-in'));
+      if (['pdf', 'image', 'video'].includes(t)){ el.classList.add('is-rendering');
+        coverFor(file).then(c => { el.classList.remove('is-rendering'); if (!c) return; q.cover = c.blob; const u = URL.createObjectURL(c.blob); $('.upf__thumb', el).insertAdjacentHTML('afterbegin', `<img src="${u}" alt="">`); $('.upf__thumb', el).classList.add('has-img');
+          if (c.pages) $('.upf__extra', el).textContent = `${c.pages} page${c.pages > 1 ? 's' : ''}`; if (c.duration) $('.upf__extra', el).textContent = `${Math.round(c.duration / 60)} min`; }); }
+    }); refresh(); };
+    input.addEventListener('change', () => { addFiles(input.files); input.value = ''; });
+    ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('is-over'); }));
+    ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('is-over'); }));
+    drop.addEventListener('drop', e => addFiles(e.dataTransfer.files));
+    go.addEventListener('click', async () => { const series = $('#upl-series', dlg).value.trim(), desc = $('#upl-desc', dlg).value.trim(); busy = true; go.disabled = true; let done = 0, failed = 0;
+      for (const q of queue.filter(x => x.state === 'ready')){
+        const title = $('.upf__title', q.el).value.trim() || q.file.name; q.state = 'uploading'; q.el.classList.add('is-uploading'); const bar = $('.upf__bar i', q.el);
+        try {
+          const base = `${series ? slugify(series) : 'general'}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}`; const path = `${base}.${extOf(q.file.name) || 'bin'}`;
+          await send(path, q.file, q.file.type, p => { bar.style.width = Math.round(p * 100) + '%'; });
+          let cover_path = null; if (q.cover){ cover_path = `covers/${base.split('/').pop()}.jpg`; await send(cover_path, q.cover, 'image/jpeg'); }
+          const { error } = await sb.from('library_items').insert({ uploader_id: profile.id, kind: $('.upf__kind', q.el).value, title, description: desc, series, path, file_name: q.file.name, size_bytes: q.file.size, cover_path }); if (error) throw error;
+          q.state = 'done'; q.el.classList.remove('is-uploading'); q.el.classList.add('is-done'); bar.style.width = '100%'; done++;
+        } catch (err){ q.state = 'ready'; q.el.classList.remove('is-uploading'); q.el.classList.add('is-error'); $('.upf__extra', q.el).textContent = friendly(err); failed++; }
+      }
+      busy = false; statusEl.textContent = failed ? `${done} uploaded, ${failed} failed. Fix and try again.` : `${done} added to the library.`; refresh(); load();
+      if (!failed) setTimeout(close, 1100); });
+    setTimeout(() => drop.focus && $('.upl__x', dlg).focus(), 50);
+  }
+
+  /* ---------- visual library ---------- */
+  let items = [], kind = '';
+  chips.innerHTML = [['', 'All'], ...Object.entries(KINDS)].map(([k, v]) => `<button type="button" class="chip ${k ? '' : 'is-on'}" data-k="${k}">${v}</button>`).join('');
+  $$('.chip', chips).forEach(b => b.addEventListener('click', () => { kind = b.dataset.k; $$('.chip', chips).forEach(x => x.classList.toggle('is-on', x === b)); render(); }));
+  async function load(){ list.innerHTML = `<div class="lshelf"><div class="lgrid">${'<div class="lcard lcard--skel"><div class="lcov"></div><b></b><span></span></div>'.repeat(8)}</div></div>`;
+    const { data } = await sb.from('library_items').select('*, profiles(full_name)').order('created_at', { ascending:false }); items = data || []; render(); }
+  function card(i){ const e = extOf(i.file_name), t = TYPE(e);
+    return `<article class="lcard" data-id="${i.id}"><button type="button" class="lcov lcov--${t}" aria-label="Preview ${esc(i.title)}">${i.cover_path ? `<img src="${esc(pub(i.cover_path))}" alt="" loading="lazy">` : art(t, e)}<span class="lcov__kind">${esc(KINDS[i.kind] || i.kind)}</span><span class="lcov__open" aria-hidden="true">Preview</span></button>
+      <b>${esc(i.title)}</b><span class="lcard__meta">${esc(e.toUpperCase())} &middot; ${fmtBytes(i.size_bytes)}${i.profiles?.full_name ? ' &middot; ' + esc(i.profiles.full_name) : ''}</span>
+      ${(can.admin(role()) || i.uploader_id === profile?.id) ? `<button type="button" class="lcard__del" aria-label="Delete ${esc(i.title)}">&times;</button>` : ''}</article>`; }
+  function render(){ const q = (search.value || '').toLowerCase();
+    const rows = items.filter(i => (!kind || i.kind === kind) && (!q || (i.title + ' ' + i.series + ' ' + i.description + ' ' + i.file_name).toLowerCase().includes(q)));
+    if (!rows.length){ list.innerHTML = `<div class="empty"><h3>${items.length ? 'Nothing matches' : 'The shelves are empty for now'}</h3><p>${items.length ? 'Try another word or type.' : 'Books, notes and slides will appear here as leaders and bloggers add them.'}</p>${!items.length && can.library(role()) ? '<button class="btn mt-2 lib__add2" type="button">Upload the first item</button>' : ''}</div>`; const b2 = $('.lib__add2', list); if (b2) b2.addEventListener('click', openUpload); return; }
+    const groups = {}; rows.forEach(i => (groups[i.series || 'General'] ||= []).push(i));
+    list.innerHTML = Object.entries(groups).map(([sr, its]) => `<section class="lshelf"><h3 class="lshelf__h">${esc(sr)}<span>${its.length}</span></h3><div class="lgrid">${its.map(card).join('')}</div></section>`).join('');
+    $$('.lcov', list).forEach(b => b.addEventListener('click', () => preview(items.find(x => x.id === b.closest('.lcard').dataset.id))));
+    $$('.lcard__del', list).forEach(b => b.addEventListener('click', async () => { const it = items.find(x => x.id === b.closest('.lcard').dataset.id); if (!confirm(`Delete "${it.title}" from the library?`)) return;
+      await sb.storage.from('library').remove([it.path, it.cover_path].filter(Boolean)); const { error } = await sb.from('library_items').delete().eq('id', it.id); if (error) toast(friendly(error), false); else { toast('Deleted.'); load(); } }));
+  }
+  function preview(i){ const url = pub(i.path), e = extOf(i.file_name), t = TYPE(e);
+    const body = t === 'pdf' ? `<iframe src="${esc(url)}#view=FitH" title="${esc(i.title)}"></iframe>` : t === 'image' ? `<img src="${esc(url)}" alt="${esc(i.title)}">` : t === 'video' ? `<video src="${esc(url)}" controls playsinline></video>` : t === 'audio' ? `<div class="lpv__audio">${art(t, e)}<audio src="${esc(url)}" controls></audio></div>` : `<div class="lpv__none">${i.cover_path ? `<img src="${esc(pub(i.cover_path))}" alt="">` : art(t, e)}<p>This ${esc(e.toUpperCase())} file opens in its own app. Download it to read.</p></div>`;
+    const d = document.createElement('div'); d.className = 'upl lpv'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true'); d.setAttribute('aria-label', i.title);
+    d.innerHTML = `<div class="upl__card lpv__card"><div class="upl__head"><div><span class="lpv__kind">${esc(KINDS[i.kind] || i.kind)}${i.series ? ' &middot; ' + esc(i.series) : ''}</span><h2>${esc(i.title)}</h2>${i.description ? `<p>${esc(i.description)}</p>` : ''}</div><div class="lpv__acts"><a class="btn" href="${esc(url)}" download="${esc(i.file_name)}" target="_blank" rel="noopener">Download <small>${fmtBytes(i.size_bytes)}</small></a><button type="button" class="upl__x" aria-label="Close">&times;</button></div></div><div class="lpv__body">${body}</div></div>`;
+    document.body.appendChild(d); document.documentElement.style.overflow = 'hidden'; requestAnimationFrame(() => d.classList.add('is-in')); const x = $('.upl__x', d); x.focus();
+    const close = () => { d.classList.remove('is-in'); document.documentElement.style.overflow = ''; setTimeout(() => d.remove(), 250); };
+    x.addEventListener('click', close); d.addEventListener('click', ev => { if (ev.target === d) close(); }); d.addEventListener('keydown', ev => { if (ev.key === 'Escape') close(); });
+  }
+  search.addEventListener('input', render); load();
 }
 
 /* ================================================================ DASHBOARDS: one per site */
@@ -456,14 +539,14 @@ async function dashboardPage(modal){
   const q = new URLSearchParams(location.search);
   $('.dash__head', app).innerHTML = `<span class="eyebrow">${esc(D.eyebrow)}</span><h1>${esc(SITE.dashTitle)}</h1><p class="sub">${esc(D.intro)}</p>
     <div class="dash__who">${avatar(profile.full_name, profile.avatar_url)}<div><b>${esc(profile.full_name || profile.email)}</b><span class="pill pill--orange">${esc(ROLES[r].label)}</span></div>
-    ${can.admin(r) ? `<div class="dash__others">${Object.entries(SITES).filter(([k]) => k !== site).map(([k,s]) => `<a href="${s.origin}/dashboard.html">${esc(s.short)} dashboard ${ICO.arrow}</a>`).join('')}</div>` : ''}</div>`;
+    ${can.admin(r) ? `<div class="dash__others">${Object.entries(SITES).filter(([k]) => k !== site).map(([k,s]) => `<a href="${s.origin}/dashboard">${esc(s.short)} dashboard ${ICO.arrow}</a>`).join('')}</div>` : ''}</div>`;
   const bar = $('.dash__tabs', app), panel = $('.dash__panel', app), statsEl = $('.dash__stats', app);
   const { data: stats } = await sb.rpc('dashboard_stats', { p_site: site });
   statsEl.innerHTML = D.stats(stats).map(([k,v]) => `<div class="stat"><b>${v ?? 0}</b><span>${k}</span></div>`).join('');
   const tabs = D.tabs(r).filter(Boolean);
   bar.innerHTML = tabs.map(t => `<button class="dash__tab" data-t="${t[0]}">${t[1]}</button>`).join('');
-  const show = t => { $$('.dash__tab', bar).forEach(x => x.classList.toggle('is-on', x.dataset.t === t)); history.replaceState(null, '', `dashboard.html?tab=${t}`); panel.innerHTML = '<div class="skel"></div>';
-    ({ assistant: assistantTab, settings: settingsTab, posts: postsTab, regs: regsTab, apps: appsTab, team: teamTab, blogs: blogsTab, library: () => { location.href = 'library.html'; }, users: usersTab, audit: auditTab, roles: rolesTab })[t](); };
+  const show = t => { $$('.dash__tab', bar).forEach(x => x.classList.toggle('is-on', x.dataset.t === t)); history.replaceState(null, '', `/dashboard?tab=${t}`); panel.innerHTML = '<div class="skel"></div>';
+    ({ assistant: assistantTab, settings: settingsTab, posts: postsTab, regs: regsTab, apps: appsTab, team: teamTab, blogs: blogsTab, library: () => { location.href = '/library'; }, users: usersTab, audit: auditTab, roles: rolesTab })[t](); };
   $$('.dash__tab', bar).forEach(b => b.addEventListener('click', () => show(b.dataset.t)));
   const want = q.get('tab'); show(tabs.find(t => t[0] === want) ? want : tabs[0][0]);
   const csvOf = (name, cols, rows) => { const body = [cols.join(','), ...rows.map(x => cols.map(c => '"' + String(x[c] ?? '').replace(/"/g,'""') + '"').join(','))].join('\n'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([body], { type:'text/csv' })); a.download = name; a.click(); };
@@ -577,7 +660,7 @@ async function dashboardPage(modal){
   }
   async function blogsTab(){
     const { data } = await sb.from('blogs').select('id, title, slug, published, published_at, created_at, author:author_id(full_name)').order('created_at', { ascending:false }).limit(100);
-    panel.innerHTML = `<div class="row mb-2"><a class="btn" href="blog.html?new=1">Write a post</a></div><div class="dash__list">${(data||[]).map(b => `<div class="drow" data-id="${b.id}"><div><b>${esc(b.title)}</b><span>${b.published ? 'Published ' + esc(when(b.published_at)) : 'Draft'} &middot; ${esc(b.author?.full_name||'')}</span></div><div class="row"><a class="pill" href="blog.html?post=${esc(b.slug)}">Open</a>${can.admin(r) ? '<button class="pill pill--danger del">Delete</button>' : ''}</div></div>`).join('') || '<p class="sub">No blog posts yet.</p>'}</div>`;
+    panel.innerHTML = `<div class="row mb-2"><a class="btn" href="/blog?new=1">Write a post</a></div><div class="dash__list">${(data||[]).map(b => `<div class="drow" data-id="${b.id}"><div><b>${esc(b.title)}</b><span>${b.published ? 'Published ' + esc(when(b.published_at)) : 'Draft'} &middot; ${esc(b.author?.full_name||'')}</span></div><div class="row"><a class="pill" href="/blog?post=${esc(b.slug)}">Open</a>${can.admin(r) ? '<button class="pill pill--danger del">Delete</button>' : ''}</div></div>`).join('') || '<p class="sub">No blog posts yet.</p>'}</div>`;
     $$('.del', panel).forEach(b => b.addEventListener('click', async () => { if (!confirm('Delete this blog post?')) return; const { error } = await sb.from('blogs').delete().eq('id', b.closest('.drow').dataset.id); if (error) toast(friendly(error), false); else blogsTab(); }));
   }
   async function usersTab(){
@@ -640,7 +723,7 @@ async function accountPage(modal){
       <section class="acct__card acct__meta">
         <h2>Your account</h2>
         <dl class="drow__dl"><dt>Role</dt><dd>${esc(ROLES[role()||'member'].label)}: ${esc(ROLES[role()||'member'].desc)}</dd><dt>Signs in with</dt><dd>${esc(providers.map(p => p === 'email' ? 'Email and password' : p[0].toUpperCase() + p.slice(1)).join(', '))}</dd><dt>Member since</dt><dd>${esc(fullDate(profile.created_at))}</dd><dt>Works on</dt><dd>ccfczambia.org, koinonia.ccfczambia.org, worship.ccfczambia.org</dd></dl>
-        <div class="row mt-2"><button class="btn btn--ghost nav__signout">Sign out</button><a class="link" href="privacy.html">Privacy policy</a></div>
+        <div class="row mt-2"><button class="btn btn--ghost nav__signout">Sign out</button><a class="link" href="/privacy">Privacy policy</a></div>
       </section>
     </div>`;
     const setStatus = (f, msg, ok) => { const st = $('.form__status', f); st.textContent = msg; st.className = 'form__status ' + (ok ? 'is-ok' : 'is-err'); };
@@ -666,7 +749,7 @@ async function accountPage(modal){
     $('.acct__pass', app).addEventListener('submit', async e => { e.preventDefault(); const f = e.target; const p1 = f.password.value, p2 = f.password2.value;
       if (p1.length < 8){ setStatus(f, 'Use at least 8 characters.', false); return; } if (p1 !== p2){ setStatus(f, 'The two passwords do not match.', false); return; }
       const { error } = await sb.auth.updateUser({ password: p1 }); if (error){ setStatus(f, friendly(error), false); return; } f.reset(); setStatus(f, 'Password changed.', true); });
-    $('.nav__signout', app).addEventListener('click', async () => { await sb.auth.signOut(); location.href = 'index.html'; });
+    $('.nav__signout', app).addEventListener('click', async () => { await sb.auth.signOut(); location.href = '/'; });
   };
   render();
 }
@@ -681,8 +764,61 @@ async function teamPage(){
   $$('.tm .ph img', grid).forEach((im, i) => im.addEventListener('click', () => lb.open(imgs, i)));
 }
 
+
+/* ================================================================ COOKIE CONSENT + ANALYTICS
+   One choice covers all three sites (cookie on .ccfczambia.org, 6 months). Essential cookies (sign-in, this choice)
+   are always on. Optional: anonymous analytics (Vercel Web Analytics + Speed Insights, cookieless) and third-party
+   embeds that set their own cookies (Google Maps). Nothing optional loads until the visitor says yes. */
+const Consent = (() => {
+  const NAME = 'ccfc-consent', VER = 1, CAP = new URLSearchParams(location.search).has('cap');
+  const onDomain = /(^|\.)ccfczambia\.org$/.test(location.hostname);
+  const read = () => { const m = document.cookie.match(/(?:^|;\s*)ccfc-consent=([^;]*)/); if (!m) return null; try { const v = JSON.parse(decodeURIComponent(m[1])); return v && v.v === VER ? v : null; } catch (_) { return null; } };
+  const write = v => { document.cookie = `${NAME}=${encodeURIComponent(JSON.stringify(v))}; Max-Age=${60 * 60 * 24 * 180}; Path=/; SameSite=Lax${location.protocol === 'https:' ? '; Secure' : ''}${onDomain ? '; Domain=.ccfczambia.org' : ''}`; };
+  let state = read(), el = null;
+  const analytics = () => { if (window.__ccfcVA || !onDomain) return; window.__ccfcVA = true;
+    window.va = window.va || function(){ (window.vaq = window.vaq || []).push(arguments); };
+    window.si = window.si || function(){ (window.siq = window.siq || []).push(arguments); };
+    ['/_vercel/insights/script.js', '/_vercel/speed-insights/script.js'].forEach(src => { const sc = document.createElement('script'); sc.defer = true; sc.src = src; document.head.appendChild(sc); }); };
+  const loadFrame = f => { if (f.getAttribute('src')) return; f.setAttribute('src', f.dataset.consentSrc); const g = f.parentElement.querySelector('.cgate'); if (g) g.remove(); };
+  const gates = () => $$('iframe[data-consent-src]').forEach(f => {
+    if (state && state.media) return loadFrame(f);
+    if (f.parentElement.querySelector('.cgate')) return;
+    const g = document.createElement('div'); g.className = 'cgate';
+    g.innerHTML = `<div><b>${esc(f.dataset.consentLabel || 'Map')}</b><p>This map comes from Google, which may set its own cookies.</p><div class="cgate__btns"><button type="button" class="btn cgate__load">Load the map</button>${f.dataset.consentLink ? `<a class="cgate__open" href="${esc(f.dataset.consentLink)}" target="_blank" rel="noopener">Open in Google Maps</a>` : ''}</div><label class="cgate__remember"><input type="checkbox"> Always load maps on these sites</label></div>`;
+    $('.cgate__load', g).addEventListener('click', () => { if ($('.cgate__remember input', g).checked) set({ analytics: !!(state && state.analytics), media: true }); loadFrame(f); });
+    f.parentElement.appendChild(g); });
+  const apply = () => { if (state && state.analytics) analytics(); gates(); };
+  function set(v){ state = { v: VER, t: Date.now(), analytics: !!v.analytics, media: !!v.media }; write(state); close(); apply(); }
+  function close(){ if (!el) return; el.classList.remove('is-in'); document.body.classList.remove('has-consent'); const x = el; el = null; setTimeout(() => x.remove(), 350); }
+  function open(){
+    if (el) return; el = document.createElement('div'); el.className = 'consent'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Cookie choices'); el.setAttribute('aria-describedby', 'consent-text');
+    const a = state ? state.analytics : false, m = state ? state.media : false;
+    el.innerHTML = `<div class="consent__card"><div class="consent__head"><span class="consent__ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9 3 3 0 0 0 3 3 3 3 0 0 0 3 3 3 3 0 0 0 3 3z"/><circle cx="8.5" cy="10.5" r="1"/><circle cx="12" cy="15.5" r="1"/><circle cx="15.5" cy="12" r="1"/></svg></span><b>Your privacy on our sites</b></div>
+      <p id="consent-text">We use essential cookies to keep you signed in. With your OK we also count visits anonymously and load maps from Google. One choice covers all three CCFC sites. <a href="https://ccfczambia.org/privacy#cookies">Read the privacy policy</a></p>
+      <div class="consent__opts" ${state ? '' : 'hidden'}>
+        <label class="consent__opt"><input type="checkbox" checked disabled><span><b>Essential</b><small>Sign-in and remembering this choice. Always on.</small></span></label>
+        <label class="consent__opt"><input type="checkbox" name="analytics" ${a ? 'checked' : ''}><span><b>Anonymous analytics</b><small>Counts page views and page speed with Vercel. No cookies, no advertising.</small></span></label>
+        <label class="consent__opt"><input type="checkbox" name="media" ${m ? 'checked' : ''}><span><b>Maps</b><small>Loads Google Maps on the visit and contact pages. Google may set cookies.</small></span></label>
+      </div>
+      <div class="consent__btns"><button type="button" class="btn consent__all">Accept all</button><button type="button" class="btn btn--ghost consent__min">Essential only</button><button type="button" class="consent__more" ${state ? 'hidden' : ''}>Choose</button><button type="button" class="btn consent__save" ${state ? '' : 'hidden'}>Save my choices</button></div></div>`;
+    document.body.appendChild(el); document.body.classList.add('has-consent'); requestAnimationFrame(() => requestAnimationFrame(() => el && el.classList.add('is-in')));
+    $('.consent__all', el).addEventListener('click', () => set({ analytics: true, media: true }));
+    $('.consent__min', el).addEventListener('click', () => set({ analytics: false, media: false }));
+    $('.consent__more', el).addEventListener('click', e => { $('.consent__opts', el).hidden = false; e.currentTarget.hidden = true; $('.consent__save', el).hidden = false; $('input[name=analytics]', el).focus(); });
+    $('.consent__save', el).addEventListener('click', () => set({ analytics: $('input[name=analytics]', el).checked, media: $('input[name=media]', el).checked }));
+    if (state) $('.consent__save', el).focus();
+  }
+  function init(){
+    document.addEventListener('click', e => { const b = e.target.closest('[data-consent-open]'); if (b){ e.preventDefault(); open(); } });
+    addEventListener('keydown', e => { if (e.key === 'Escape' && el && state) close(); });
+    apply(); if (!state && !CAP) setTimeout(open, 900);
+  }
+  return { init, open, get: () => state };
+})();
+
 /* ---------- helpers other site scripts call (Koinonia registration, Worship applications) ---------- */
 window.CCFC = {
+  consent: { open: () => Consent.open(), get: () => Consent.get() },
   async register(row){ if (!ready) return { offline:true }; const { error } = await sb.from('registrations').insert({ ...row, user_id: session?.user?.id || null }); return { error }; },
   async apply(row){ if (!ready) return { offline:true }; const { error } = await sb.from('applications').insert({ site:'worship', ...row, user_id: session?.user?.id || null }); return { error }; },
 };
@@ -703,6 +839,7 @@ async function applySettings(){ if (!ready) return; try {
 
 /* ================================================================ BOOT */
 async function boot(){
+  Consent.init();
   const modal = authModal();
   if (ready){ const { data } = await sb.auth.getSession(); session = data.session; await loadProfile();
     if (location.hash === '' && location.href.endsWith('#')) history.replaceState(null, '', location.pathname + location.search);

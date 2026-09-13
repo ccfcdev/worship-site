@@ -1,5 +1,7 @@
+# https://worship.ccfczambia.org
 User-agent: *
 Allow: /
 Disallow: /dashboard
+Disallow: /account
 
 Sitemap: https://worship.ccfczambia.org/sitemap.xml

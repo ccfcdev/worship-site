@@ -221,7 +221,7 @@ p{margin:0}
 .close h2{max-width:14ch}
 .close p{color:var(--muted);max-width:46ch;margin:1.2rem 0 2rem;font-size:1.1rem}
 .row{display:flex;flex-wrap:wrap;gap:.8rem;align-items:center}
-.foot{padding:3rem 0 2rem;border-top:1px solid var(--line);color:var(--faint);font-size:.88rem}
+.foot{padding:3rem 0 2rem;border-top:1px solid var(--line);color:var(--muted);font-size:.88rem}
 .foot .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:1rem;align-items:center}
 .foot a:hover{color:var(--orange-2)}
 .mt-1{margin-top:1rem}.mt-2{margin-top:2rem}.mt-3{margin-top:3rem}.mb-1{margin-bottom:1rem}.mb-2{margin-bottom:2rem}
@@ -320,3 +320,29 @@ h2::after{content:"";display:block;width:56px;height:3px;background:var(--gold);
 .auth__oauth{color:#12123A}
 .nav__menu a,.nav__menu button,.post__menuList button,.drow .field textarea,.cmp__title,.cmp__text,.cmp__yt input,.dash__search,.rolesel,.cmt__form textarea{color:var(--white)}
 .rolesel option{color:#111}
+
+/* ---------- join FAQ (native details) ---------- */
+.kfaq{display:grid;gap:2rem}
+@media (min-width:960px){.kfaq{grid-template-columns:.9fr 1.1fr;align-items:start}}
+.kfaq__list{border-top:1px solid var(--line)}
+.kfaq__item{border-bottom:1px solid var(--line)}
+.kfaq__item summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:1rem;padding:1.15rem 0;font-family:var(--font-display);font-weight:600;font-size:1.08rem;color:var(--white)}
+.kfaq__item summary::-webkit-details-marker{display:none}
+.kfaq__item summary span{width:34px;height:34px;flex:none;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.08);transition:transform .4s var(--ease),background .3s}
+.kfaq__item summary span svg{width:16px;height:16px;transform:rotate(90deg)}
+.kfaq__item[open] summary span{background:var(--gold);color:#111;transform:rotate(180deg)}
+.kfaq__item p{margin:0 0 1.2rem;color:var(--muted);max-width:60ch}
+/* ---------- 404 links + footer legal ---------- */
+.nf__links{list-style:none;padding:0;margin:0;display:grid;gap:.8rem;grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}
+.nf__links a{display:grid;gap:.2rem;padding:1rem 1.2rem;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.03);transition:transform .4s var(--ease),border-color .3s}
+.nf__links a:hover{transform:translateY(-3px);border-color:var(--gold)}
+.nf__links b{font-family:var(--font-display);color:var(--white)}
+.nf__links span{font-size:.88rem;color:var(--muted)}
+.foot .legal{font-size:.85rem}
+
+/* Ask Connect chat colours */
+.chat{--chat-a:#1B1B1F;--chat-a2:#2C2C33;--chat-b:#E7B84A;--chat-b2:#F5D27A;--chat-on-b:#111;--chat-go:#7A5A12}
+
+/* phone header: keep logo, call to action and menu on one line */
+@media (max-width:959px){.nav .wrap{gap:.8rem}.nav .row{flex-wrap:nowrap;gap:.5rem}}
+@media (max-width:560px){.nav__brand{gap:.5rem}.nav__brand img{height:34px}.nav__brand b{font-size:.98rem}.nav__brand b i{display:none}}

@@ -6,3 +6,8 @@ tools-*.py
 shot.sh
 supabase
 .DS_Store
+build.js
+build-shared.js
+pages.js
+README.md
+tools-*

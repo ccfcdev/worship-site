@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 /* WORSHIP CONNECT site builder. node build.js → index.html, videos.html, join.html */
 const fs = require('fs'), path = require('path'), crypto = require('crypto');
+const SEO = require('./build-shared.js');
+const ORIGIN = 'https://worship.ccfczambia.org';
 const hash = f => crypto.createHash('md5').update(fs.readFileSync(path.join(__dirname, f))).digest('hex').slice(0, 8);
-const V = { css: hash('css/site.css'), js: hash('js/site.js'), fonts: hash('css/fonts.css'), core: hash('css/core.css'), corejs: hash('js/core.js') };
+const V = { chat: hash('js/chat.js'), css: hash('css/site.css'), js: hash('js/site.js'), fonts: hash('css/fonts.css'), core: hash('css/core.css'), corejs: hash('js/core.js') };
 const SETTINGS_URL = 'https://dcqydtkjzgilyjnjyisb.supabase.co/rest/v1/site_settings?select=key,value&site=eq.worship';
 function loadSettings(defaults){ try { const out = require('child_process').execSync(`curl -s --max-time 6 -H "apikey: sb_publishable_gPig-ePcoJIUnQ4fij6viw_ukAhlifp" "${SETTINGS_URL}"`, { encoding:'utf8' }); const rows = JSON.parse(out); const s = Object.assign({}, defaults); for (const r of rows) if (r.value && r.value.trim()) s[r.key] = r.value; console.log('settings: live'); return s; } catch (e){ console.log('settings: defaults (offline)'); return Object.assign({}, defaults); } }
 const S = loadSettings({ latest:'Koinonia 25 worship sets', rehearsal:'Ask us for the weekly slot' });
@@ -24,6 +26,25 @@ const SONGS = [
   ['Twasumbula Ishina Lyenu', 'Worship, Bemba', 'Xq1RXcOhWmE', 665], ['You Are Yahweh', 'Worship', 'Xq1RXcOhWmE', 952],
 ];
 const mmss = s => `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+
+const WSEO = {
+  'index.html': ["Worship Connect | Praise and Worship Team, CCFC Zambia", "Worship Connect is the praise and worship team of Christ Connect Family Church Zambia in Lusaka. Watch every set, learn the songs and join the team."],
+  'videos.html': ["Worship Videos | Every Set, With Songs | Worship Connect", "Watch every Worship Connect set from CCFC Zambia and Koinonia, with song timestamps so you can jump straight to You Are Yahweh, Chawama and more."],
+  'latest.html': ["Latest from Worship Connect | CCFC Zambia", "New sets, songs the team is learning, rehearsal news and photos from Sunday, posted by Worship Connect, the praise team of CCFC Zambia in Lusaka."],
+  'team.html': ["The Team | Vocals, Band, Sound | Worship Connect", "Meet Worship Connect: the vocalists, musicians, sound and media volunteers who lead praise and worship at Christ Connect Family Church Zambia."],
+  'join.html': ["Join Worship Connect | Singers and Musicians, Lusaka", "Sing, play, run sound or film? Apply to join Worship Connect at CCFC Zambia in Lusaka. Tell us your gift and a team leader will message you on WhatsApp."],
+  'dashboard.html': ["Worship Connect Dashboard | CCFC", "Worship Connect team dashboard."],
+  '404.html': ["Page not found | Worship Connect", "This page could not be found on the Worship Connect website."],
+};
+const CARD = { 'index.html':'home', 'videos.html':'videos', 'latest.html':'latest', 'team.html':'team', 'join.html':'join' };
+const JOINFAQ = [
+  ['Do I need professional experience?', 'No. We audition gently and rehearse seriously. Tell us what you do, and a team leader will invite you to a rehearsal.'],
+  ['Which roles can I apply for?', 'Vocals, keys, guitar, bass, drums, sound and media.'],
+  ['Do I have to be a member of CCFC?', 'Worship Connect is for members and friends of CCFC who love Jesus and can commit to rehearsals.'],
+  ['When do you rehearse?', 'Every week. Ask us for the current rehearsal slot and a team leader will share it with you.'],
+  ['What happens after I apply?', 'The team sees your application on their dashboard and replies on WhatsApp. You come to a rehearsal, and then join the rota for Sundays, Koinonia and outreach.'],
+  ['What languages do you sing in?', 'English, Bemba and Nyanja, so the whole family can lift one voice.'],
+];
 const MENU = [['index.html','Home','The praise and worship team'],['videos.html','Videos','Every set we have recorded'],['latest.html','Latest','New sets, songs, rehearsal news'],['team.html','The team','Who leads worship'],['join.html','Join the team','Vocals, band, sound, media']];
 function layout(p){
   const links = [['index.html','Home'],['videos.html','Videos'],['latest.html','Latest'],['team.html','Team'],['join.html','Join the team']].map(([f,l]) => `<li><a href="${f}"${f===p.file?' aria-current="page"':''}>${l}</a></li>`).join('');
@@ -31,23 +52,17 @@ function layout(p){
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${p.title === 'Home' ? 'Worship Connect | Praise and Worship Team of CCFC Zambia, Lusaka' : p.title + ' | Worship Connect, Lusaka'}</title>
-<meta name="description" content="${p.desc}">
-<link rel="canonical" href="https://worship.ccfczambia.org/${p.file === 'index.html' ? '' : p.file.replace(/\.html$/, '')}">
-<meta name="robots" content="${p.noindex ? 'noindex, nofollow' : 'index, follow, max-image-preview:large'}">
-<meta name="theme-color" content="#0A0A0B">
-<link rel="icon" href="assets/logo/favicon-32.png?v=3" sizes="32x32" type="image/png"><link rel="icon" href="assets/logo/favicon-192.png?v=3" sizes="192x192" type="image/png"><link rel="icon" href="assets/logo/favicon-512.png?v=3" sizes="512x512" type="image/png"><link rel="apple-touch-icon" href="assets/logo/apple-touch-icon.png?v=3">
-<meta property="og:type" content="website"><meta property="og:site_name" content="Worship Connect"><meta property="og:title" content="${p.title} | Worship Connect"><meta property="og:description" content="${p.desc}"><meta property="og:image" content="assets/img/${p.og||'worship-1'}-1280.webp">
+${SEO.headTags({ origin: ORIGIN, file: p.file, title: WSEO[p.file][0], desc: WSEO[p.file][1], noindex: p.noindex, ogImage: 'assets/og/' + (CARD[p.file] || 'default') + '.jpg', ogAlt: WSEO[p.file][0].split(' | ')[0] + ', Worship Connect, CCFC Zambia', siteName: 'Worship Connect', themeColor: '#0A0A0B' })}
 <link rel="preload" href="assets/fonts/BricolageGrotesque-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/fonts.css?v=${V.fonts}"><link rel="stylesheet" href="css/site.css?v=${V.css}"><link rel="stylesheet" href="css/core.css?v=${V.core}">
-<script type="application/ld+json">${JSON.stringify({'@context':'https://schema.org','@type':'MusicGroup',name:'Worship Connect',description:'Praise and worship team of Christ Connect Family Church Zambia',url:YT})}</script>
+<script type="application/ld+json">${JSON.stringify({'@context':'https://schema.org','@type':'MusicGroup',name:'Worship Connect',description:'Praise and worship team of Christ Connect Family Church Zambia',url:ORIGIN + '/',genre:'Gospel',foundingLocation:{'@type':'Place',name:'Lusaka, Zambia'},sameAs:[YT],memberOf:{'@type':'Church',name:'Christ Connect Family Church Zambia',url:'https://ccfczambia.org/'}})}</script>${p.jsonld ? `<script type="application/ld+json">${JSON.stringify(p.jsonld)}</script>` : ''}
 </head>
 <body>
 <a class="sr" href="#main">Skip to content</a>
 <header class="nav"><div class="wrap">
   <a class="nav__brand" href="index.html" aria-label="Worship Connect, home"><img src="assets/logo/ccfc-mark-white.png?v=2" alt="Christ Connect Family Church"><b>WORSHIP<i>Connect</i></b></a>
   <ul class="nav__links">${links}</ul>
-  <div class="row"><span class="nav__account"></span><a class="btn btn--ghost nav__home" href="${MAIN}" title="Back to the main church website">${ICON.back}Church website</a><a class="btn nav__cta" href="join.html">Join the team ${ICON.arrow}</a><button class="nav__burger" aria-label="Open menu" aria-expanded="false" aria-controls="menu"><i></i><span>Menu</span></button></div>
+  <div class="row"><span class="nav__account"></span><a class="btn btn--ghost nav__home" href="${MAIN}" title="Back to the main church website">${ICON.back}Church website</a><a class="btn nav__cta" href="join.html"><span class="nav__cta-long">Join the team</span><span class="nav__cta-short">Join</span> ${ICON.arrow}</a><button class="nav__burger" aria-label="Open menu" aria-expanded="false" aria-controls="menu"><i></i><span>Menu</span></button></div>
 </div></header>
 <div class="menu__veil"></div>
 <nav class="menu" aria-label="Site menu" id="menu">
@@ -60,11 +75,12 @@ function layout(p){
   <div class="menu__bottom"><div class="menu__account"></div><a class="menu__wa" href="https://wa.me/${WA}" target="_blank" rel="noopener">WhatsApp the office</a></div>
 </nav>
 <main id="main">${p.body}</main>
-<footer class="foot"><div class="wrap"><span>Worship Connect is the praise and worship team of Christ Connect Family Church Zambia.</span><span><a href="${MAIN}">CCFC Zambia</a> &nbsp;&middot;&nbsp; <a href="${KOI}">Koinonia</a> &nbsp;&middot;&nbsp; <a href="${YT}" target="_blank" rel="noopener">YouTube</a> &nbsp;&middot;&nbsp; <a href="https://wa.me/${WA}" target="_blank" rel="noopener">WhatsApp</a></span><span><a href="${MAIN}/sitemap">Site map</a> &nbsp;&middot;&nbsp; &copy; <span class="year"></span> CCFC</span></div></footer>
+<footer class="foot"><div class="wrap"><span>Worship Connect is the praise and worship team of Christ Connect Family Church Zambia.</span><span><a href="${MAIN}">CCFC Zambia</a> &nbsp;&middot;&nbsp; <a href="${KOI}">Koinonia</a> &nbsp;&middot;&nbsp; <a href="${YT}" target="_blank" rel="noopener">YouTube</a> &nbsp;&middot;&nbsp; <a href="https://wa.me/${WA}" target="_blank" rel="noopener">WhatsApp</a></span><nav class="legal" aria-label="Legal"><a href="${MAIN}/privacy">Privacy</a><a href="${MAIN}/terms">Terms</a><a href="${MAIN}/faq">FAQ</a><button type="button" data-consent-open>Cookie settings</button><a href="${MAIN}/sitemap">Site map</a><span>&copy; <span class="year"></span> CCFC</span></nav></div></footer>
 <script src="js/site.js?v=${V.js}" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js" defer></script>
-<script>window.CCFC_SITE={key:'worship'};window.CCFC_CONFIG=window.CCFC_CONFIG||{supabaseUrl:'https://dcqydtkjzgilyjnjyisb.supabase.co',supabaseKey:'sb_publishable_gPig-ePcoJIUnQ4fij6viw_ukAhlifp'}</script>
+<script>window.CCFC_SITE={key:'worship'};window.CCFC_CONFIG=Object.assign(window.CCFC_CONFIG||{supabaseUrl:'https://dcqydtkjzgilyjnjyisb.supabase.co',supabaseKey:'sb_publishable_gPig-ePcoJIUnQ4fij6viw_ukAhlifp'},{chatEndpoint:'https://dcqydtkjzgilyjnjyisb.supabase.co/functions/v1/ministry-chat'})</script>
 <script src="js/core.js?v=${V.corejs}" defer></script>
+<script src="js/chat.js?v=${V.chat}" defer></script>
 </body></html>`;
 }
 const vcard = v => `<div class="vcard"><a href="https://www.youtube.com/watch?v=${v.id}" class="vcard__main" data-lb="${v.id}" data-title="${v.t}" aria-label="Play: ${v.t}"><div class="ph">${img(v.img,'','(min-width:800px) 50vw, 100vw')}</div><span class="vcard__play" aria-hidden="true">${ICON.play}</span><div class="vcard__meta"><b>${v.t}</b><span>${v.where} &middot; ${v.when} &middot; ${v.dur}</span></div></a>
@@ -73,7 +89,7 @@ const closeBlock = () => `<section class="close"><div class="bg">${img('p-band',
 
 const home = { file:'index.html', title:'Home', og:'worship-1', desc:'Worship Connect, the praise and worship team of Christ Connect Family Church Zambia. Watch every set, learn the songs, join the team.',
   body:`
-<section class="hero"><div class="hero__media">${img('worship-1','Worship Connect leading praise at Koinonia 25','100vw',true)}<video data-src="assets/img/hero-1080.mp4" data-src4k="assets/img/hero-4k.mp4" poster="assets/img/hero-poster.jpg" muted loop playsinline autoplay preload="metadata" aria-hidden="true"></video></div><div class="hero__scrim"></div>
+<section class="hero"><div class="hero__media">${img('worship-1','Worship Connect leading praise at Koinonia 25','100vw',true)}<video data-src720="assets/img/hero-720.mp4" data-src="assets/img/hero-1080-v2.mp4" data-src4k="assets/img/hero-4k.mp4" poster="assets/img/hero-poster.jpg" muted loop playsinline autoplay preload="metadata" aria-hidden="true"></video></div><div class="hero__scrim"></div>
   <div class="wrap"><div class="hero__copy">
     <h1 class="wordmark">WORSHIP<br><em>CONNECT</em></h1>
     <p>The praise and worship team of Christ Connect Family Church Zambia. Songs in English, Bemba and Nyanja, sung so the whole family can lift one voice.</p>
@@ -98,7 +114,7 @@ const videos = { file:'videos.html', title:'Videos', og:'worship-2', desc:'Every
   <div class="row mt-3"><a class="btn btn--ghost" href="${YT}" target="_blank" rel="noopener">Subscribe on YouTube ${ICON.arrow}</a></div></div></section>
 ${closeBlock()}` };
 
-const join = { file:'join.html', title:'Join the team', og:'worship-3', desc:'Join Worship Connect: vocalists, musicians, sound and media. Tell us your gift and we will invite you to the next rehearsal.',
+const join = { jsonld: { '@context':'https://schema.org', '@type':'FAQPage', mainEntity: JOINFAQ.map(([q, a]) => ({ '@type':'Question', name:q, acceptedAnswer:{ '@type':'Answer', text:a } })) }, file:'join.html', title:'Join the team', og:'worship-3', desc:'Join Worship Connect: vocalists, musicians, sound and media. Tell us your gift and we will invite you to the next rehearsal.',
   body:`
 <section class="hero hero--short"><div class="hero__media">${img('p-mics','','100vw',true)}</div><div class="hero__scrim"></div><div class="wrap"><div class="hero__copy"><h1 class="wordmark" style="font-size:clamp(2.6rem,8vw,6.5rem)">Bring your <em>gift.</em></h1><p>We audition gently and rehearse seriously. Tell us what you do and a team leader will message you about the next rehearsal.</p></div></div></section>
 <section class="sec"><div class="wrap reg__grid">
@@ -112,6 +128,7 @@ const join = { file:'join.html', title:'Join the team', og:'worship-3', desc:'Jo
     <div class="field"><label for="j-msg">Anything else you want the team to know? (optional)</label><textarea id="j-msg" name="message" rows="2"></textarea></div>
     <div class="row"><button class="btn" type="submit">Send my application ${ICON.arrow}</button><span class="reg__status" aria-live="polite"></span></div>
   </form></div></section>
+<section class="sec" id="faq" style="padding-top:0"><div class="wrap"><div class="kfaq"><div><h2 data-split>Good to<br>know.</h2><p class="sub mt-1" data-rv>What people ask before they apply.</p></div><div class="kfaq__list" data-rv>${JOINFAQ.map(([q, a]) => `<details class="kfaq__item"><summary>${q}<span aria-hidden="true">${ICON.arrow}</span></summary><p>${a}</p></details>`).join('')}</div></div></div></section>
 ${closeBlock()}` };
 
 
@@ -141,8 +158,26 @@ const dashboard = { file:'dashboard.html', title:'Dashboard', og:'worship-1', de
   <div class="dash__gate"></div>
   <div class="dash__app" hidden><div class="dash__head"></div><div class="dash__stats"></div><div class="dash__tabs"></div><div class="dash__panel"></div></div>
 </div></section>` };
-const pages = [home, videos, latest, team, join, dashboard];
-for (const p of pages){ const html = layout(p); if (/[—–]/.test(html)) { console.error('dash in', p.file); process.exit(1); } fs.writeFileSync(path.join(__dirname, p.file), html); }
+
+const notFound = { file:'404.html', title:'Page not found', og:'worship-1', noindex:true, desc:WSEO['404.html'][1], body:`
+<section class="sec nf" style="padding-top:calc(var(--nav-h) + clamp(40px,6vw,90px))"><div class="wrap">
+  <span class="pill pill--orange">Error 404</span>
+  <h1 class="wordmark mt-1" style="font-size:clamp(3rem,10vw,7rem)">Off <em>key.</em></h1>
+  <p class="lede mt-1">This page does not exist, or it has moved. Pick up the song from here.</p>
+  <div class="row mt-2"><a class="btn" href="index.html">Worship Connect home ${ICON.arrow}</a><a class="btn btn--ghost" href="videos.html">Watch every set</a></div>
+  <ul class="nf__links mt-3">
+    <li><a href="videos.html"><b>Videos</b><span>Every set, with song timestamps</span></a></li>
+    <li><a href="join.html"><b>Join the team</b><span>Vocals, band, sound, media</span></a></li>
+    <li><a href="team.html"><b>The team</b><span>Who leads worship</span></a></li>
+    <li><a href="latest.html"><b>Latest</b><span>News from rehearsal</span></a></li>
+    <li><a href="${MAIN}"><b>CCFC Zambia</b><span>The church website</span></a></li>
+  </ul>
+</div></section>` };
+const pages = [home, videos, latest, team, join, dashboard, notFound];
+for (const p of pages){ SEO.lint(p, WSEO[p.file][0], WSEO[p.file][1]); const html = SEO.clean(layout(p)); if (/[—–]/.test(html)) { console.error('dash in', p.file); process.exit(1); } fs.writeFileSync(path.join(__dirname, p.file), html); }
+fs.writeFileSync(path.join(__dirname, 'sitemap.xml'), SEO.sitemapXml(ORIGIN, pages.map(p => Object.assign({ priority: { 'videos.html':'0.9', 'join.html':'0.8', 'team.html':'0.7' }[p.file], changefreq: ['index.html','latest.html','videos.html'].includes(p.file) ? 'weekly' : 'monthly' }, p))));
+fs.writeFileSync(path.join(__dirname, 'robots.txt'), SEO.robotsTxt(ORIGIN));
+fs.writeFileSync(path.join(__dirname, 'site.webmanifest'), SEO.manifestJson({ name: 'Worship Connect', short: 'Worship Connect', themeColor: '#0A0A0B', background: '#0A0A0B' }));
 console.log('built', pages.length, 'pages', V);
 
 /* Knowledge base for the Ask Connect assistant: the visible text of every page, rebuilt on each deploy (kb.json). */
