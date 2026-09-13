@@ -14,9 +14,9 @@ const CFG = window.CCFC_CONFIG || {};
 const ROLES = {
   master_admin: { label:'Master Administrator', short:'Master Admin', desc:'Controls everything on all three sites and assigns every role, including Admins.' },
   admin:        { label:'Admin',   short:'Admin',   desc:'Everything the Master Administrator can do, except assigning or changing Admin accounts.' },
-  leader:       { label:'Leader',  short:'Leader',  desc:'Posts announcements, moderates comments, reviews applications and has full access to the Upper Room study library.' },
+  leader:       { label:'Leader',  short:'Leader',  desc:'Posts announcements, moderates comments, reviews applications and adds material to the Upper Room library.' },
   media:        { label:'Media',   short:'Media',   desc:'Posts photos, videos and content to the CCFC, Koinonia and Worship Connect feeds.' },
-  blogger:      { label:'Blogger', short:'Blogger', desc:'Writes, publishes and updates blog posts.' },
+  blogger:      { label:'Blogger', short:'Blogger', desc:'Writes, publishes and updates blog posts, and adds material to the Upper Room library.' },
   member:       { label:'Member',  short:'Member',  desc:'Follows the feed and the blog, comments and reacts.' },
 };
 const ADMINS = ['master_admin','admin'];
@@ -24,7 +24,7 @@ const can = {
   post: r => ['master_admin','admin','leader','media'].includes(r),
   blog: r => ['master_admin','admin','blogger'].includes(r),
   moderate: r => ['master_admin','admin','leader'].includes(r),
-  library: r => ['master_admin','admin','leader'].includes(r),
+  library: r => ['master_admin','admin','leader','blogger'].includes(r),   /* who may add to the Upper Room; reading is open to all */
   staff: r => r && r !== 'member',
   admin: r => ADMINS.includes(r),
 };
@@ -33,7 +33,7 @@ const KINDS = { news:'News', announcement:'Announcement', photo:'Photos', video:
 const SITES = {
   ccfc:     { label:'CCFC Zambia', short:'CCFC', origin:'https://ccfczambia.org', feed:'feed.html', feedLabel:'Church feed', feedWord:'the family',
               kinds:['news','photo','video','announcement'], logo:'assets/logo/ccfc-mark.png?v=2', dashTitle:'Church dashboard',
-              links: r => [['feed.html','Church feed'], ['blog.html','Blog'], can.library(r) ? ['library.html','Upper Room library'] : null, can.staff(r) ? ['dashboard.html','Dashboard'] : null] },
+              links: r => [['feed.html','Church feed'], ['blog.html','Blog'], ['library.html','Upper Room library'], can.staff(r) ? ['dashboard.html','Dashboard'] : null] },
   koinonia: { label:'Koinonia Experience', short:'Koinonia', origin:'https://koinonia.ccfczambia.org', feed:'updates.html', feedLabel:'Conference updates', feedWord:'everyone coming to Koinonia',
               kinds:['news','announcement','video','photo'], logo:'assets/logo/ccfc-mark.png?v=2', dashTitle:'Koinonia dashboard',
               links: r => [['updates.html','Updates'], ['k26.html#register','Register for K26'], can.staff(r) ? ['dashboard.html','Dashboard'] : null] },
@@ -403,17 +403,15 @@ function blogEditor(slot, b, onDone){
 async function libraryPage(modal){
   const root = $('#library'); if (!root) return; const gate = $('.lib__gate', root), app = $('.lib__app', root);
   if (!ready){ gate.innerHTML = `<h2>Almost ready</h2><p class="sub">The library opens as soon as accounts are switched on.</p>`; return; }
-  if (!session){ gate.innerHTML = `<h2>Leaders sign in</h2><p class="sub">The Upper Room library is for the leadership team. Sign in to continue.</p><button class="btn mt-2" data-auth="in">Sign in</button>`; accountUI(modal); return; }
-  if (!can.library(role())){ gate.innerHTML = `<h2>For leaders</h2><p class="sub">The Upper Room holds study material for the leadership team. Your account is a <b>${esc(ROLES[role()].label)}</b>. If you serve as a leader, ask an Admin to update your role.</p><a class="btn mt-2" href="watch.html">Go to teaching videos</a>`; return; }
   gate.hidden = true; app.hidden = false;
   const list = $('.lib__list', app), up = $('.lib__upload', app), search = $('.lib__search', app), filter = $('.lib__filter', app);
   const KINDS = { book:'Book', slides:'Slides', notes:'Notes', audio:'Audio', video:'Video', other:'Other' };
-  up.innerHTML = `<form class="compose" novalidate><div class="compose__head"><b>Add material</b><span class="pill">${esc(ROLES[role()].short)}</span></div>
+  if (can.library(role())) up.innerHTML = `<form class="compose" novalidate><div class="compose__head"><b>Add material</b><span class="pill">${esc(ROLES[role()].short)}</span></div>
     <div class="compose__row"><div class="field"><label for="l-title">Title</label><input id="l-title" name="title" required maxlength="160"></div><div class="field"><label for="l-series">Series or topic</label><input id="l-series" name="series" placeholder="Book of Acts, Foundations, Leadership..."></div></div>
     <div class="compose__row"><div class="field"><label for="l-kind">Type</label><select id="l-kind" name="kind">${Object.entries(KINDS).map(([k,v]) => `<option value="${k}">${v}</option>`).join('')}</select></div><div class="field"><label for="l-file">File (PDF, PowerPoint, Word, audio, up to 100 MB)</label><input id="l-file" name="file" type="file" required></div></div>
     <div class="field"><label for="l-desc">Description</label><textarea id="l-desc" name="description" rows="3"></textarea></div>
     <div class="row"><button class="btn" type="submit">Upload</button><span class="form__status" aria-live="polite"></span></div></form>`;
-  const f = $('form', up), status = $('.form__status', f);
+  const f = $('form', up) || document.createElement('form'), status = $('.form__status', f) || document.createElement('span');
   f.addEventListener('submit', async e => { e.preventDefault(); const file = f.file.files[0]; if (!f.title.value.trim() || !file){ status.textContent = 'Title and file are required.'; status.className='form__status is-err'; return; }
     status.className='form__status'; status.textContent = 'Uploading...';
     try { const u = await uploadTo('library', file, (f.series.value.trim() ? slugify(f.series.value) : 'general'));
@@ -424,10 +422,10 @@ async function libraryPage(modal){
   async function load(){ const { data } = await sb.from('library_items').select('*, profiles(full_name)').order('created_at', { ascending:false }); items = data || []; render(); }
   function render(){ const q = (search.value||'').toLowerCase(), k = filter.value;
     const rows = items.filter(i => (!k || i.kind === k) && (!q || (i.title + i.series + i.description).toLowerCase().includes(q)));
-    if (!rows.length){ list.innerHTML = `<div class="empty"><h3>Nothing here yet</h3><p>Upload the first study notes, book or slide deck above.</p></div>`; return; }
+    if (!rows.length){ list.innerHTML = `<div class="empty"><h3>Nothing here yet</h3><p>Books, notes and slides will appear here as leaders and bloggers add them.</p></div>`; return; }
     const groups = {}; rows.forEach(i => (groups[i.series || 'General'] ||= []).push(i));
     list.innerHTML = Object.entries(groups).map(([s, its]) => `<h3 class="lib__series">${esc(s)}</h3><div class="lib__grid">${its.map(i => `<div class="libcard" data-id="${i.id}"><span class="libcard__kind">${esc(KINDS[i.kind]||i.kind)}</span><b>${esc(i.title)}</b><p>${esc(i.description)}</p><span class="libcard__meta">${esc(i.file_name)} &middot; ${fmtBytes(i.size_bytes)} &middot; ${esc(i.profiles?.full_name||'')} &middot; ${esc(when(i.created_at))}</span><div class="row"><button class="btn btn--navy lib__open">Open</button>${(profile.id === i.uploader_id || can.admin(role())) ? '<button class="pill lib__del">Delete</button>' : ''}</div></div>`).join('')}</div>`).join('');
-    $$('.lib__open', list).forEach(b => b.addEventListener('click', async () => { const it = items.find(x => x.id === b.closest('.libcard').dataset.id); const { data, error } = await sb.storage.from('library').createSignedUrl(it.path, 3600); if (error) toast(error.message, false); else window.open(data.signedUrl, '_blank', 'noopener'); }));
+    $$('.lib__open', list).forEach(b => b.addEventListener('click', async () => { const it = items.find(x => x.id === b.closest('.libcard').dataset.id); window.open(sb.storage.from('library').getPublicUrl(it.path).data.publicUrl, '_blank'); }));
     $$('.lib__del', list).forEach(b => b.addEventListener('click', async () => { const it = items.find(x => x.id === b.closest('.libcard').dataset.id); if (!confirm(`Delete "${it.title}"?`)) return; await sb.storage.from('library').remove([it.path]); const { error } = await sb.from('library_items').delete().eq('id', it.id); if (error) toast(error.message, false); else load(); }));
   }
   search.addEventListener('input', render); filter.addEventListener('change', render); load();
