@@ -29,7 +29,7 @@ function layout(p){
 <link rel="canonical" href="https://worship.ccfczambia.org/${p.file === 'index.html' ? '' : p.file.replace(/\.html$/, '')}">
 <meta name="robots" content="${p.noindex ? 'noindex, nofollow' : 'index, follow, max-image-preview:large'}">
 <meta name="theme-color" content="#0A0A0B">
-<link rel="icon" href="assets/logo/favicon.png?v=2" type="image/png"><link rel="apple-touch-icon" href="assets/logo/apple-touch-icon.png?v=2">
+<link rel="icon" href="assets/logo/favicon-32.png?v=3" sizes="32x32" type="image/png"><link rel="icon" href="assets/logo/favicon-192.png?v=3" sizes="192x192" type="image/png"><link rel="icon" href="assets/logo/favicon-512.png?v=3" sizes="512x512" type="image/png"><link rel="apple-touch-icon" href="assets/logo/apple-touch-icon.png?v=3">
 <meta property="og:type" content="website"><meta property="og:site_name" content="Worship Connect"><meta property="og:title" content="${p.title} | Worship Connect"><meta property="og:description" content="${p.desc}"><meta property="og:image" content="assets/img/${p.og||'worship-1'}-1280.webp">
 <link rel="preload" href="assets/fonts/BricolageGrotesque-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/fonts.css?v=${V.fonts}"><link rel="stylesheet" href="css/site.css?v=${V.css}"><link rel="stylesheet" href="css/core.css?v=${V.core}">
