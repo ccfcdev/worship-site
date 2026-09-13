@@ -14,9 +14,11 @@ function split(){ $$('[data-split]').forEach(el => { el.innerHTML = el.innerHTML
 function reveals(){ const els = $$('[data-rv],[data-rv-stagger]'); if (RM || IS_CAP || !('IntersectionObserver' in window)){ els.forEach(e => e.classList.add('is-rv')); return; }
   const io = new IntersectionObserver(es => es.forEach(en => { if (en.isIntersecting){ en.target.classList.add('is-rv'); io.unobserve(en.target); } }), {rootMargin:'0px 0px -10% 0px', threshold:.06}); els.forEach(e => io.observe(e)); }
 function nav(){ const n = $('.nav'); if (!n) return; const hero = $('.hero'); Bus.add(y => n.classList.toggle('is-solid', y > (hero ? hero.offsetHeight - 120 : 40)));
-  const menu = $('.menu'), open = $('.nav__burger'), close = $('.menu__close'); if (!menu) return;
-  const t = on => { menu.classList.toggle('is-open', on); document.body.style.overflow = on ? 'hidden' : ''; open.setAttribute('aria-expanded', on); (on ? close : open).focus(); };
-  open.addEventListener('click', () => t(true)); close.addEventListener('click', () => t(false)); addEventListener('keydown', e => { if (e.key === 'Escape' && menu.classList.contains('is-open')) t(false); }); }
+  const menu = $('.menu'), veil = $('.menu__veil'), open = $('.nav__burger'), close = $('.menu__close'); if (!menu) return;
+  const t = on => { menu.classList.toggle('is-open', on); veil && veil.classList.toggle('is-open', on); document.body.style.overflow = on ? 'hidden' : ''; open.setAttribute('aria-expanded', on); (on ? close : open).focus(); };
+  open.addEventListener('click', () => t(true)); close.addEventListener('click', () => t(false)); veil && veil.addEventListener('click', () => t(false));
+  $$('.menu a', menu).forEach(a => a.addEventListener('click', () => { if (a.getAttribute('href').startsWith('#')) t(false); }));
+  addEventListener('keydown', e => { if (e.key === 'Escape' && menu.classList.contains('is-open')) t(false); }); }
 function hero(){ const h = $('.hero'); if (!h) return; const v = $('video', h); if (v && !RM && !IS_CAP){ const conn = navigator.connection || {}; const slow = conn.saveData || /(^|-)2g/.test(conn.effectiveType || ''); v.src = (!slow && screen.width * (devicePixelRatio || 1) >= 2560 && v.dataset.src4k) ? v.dataset.src4k : v.dataset.src; v.muted = true; const p = v.play(); p && p.catch && p.catch(()=>{}); }
   if (RM || IS_CAP) return; const m = $('.hero__media', h), c = $('.hero__copy', h);
   Bus.add(y => { if (y > innerHeight*1.2) return; const t = Math.min(1, y/innerHeight); if (m) m.style.transform = `translate3d(0,${(y*.35).toFixed(1)}px,0) scale(${1+t*.08})`; if (c){ c.style.transform = `translate3d(0,${(y*.18).toFixed(1)}px,0)`; c.style.opacity = 1 - t*1.25; } }); }
