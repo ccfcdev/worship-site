@@ -18,7 +18,7 @@ const CFG = window.CCFC_CONFIG || {};
 const OPT = window.MAZAR || {};
 const MODE = ['widget', 'page', 'studio'].includes(OPT.mode) ? OPT.mode : 'widget';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const KB = Object.assign({ sunday: '07:45 to 10:00', venue: 'Kings Sparkle School, off Kasangula Road, Mandevu, Lusaka', email: 'ccfczambia@gmail.com', phone: '+260 975 065 391', mission: 'Connecting people to Christ in the power of the Holy Spirit, and empowering them to become multiplying disciples.', midweek: 'group and prayer times on WhatsApp', koinoniaUrl: 'https://koinonia.ccfczambia.org', worshipUrl: 'https://worship.ccfczambia.org' }, window.CCFC_KB || {});
+const KB = Object.assign({ sunday: '07:45 to 10:00', venue: 'Kings Sparkle School, off Kasangula Road, Mandevu, Lusaka', email: 'info@ccfczambia.org', phone: '+260 573 762 913', call: '+260 772 890 854', mission: 'Connecting people to Christ in the power of the Holy Spirit, and empowering them to become multiplying disciples.', midweek: 'group and prayer times on WhatsApp', koinoniaUrl: 'https://koinonia.ccfczambia.org', worshipUrl: 'https://worship.ccfczambia.org' }, window.CCFC_KB || {});
 const SITE_KEY = (window.CCFC_SITE && window.CCFC_SITE.key) || (MODE === 'studio' ? 'mazar' : 'ccfc');
 const THEME = OPT.theme || SITE_KEY;
 const MAIN = SITE_KEY === 'ccfc' ? '' : 'https://ccfczambia.org';
@@ -27,10 +27,10 @@ const HERE = location.hostname + location.pathname;
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const NAME = 'Mazar';
 const PER_SITE = {
-  ccfc:     { name: 'CCFC Zambia', greet: 'Peace to you. I am **Mazar**, the AI Bible companion of Christ Connect Family Church Zambia.\n\nAsk me about the Bible, pray with me, or let me handle small jobs: planning your visit, finding a sermon, sending a prayer request.', nudge: 'Bible questions, prayer, service times, directions. I can also do small tasks for you.', placeholder: 'Ask Mazar about the Bible or the church...', suggest: ['Verses for when I feel anxious', 'Plan my visit this Sunday', 'Explain John 3:16', 'Send a prayer request', 'Service times', 'Watch a sermon'] },
-  koinonia: { name: 'Koinonia', greet: "Peace to you. I am **Mazar**, the AI Bible companion for Koinonia Experience.\n\nAsk me about Koi 26', let me fill in your registration, or open the Bible together.", nudge: "Koi 26', registration, photos, the Bible. I can fill in your registration for you.", placeholder: "Ask Mazar about Koi 26' or the Bible...", suggest: ["Register me for Koi 26'", "When is Koi 26'?", 'What does koinonia mean?', "Koi 25' photos", "Remind me about Koi 26'", 'How much does it cost?'] },
-  worship:  { name: 'Worship Connect', greet: 'Peace to you. I am **Mazar**, the AI Bible companion for Worship Connect.\n\nAsk me about joining the team, the songs we sing, or what the Bible says about worship.', nudge: 'Joining the team, rehearsals, worship in the Bible. I can start your application.', placeholder: 'Ask Mazar about worship or the team...', suggest: ['Help me apply to join', 'What does the Bible say about worship?', 'When do you rehearse?', 'Watch every set', 'A Psalm to start my day', 'Service times'] },
-  mazar:    { name: 'Mazar', greet: 'Peace to you. I am **Mazar**, an AI companion for the Word, built by Christ Connect Family Church Zambia.\n\nAsk me anything about the Bible, study a passage with me, build a reading plan, pray, or let me take care of a small task.', nudge: '', placeholder: 'Ask Mazar anything about the Bible...', suggest: ['Study Romans 8 with me', 'What does the Bible say about fear?', 'Build me a 14 day plan on prayer', 'Quiz me on the Gospel of John', 'Explain the Trinity simply', 'Pray with me for my family'] },
+  ccfc:     { name: 'CCFC Zambia', greet: "Hi, I'm **Mazar**, CCFC Zambia's Bible companion.\n\nWhat's on your mind? A verse you're stuck on, something you're carrying, or how to find us on Sunday. I can sort small things too, like a prayer request or planning your visit.", nudge: 'Bible questions, prayer, service times, directions. I can also do small tasks for you.', placeholder: 'Ask Mazar about the Bible or the church...', suggest: ['Verses for when I feel anxious', 'Plan my visit this Sunday', 'Explain John 3:16', 'Send a prayer request', 'Service times', 'Watch a sermon'] },
+  koinonia: { name: 'Koinonia', greet: "Hi, I'm **Mazar**. Thinking about Koi 26'?\n\nI can answer your questions about the conference, fill in your registration for you, or open the Bible with you.", nudge: "Koi 26', registration, photos, the Bible. I can fill in your registration for you.", placeholder: "Ask Mazar about Koi 26' or the Bible...", suggest: ["Register me for Koi 26'", "When is Koi 26'?", 'What does koinonia mean?', "Koi 25' photos", "Remind me about Koi 26'", 'How much does it cost?'] },
+  worship:  { name: 'Worship Connect', greet: "Hi, I'm **Mazar**. Thinking about joining Worship Connect, or curious what the Bible actually says about worship?\n\nAsk me anything.", nudge: 'Joining the team, rehearsals, worship in the Bible. I can start your application.', placeholder: 'Ask Mazar about worship or the team...', suggest: ['Help me apply to join', 'What does the Bible say about worship?', 'When do you rehearse?', 'Watch every set', 'A Psalm to start my day', 'Service times'] },
+  mazar:    { name: 'Mazar', greet: "Hi, I'm **Mazar**.\n\nBring me anything: a passage you want to understand, a question you've been sitting on, a doubt, a document or photo to study, or just a hard day. Where do you want to start?", nudge: '', placeholder: 'Ask Mazar anything about the Bible...', suggest: ['Study Romans 8 with me', 'What does the Bible say about fear?', 'Build me a 14 day plan on prayer', 'Quiz me on the Gospel of John', 'Explain the Trinity simply', 'Pray with me for my family'] },
 }[SITE_KEY] || {};
 const abs = h => (!h || /^https?:/.test(h)) ? h : MAIN + h;
 const ls = { get(k, d){ try { const v = JSON.parse(localStorage.getItem(k) || 'null'); return v ?? d; } catch (_) { return d; } }, set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) {} }, del(k){ try { localStorage.removeItem(k); } catch (_) {} } };
@@ -57,7 +57,7 @@ const INTENTS = [
   { k:['first time','visit','visiting','new here','what to expect','dress','wear','kids','children','parking'], a:'You are very welcome. No dress code. During the announcements visitors stand and introduce themselves and the church welcomes you warmly. Children are welcome and Connect Kids runs during the sermon. Service is 07:45 to 10:00.', go:['/visit','What to expect'] },
   { k:['watch','sermon','video','online','youtube','livestream','stream','acts','teaching'], a:'Teaching and worship from our gatherings are on the Watch page and on our YouTube channel. Pastor Francis Chewe is currently teaching through the Book of Acts.', go:['/watch','Watch'] },
   { k:['give','giving','tithe','offering','donate','mobile money','bank','airtel','mtn'], a:'Giving at CCFC comes from the heart; nobody is asked to give. If you want to, you can give in person on Sunday, by mobile money or by bank transfer. The Give page explains each.', go:['/give','Ways to give'] },
-  { k:['contact','phone','email','whatsapp','call','number','reach'], a:`Email ${KB.email} or message us on WhatsApp at ${KB.phone}. A real person replies.`, go:['/contact','Contact us'] },
+  { k:['contact','phone','email','whatsapp','call','number','reach'], a:`Email ${KB.email}, call ${KB.call} or message us on WhatsApp at ${KB.phone}. A real person replies.`, go:['/contact','Contact us'] },
   { k:['koinonia','conference','k25','k26','k24','register','registration'], a:'Koinonia is our annual family conference in Lusaka every December. The next one is Koi 26\'. The Koinonia site has every edition, videos and registration.', go:[KB.koinoniaUrl || '/gatherings','Koinonia site'] },
   { k:['worship connect','worship team','choir','singers','band','join the choir','sing'], a:'Worship Connect is our praise and worship team. Their videos and the way to join are on the Worship Connect site.', go:[KB.worshipUrl || '/ministries','Worship Connect'] },
   { k:['pastor','bishop','reverend','leader','leadership','who leads','francis','weston','austern','munyeke','katsande','deacon'], a:'Reverend Weston Chewe is Presiding Bishop of CCFC Zambia, Pastor Francis Chewe is Senior Pastor and Pastor Austern Munyeke serves as Pastor. Bishop Farai Katsande leads CCFC International from Harare.', go:['/about#leaders','Meet the leadership'] },
@@ -68,58 +68,28 @@ const INTENTS = [
 ];
 const FALLBACK = `I cannot reach my thinking right now. Try the Bible tab, or message the church on WhatsApp at ${KB.phone} and someone will help.`;
 function local(q){ const t = q.toLowerCase(); let best = null, bs = 0; for (const i of INTENTS){ const s = i.k.reduce((s,k) => s + (t.includes(k) ? (k.length > 6 ? 2 : 1) : 0), 0); if (s > bs){ bs = s; best = i; } } return best ? { text: best.a, go: best.go ? [abs(best.go[0]), best.go[1]] : undefined } : { text: FALLBACK }; }
+const ATTS = new WeakMap();   /* message -> files attached to it (kept in memory only, never in localStorage) */
 async function remote(history){
-  const r = await fetch(CFG.chatEndpoint, { method:'POST', headers:{ 'Content-Type':'application/json', ...(CFG.supabaseKey ? { apikey: CFG.supabaseKey, Authorization: 'Bearer ' + CFG.supabaseKey } : {}) }, body: JSON.stringify({ messages: history, page: HERE, mode: MODE === 'studio' ? 'studio' : 'site' }) });
+  let used = null, attachments = [];
+  for (let i = history.length - 1; i >= 0; i--){ const d = history[i].att && ATTS.get(history[i]); if (d){ used = history[i]; attachments = d.map(({ kind, name, data }) => ({ kind, name, data })); break; } }
+  const messages = history.map(m => ({ role: m.role, content: m.content, ...(m === used ? { att: true } : {}) }));
+  const r = await fetch(CFG.chatEndpoint, { method:'POST', headers:{ 'Content-Type':'application/json', ...(CFG.supabaseKey ? { apikey: CFG.supabaseKey, Authorization: 'Bearer ' + CFG.supabaseKey } : {}) }, body: JSON.stringify({ messages, page: HERE, mode: MODE === 'studio' ? 'studio' : 'site', attachments }) });
   if (!r.ok) throw new Error('chat endpoint ' + r.status); const ans = await r.json();
   if (!ans || typeof ans.text !== 'string') throw new Error('bad answer');
   ans.text = ans.text.replace(/\s*[\u2014\u2013]\s*/g, ', ');
   return ans;
 }
 
-/* ---------- Bible: every version we can serve freely, from the original languages to today ----------
-   sources: api = bible-api.com, gb = api.getbible.net v2, bolls = bolls.life. Copyrighted modern versions are
-   linked to BibleGateway instead of being served (their publishers hold the rights). */
-const VERSIONS = [
-  ['Original languages', [
-    ['wlc', 'WLC', 'Westminster Leningrad Codex, Hebrew Old Testament', 'c. 1008', 'gb', 'codex', 'he', 'ot'],
-    ['lxx', 'LXX', 'Septuagint, Greek Old Testament', '3rd to 1st century BC', 'gb', 'lxx', 'grc', 'ot'],
-    ['tr', 'TR', 'Textus Receptus, Greek New Testament (Stephanus)', '1550', 'gb', 'textusreceptus', 'grc', 'nt'],
-    ['wh', 'WH', 'Westcott and Hort, Greek New Testament', '1881', 'gb', 'westcotthort', 'grc', 'nt'],
-    ['vul', 'VUL', 'Vulgata Clementina, Latin', '405, ed. 1592', 'gb', 'vulgate', 'la'],
-  ]],
-  ['Before the King James', [
-    ['wyc', 'WYC', 'Wycliffe Bible', 'c. 1395', 'gb', 'wycliffe'],
-    ['tyn', 'TYN', 'Tyndale Bible', '1526 to 1530', 'gb', 'tyndale'],
-    ['gnv', 'GNV', 'Geneva Bible, with its study notes', '1560, ed. 1599', 'bolls', 'GNV'],
-    ['drb', 'DRB', 'Douay-Rheims Bible', '1582 to 1610', 'bolls', 'DRB'],
-    ['lxxe', 'LXX-E', "Brenton's English Septuagint (Old Testament)", '1851', 'bolls', 'LXXE', 'en', 'ot'],
-  ]],
-  ['Classic English', [
-    ['kjv', 'KJV', 'King James Version', '1611, ed. 1769', 'api', 'kjv'],
-    ['wb', 'WBT', "Webster's Bible", '1833', 'gb', 'wb'],
-    ['ylt', 'YLT', "Young's Literal Translation", '1862, ed. 1898', 'gb', 'ylt'],
-    ['dby', 'DBY', 'Darby Translation', '1890', 'api', 'darby'],
-    ['dra', 'DRA', 'Douay-Rheims, 1899 American Edition', '1899', 'api', 'dra'],
-    ['asv', 'ASV', 'American Standard Version', '1901', 'api', 'asv'],
-    ['wey', 'WEY', 'Weymouth New Testament', '1903', 'gb', 'weymouth', 'en', 'nt'],
-    ['akjv', 'AKJV', 'American King James Version', '1999', 'gb', 'akjv'],
-  ]],
-  ['Modern, freely available', [
-    ['web', 'WEB', 'World English Bible', '2000', 'api', 'web'],
-    ['webbe', 'WEBBE', 'World English Bible, British Edition', '2000', 'api', 'webbe'],
-    ['bbe', 'BBE', 'Bible in Basic English', '1949 to 1964', 'api', 'bbe'],
-    ['oeb', 'OEB', 'Open English Bible', '2010', 'api', 'oeb-us'],
-    ['bsb', 'BSB', 'Berean Standard Bible', '2016 to 2022', 'bolls', 'BSB'],
-    ['lsv', 'LSV', 'Literal Standard Version', '2020', 'bolls', 'LSV'],
-  ]],
-  ['Copyrighted, read on BibleGateway', [
-    ['niv', 'NIV', 'New International Version', '1978, ed. 2011', 'bg', 'NIV'], ['esv', 'ESV', 'English Standard Version', '2001, ed. 2016', 'bg', 'ESV'], ['nkjv', 'NKJV', 'New King James Version', '1982', 'bg', 'NKJV'], ['nlt', 'NLT', 'New Living Translation', '1996, ed. 2015', 'bg', 'NLT'], ['nasb', 'NASB', 'New American Standard Bible', '1971, ed. 2020', 'bg', 'NASB'], ['csb', 'CSB', 'Christian Standard Bible', '2017', 'bg', 'CSB'], ['nrsv', 'NRSV', 'New Revised Standard Version', '1989, ed. 2021', 'bg', 'NRSVUE'], ['rsv', 'RSV', 'Revised Standard Version', '1952', 'bg', 'RSV'], ['amp', 'AMP', 'Amplified Bible', '1965, ed. 2015', 'bg', 'AMP'], ['msg', 'MSG', 'The Message', '2002', 'bg', 'MSG'], ['net', 'NET', 'New English Translation', '2005', 'bg', 'NET'], ['gnt', 'GNT', 'Good News Translation', '1976', 'bg', 'GNT'],
-  ]],
-];
-const VER = {}; VERSIONS.forEach(([, list]) => list.forEach(v => { VER[v[0]] = { id: v[0], abbr: v[1], name: v[2], year: v[3], src: v[4], code: v[5], lang: v[6] || 'en', part: v[7] || 'all' }; }));
+/* ---------- Bible: every version Mazar can serve freely, in every language the sources carry ----------
+   sources: api = bible-api.com, gb = api.getbible.net, bolls = bolls.life (public domain picks). Copyrighted modern
+   English editions are linked to BibleGateway instead of being served. Registry generated by tools-bibles.py. */
+/*__BIBLES__*/ const BIBLES = [["web","WEB","World English Bible","2000","en","English","ltr","api","web","all"],["webbe","WEBBE","World English Bible, British Edition","2000","en","English","ltr","api","webbe","all"],["kjv","KJV","King James Version","1611, ed. 1769","en","English","ltr","api","kjv","all"],["asv","ASV","American Standard Version","1901","en","English","ltr","api","asv","all"],["bbe","BBE","Bible in Basic English","1949 to 1964","en","English","ltr","api","bbe","all"],["dby","DBY","Darby Translation","1890","en","English","ltr","api","darby","all"],["dra","DRA","Douay-Rheims, 1899 American Edition","1899","en","English","ltr","api","dra","all"],["oeb","OEB","Open English Bible","2010","en","English","ltr","api","oeb-us","all"],["akjv","AKJV","American King James Version","1999","en","English","ltr","gb","akjv","all"],["alb","ALB","Albanian Bible","","sq","Albanian","ltr","gb","alb","all"],["aleppo","ALEP","Aleppo Codex, Hebrew Old Testament","c. 930","he","Hebrew","rtl","gb","aleppo","ot"],["almeida","ARA","Almeida Atualizada","","pt","Portuguese","ltr","gb","almeida","all"],["aov","AOV","Afrikaans Ou Vertaling","1933","af","Afrikaans","ltr","gb","aov","all"],["arabicsv","SVD","Smith and Van Dyke, Arabic","1865","ar","Arabic","rtl","gb","arabicsv","all"],["basque","BASQUE","(Navarro Labourdin) NT","","eu","Basque","ltr","gb","basque","nt"],["bibelselskap","NOR","Det Norsk Bibelselskap","1930","nb","Norwegian bokmal","ltr","gb","bibelselskap","all"],["bkr","BKR","Bible kralická, Czech","1613","cs","Czech","ltr","gb","bkr","all"],["breton","BRETON","Gospels","","br","Breton","ltr","gb","breton","nt"],["burcbcm","CBCM","Burmese Catholic Bible","","my","Myanmar Burmse","ltr","gb","burcbcm",[19,20,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66]],["calo","CALO","El Evangelio segun S. Lucas, traducido al Romaní, ó dialecto de los Gitanos de España","","rmq","Calo","ltr","gb","calo",[42]],["canisius","CANISIU","Petrus Canisius Translation","","nl","Dutch","ltr","gb","canisius","all"],["cep","CEP","Český ekumenický překlad","1985","cs","Czech","ltr","gb","cep","all"],["chamorro","CHAMORR","(Psalms Gospels Acts)","","ch","Chamorro","ltr","gb","chamorro",[19,40,41,42,43,44]],["che1860","CHE1860","Cherokee New Testament (1860) with Sequoyah transliterated forms","1860","chr","Cherokee","ltr","gb","che1860","nt"],["chiunl","CUVWL","Chinese Union Version, Wenli","1919","zh","Chinese","ltr","gb","chiunl","all"],["cns","NCVS","New Chinese Version, Simplified","","zh-Hans","Chinese","ltr","gb","cns","all"],["cnt","NCVT","New Chinese Version, Traditional","","zh-Hant","Chinese","ltr","gb","cnt","all"],["codex","WLC","Westminster Leningrad Codex, Hebrew Old Testament","c. 1008","he","Hebrew","rtl","gb","codex","ot"],["coptic","COP","Coptic New Testament (Bohairic)","","cop","Coptic","ltr","gb","coptic","nt"],["cornilescu","COR","Cornilescu, Romanian","1924","ro","Romanian","ltr","gb","cornilescu","all"],["croatia","CRO","Croatian Bible","","hr","Croatian","ltr","gb","croatia","all"],["csielizabeth","CSIELIZ","1757 Church Slavonic Elizabeth Bible","1757","cu","Slavonic Elizabeth","ltr","gb","csielizabeth","all"],["cus","CUVS","Chinese Union Version, Simplified","1919","zh-Hans","Chinese","ltr","gb","cus","all"],["cut","CUVT","Chinese Union Version, Traditional","1919","zh-Hant","Chinese","ltr","gb","cut","all"],["danish","DAN","Danish Bible","","da","Danish","ltr","gb","danish","all"],["danish1819","DANISH1","Danish New Testament from 1819 with original orthography","1819","da","Danish","ltr","gb","danish1819","nt"],["danish1871","DANISH1","Danish OT1871 + NT1907 with original orthography","1871","da","Danish","ltr","gb","danish1871","all"],["darby","FRDBY","Bible Darby, French","1890","fr","French","ltr","gb","darby","all"],["dari","DARI","Dari Bible","","prs","Dari","rtl","gb","dari","all"],["douayrheims","DRB2","Douay-Rheims","1610","en","English","ltr","gb","douayrheims","all"],["easternarmenian","EASTERN","Eastern (Genesis Exodus Gospels)","","hy","Armenian","ltr","gb","easternarmenian",[1,2,40,41,42,43]],["elberfelder","ELB","Elberfelder Bibel","1871","de","German","ltr","gb","elberfelder","all"],["elberfelder1905","ELB05","Elberfelder Bibel","1905","de","German","ltr","gb","elberfelder1905","all"],["esperanto","ESP","Esperanto Bible","1926","eo","Esperanto","ltr","gb","esperanto","all"],["estonian","EST","Estonian Bible","","et","Estonian","ltr","gb","estonian",[1,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66]],["finnish1776","FIN76","Finnish Bible","1776","fi","Finnish","ltr","gb","finnish1776","all"],["gaelic","GAELIC","Scots Gaelic (Gospel of Mark)","","gd","Scottish Gaelic","ltr","gb","gaelic",[41]],["giovanni","DIO","Giovanni Diodati","1649","it","Italian","ltr","gb","giovanni","all"],["gothic","GOT","Gothic Bible (Wulfila)","4th century","got","Gothic","ltr","gb","gothic",[16,40,41,42,43,45,46,47,48,49,50,51,52,53,54,55,56,57]],["japbungo","JBG","Japanese Bungo-yaku 文語訳","1953","ja","Japanese","ltr","gb","japbungo","all"],["japdenmo","JDM","Japanese Denmo 電網聖書","","ja","Japanese","ltr","gb","japdenmo",[40,41,42,43,44,58,59,60,61,62,63,64,65]],["japkougo","JKG","Japanese Kougo-yaku 口語訳","1955","ja","Japanese","ltr","gb","japkougo","all"],["japraguet","JRG","Japanese Raguet-yaku ラゲ訳","1910","ja","Japanese","ltr","gb","japraguet","nt"],["judson","JUD","Judson Bible, Burmese","1835","my","Myanmar Burmse","ltr","gb","judson","all"],["karoli","KAR","Károli, Hungarian","1590","hu","Hungarian","ltr","gb","karoli","all"],["kjva","KJVA","King James Version with Apocrypha","1769","en","English","ltr","gb","kjva","all"],["korean","KOR","Korean Bible","","ko","Korean","ltr","gb","korean","all"],["koreankjv","KKJV","Hangul King James Version","","ko","Korean","ltr","gb","koreankjv","all"],["latvian","LATVIAN","New Testament","","lv","Latvian","ltr","gb","latvian","nt"],["lithuanian","LIT","Lithuanian Bible","","lt","Lithuanian","ltr","gb","lithuanian","all"],["livre","BLIVRE","Bíblia Livre","2018","pt","Portuguese","ltr","gb","livre","all"],["livretr","BLTR","Bíblia Livre, Textus Receptus","2018","pt","Portuguese","ltr","gb","livretr","all"],["ls1910","LSG","Louis Segond","1910","fr","French","ltr","gb","ls1910","all"],["luther1545","LUT","Lutherbibel","1545","de","German","ltr","gb","luther1545","all"],["lxx","LXX","Septuagint, Greek Old Testament","3rd to 1st century BC","grc","Greek","ltr","gb","lxx",[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,67,69,70,73,74,75,77,78,80,81,82,83,84,85,86]],["mal1910","MAL","Sathyavedapusthakam, Malayalam","1910","mlf","Malayalam","ltr","gb","mal1910","all"],["manxgaelic","MANXGAE","Manx Gaelic (Esther Jonah 4 Gospels)","","gv","Manx Gaelic","ltr","gb","manxgaelic",[17,32,40,42,43]],["maori","MAO","Maori Bible","","mi","Maori","ltr","gb","maori","all"],["martin","MAR","Bible Martin","1744","fr","French","ltr","gb","martin","all"],["mg1865","MG","Baiboly Malagasy","1865","mg","Malagasy","ltr","gb","mg1865","all"],["moderngreek","GRM","Modern Greek Bible","","el","Greek Modern","ltr","gb","moderngreek","all"],["modernhebrew","HEB","Modern Hebrew Bible","","he","Hebrew","rtl","gb","modernhebrew","all"],["monkjv","MKJV","Mongolian King James Version","","mn","Mongolian","ltr","gb","monkjv","nt"],["ndebele","NDE","IBhayibhili, Ndebele","","nd","Ndebele","ltr","gb","ndebele","all"],["norsmb","NORSMB","Studentmållagsbibelen frå 1921","1921","nn","Norwegian nynorsk","ltr","gb","norsmb","all"],["peshitta","PESH","Peshitta, Syriac New Testament","5th century","syr","Syriac","rtl","gb","peshitta","nt"],["pohnold","POHNOLD","Old Public Domain Pohnpeian Bible","","pon","Pohnpeian","ltr","gb","pohnold",[19,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66]],["pohnpeian","POHNPEI","Bible in Pohnpeian language","","pon","Pohnpeian","ltr","gb","pohnpeian","all"],["polgdanska","BGD","Biblia Gdańska","1881","pl","Polish","ltr","gb","polgdanska","all"],["polugdanska","UBG","Uwspółcześniona Biblia Gdańska","2017","pl","Polish","ltr","gb","polugdanska","all"],["potawatomi","POTAWAT","Potawatomi (Matthew Acts) (Lykins 1844)","1844","pot","Potawatomi","ltr","gb","potawatomi",[40,44]],["pyharaamattu1933","FIN33","Pyhä Raamattu","1933 to 1938","fi","Finnish","ltr","gb","pyharaamattu1933","all"],["pyharaamattu1992","FIN92","Pyhä Raamattu","1992","fi","Finnish","ltr","gb","pyharaamattu1992","all"],["riveduta","RIV","Riveduta","1927","it","Italian","ltr","gb","riveduta","all"],["rv1858","RV58","Reina Valera, New Testament","1858","es","Spanish","ltr","gb","rv1858","all"],["sahidic","SAH","Coptic New Testament (Sahidic)","","cop","Coptic","ltr","gb","sahidic","nt"],["schlachter","SCH","Schlachter","1951","de","German","ltr","gb","schlachter","all"],["shona","SHO","Bhaibheri, Shona","","sn","Shona","ltr","gb","shona","nt"],["srkdekavski","SRKDEKA","Serbian Bible Daničić-Karadžić Ekavski","","sr","Serbian","ltr","gb","srkdekavski","all"],["srkdijekav","SRKDIJE","Serbian Bible Daničić-Karadžić Ijekavski","","sr","Serbian","ltr","gb","srkdijekav","all"],["sse","SSE","Sagradas Escrituras","1569","es","Spanish","ltr","gb","sse","all"],["statenvertaling","SV","Statenvertaling","1637","nl","Dutch","ltr","gb","statenvertaling","all"],["statenvertalinga","STATENV","De ganse Heilige Schrift bevattende al de kanonieke boeken van het Oude en Nieuwe Testament, met de apocriefe (deuterocanonieke) boeken","","nl","Dutch","ltr","gb","statenvertalinga","all"],["swahili","SWA","Biblia, Swahili","","sw","Swahili","ltr","gb","swahili",[40,41,42,43,44,45,46,47,48,49,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66]],["swedish","SWE","Swedish Bible","1917","sv","Swedish","ltr","gb","swedish","all"],["swekarlxii","SWEKARL","Svenska Karl XII:s Bibel (1703)","1703","sv","Swedish","ltr","gb","swekarlxii",[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,22,27,29,32,40,41,42,43,44,45,46,47,49,50,51,52,53,54,55,56,58,59,60,61,66]],["swekarlxii1873","SWEKARL","Svenska Karl XII:s Bibel (1873)","1873","sv","Swedish","ltr","gb","swekarlxii1873","all"],["synodal","SYN","Synodal Translation, Russian","1876","ru","Russian","ltr","gb","synodal","all"],["tagalog","ADB","Ang Dating Biblia, Tagalog","1905","tl","Tagalog","ltr","gb","tagalog","all"],["tausug","TAUSUG","Tausug Kitab Injil","","tsg","Tausug","ltr","gb","tausug","nt"],["textusreceptus","TR","Textus Receptus, Greek New Testament (Stephanus 1550)","1550","grc","Greek","ltr","gb","textusreceptus","nt"],["thai","THAI","Thai Bible, from the KJV","","th","Thai","ltr","gb","thai","all"],["tischendorf","TISCH","Tischendorf 8th Edition, Greek New Testament","1872","grc","Greek","ltr","gb","tischendorf","nt"],["tpikjpb","TPI","King Jems Pisin Baibel, Tok Pisin","","tpi","Tok Pisin","ltr","gb","tpikjpb","all"],["turhadi","HADI","Turkish Easy-to-Read Translation","","tr","Turkish","ltr","gb","turhadi","nt"],["turkish","TUR","Turkish Bible","","tr","Turkish","ltr","gb","turkish","all"],["tyndale","TYN","Tyndale Bible","1526 to 1530","en","English","ltr","gb","tyndale",[1,2,3,4,5,32,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66]],["ukranian","UKRANIA","NT (P Kulish 1871)","1871","uk","Ukrainian","ltr","gb","ukranian","nt"],["ukrogienko","UKR","Ukrainian Bible, Ohienko","1962","uk","Ukrainian","ltr","gb","ukrogienko","all"],["uma","UMA","Uma NT","","ppk","Uma","ltr","gb","uma","nt"],["valera","RVR","Reina Valera","1909","es","Spanish","ltr","gb","valera","all"],["vietnamese","VIE","Kinh Thánh, Vietnamese","1934","vi","Vietnamese","ltr","gb","vietnamese","all"],["vulgate","VUL","Vulgata Clementina, Latin","405, ed. 1592","la","Latin","ltr","gb","vulgate","all"],["wb","WBT","Webster's Bible","1833","en","English","ltr","gb","wb","all"],["westcotthort","WH","Westcott and Hort, Greek New Testament","1881","grc","Greek","ltr","gb","westcotthort","nt"],["westernarmenian","WESTERN","Western NT","","hy","Armenian","ltr","gb","westernarmenian","nt"],["weymouth","WEY","Weymouth New Testament","1903","en","English","ltr","gb","weymouth","nt"],["wycliffe","WYC","Wycliffe Bible","c. 1395","enm","English","ltr","gb","wycliffe","all"],["ylt","YLT","Young's Literal Translation","1862, ed. 1898","en","English","ltr","gb","ylt","all"],["zhuromsky","ZHUROMS","Victor Zhuromsky NT","","ru","Russian","ltr","gb","zhuromsky","nt"],["gnv","GNV","Geneva Bible, with its study notes","1560, ed. 1599","en","English","ltr","bolls","GNV","all"],["drb","DRB","Douay-Rheims Bible","1582 to 1610","en","English","ltr","bolls","DRB","all"],["lxxe","LXX-E","Brenton's English Septuagint","1851","en","English","ltr","bolls","LXXE","ot"],["bsb","BSB","Berean Standard Bible","2016 to 2022","en","English","ltr","bolls","BSB","all"],["lsv","LSV","Literal Standard Version","2020","en","English","ltr","bolls","LSV","all"],["sblgnt","SBLGNT","SBL Greek New Testament","2010","grc","Greek","ltr","bolls","SBLGNT","nt"],["dhnt","DHNT","Delitzsch's Hebrew New Testament","1877","he","Hebrew","rtl","bolls","DHNT","nt"],["cuv","CUV","Chinese Union Version, Traditional 和合本","1919","zh","Chinese","ltr","bolls","CUV","all"],["pcb","PCB","Peking Committee Bible 京委本聖經","1872","zh","Chinese","ltr","bolls","PCB","all"],["dsv","DSV","Statenvertaling met Strong's","1637","nl","Dutch","ltr","bolls","DSV","all"],["kb","KB","Károli Biblia","1908","hu","Hungarian","ltr","bolls","KB","all"],["bg","BG","Biblia gdańska","1881","pl","Polish","ltr","bolls","BG","all"],["tamovr","TAMOVR","பரிசுத்த வேதாகமம் O.V., Tamil Old Version","1871","ta","Tamil","ltr","bolls","TAMOVR","all"],["niv","NIV","New International Version","1978, ed. 2011","en","English","ltr","bg","NIV","all"],["esv","ESV","English Standard Version","2001, ed. 2016","en","English","ltr","bg","ESV","all"],["nkjv","NKJV","New King James Version","1982","en","English","ltr","bg","NKJV","all"],["nlt","NLT","New Living Translation","1996, ed. 2015","en","English","ltr","bg","NLT","all"],["nasb","NASB","New American Standard Bible","1971, ed. 2020","en","English","ltr","bg","NASB","all"],["csb","CSB","Christian Standard Bible","2017","en","English","ltr","bg","CSB","all"],["nrsv","NRSV","New Revised Standard Version","1989, ed. 2021","en","English","ltr","bg","NRSVUE","all"],["rsv","RSV","Revised Standard Version","1952","en","English","ltr","bg","RSV","all"],["amp","AMP","Amplified Bible","1965, ed. 2015","en","English","ltr","bg","AMP","all"],["msg","MSG","The Message","2002","en","English","ltr","bg","MSG","all"],["net","NET","New English Translation","2005","en","English","ltr","bg","NET","all"],["gnt","GNT","Good News Translation","1976","en","English","ltr","bg","GNT","all"]]; /*__/BIBLES__*/
+const VER = {}; BIBLES.forEach(([id, abbr, name, year, lang, langName, dir, src, code, part]) => { VER[id] = { id, abbr, name, year, lang, langName, dir, src, code, part }; });
 if (!VER[prefs.tr]) prefs.tr = 'web';
 const TR_NAME = new Proxy({}, { get: (_, k) => (VER[k] ? VER[k].name : String(k)) });
+const ORIGINAL_LANGS = ['he', 'grc', 'la', 'syc', 'cop', 'got', 'cu'];
 const NOT_DIGITISED = 'Coverdale (1535), Matthew\'s Bible (1537), the Great Bible (1539) and the Bishops\' Bible (1568) have no free digital text yet; Wycliffe, Tyndale, Geneva and Douay-Rheims are here.';
+const CHAPTERS = [50,40,27,36,34,24,21,4,31,24,22,25,29,36,10,13,10,42,150,31,12,8,66,52,5,48,12,14,3,9,1,4,7,3,3,3,2,14,4,28,16,24,21,28,16,16,13,6,6,4,4,5,3,6,4,3,1,13,5,5,3,5,1,1,1,22];
 const BOOK_ALIASES = { ps: 19, psa: 19, psalm: 19, psalms: 19, song: 22, songofsongs: 22, sos: 22, canticles: 22, is: 23, jn: 43, joh: 43, jhn: 43, jon: 32, jud: 7, jdg: 7, jude: 65, jas: 59, phm: 57, phlm: 57, php: 50, phil: 50, mrk: 41, mk: 41, mt: 40, matt: 40, lk: 42, luk: 42, ac: 44, rom: 45, ro: 45, re: 66, rev: 66, ex: 2, exo: 2, dt: 5, deu: 5, deut: 5, ru: 8, est: 17, jb: 18, pr: 20, prov: 20, ecc: 21, eccl: 21, qoh: 21, isa: 23, jer: 24, lam: 25, eze: 26, ezek: 26, dan: 27, hos: 28, joe: 29, am: 30, oba: 31, ob: 31, mic: 33, nah: 34, hab: 35, zep: 36, zeph: 36, hag: 37, zec: 38, zech: 38, mal: 39, heb: 58, tit: 56, gal: 48, eph: 49, col: 51, gen: 1, lev: 3, num: 4, jos: 6, josh: 6, neh: 16, ezr: 15 };
 function parseRef(s){
   const m = String(s).trim().match(/^((?:[1-3]|i{1,3})\s*)?([a-z][a-z .']*?)\s*(\d+)?(?::(\d+)(?:\s*[-–]\s*(\d+))?)?\s*$/i); if (!m) return null;
@@ -128,21 +98,35 @@ function parseRef(s){
   let book = BOOK_ALIASES[key] || 0;
   if (!book){ const norm = BOOKS.map(b => b.toLowerCase().replace(/[^a-z0-9]/g, '')); book = norm.indexOf(key) + 1 || norm.findIndex(b => b.startsWith(key)) + 1; }
   if (!book) return null;
-  return { book, name: BOOKS[book - 1], chapter: +(m[3] || 1), from: m[4] ? +m[4] : 0, to: m[5] ? +m[5] : (m[4] ? +m[4] : 0) };
+  const chapter = Math.min(Math.max(+(m[3] || 1), 1), CHAPTERS[book - 1]);
+  return { book, name: BOOKS[book - 1], chapter, from: m[4] ? +m[4] : 0, to: m[5] ? +m[5] : (m[4] ? +m[4] : 0) };
 }
+const hasBook = (v, b) => v.part === 'all' || (v.part === 'ot' && b <= 39) || (v.part === 'nt' && b >= 40) || (Array.isArray(v.part) && v.part.includes(b));
+const partLabel = v => v.part === 'ot' ? 'Old Testament' : v.part === 'nt' ? 'New Testament' : Array.isArray(v.part) ? `${v.part.length} books` : '';
+const refOf = (book, chapter, vs) => `${BOOKS[book - 1]} ${chapter}${vs ? ':' + vs : ''}`;
 const strip = t => String(t).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+/* chapters are fetched once and kept on this device (memory + the last 80 in localStorage) */
+const chapMem = new Map();
+const CIDX = 'mazar:cidx';
+function cacheGet(key){ if (chapMem.has(key)) return chapMem.get(key); const v = ls.get('mazar:c:' + key); if (v) chapMem.set(key, v); return v; }
+function cachePut(key, val){ chapMem.set(key, val); try { const idx = ls.get(CIDX, []).filter(k => k !== key); idx.push(key); while (idx.length > 80) ls.del('mazar:c:' + idx.shift()); ls.set(CIDX, idx); ls.set('mazar:c:' + key, val); } catch (_) {} }
+async function fetchChapter(vid, book, chapter){
+  const v = VER[vid] || VER.web; const key = `${v.id}:${book}:${chapter}`; const hit = cacheGet(key); if (hit) return hit;
+  if (v.src === 'bg'){ const err = new Error(`${v.name} is copyrighted, so Mazar links to it instead of showing the text.`); err.bg = `https://www.biblegateway.com/passage/?search=${encodeURIComponent(refOf(book, chapter))}&version=${v.code}`; throw err; }
+  if (!hasBook(v, book)) throw new Error(`${BOOKS[book - 1]} is not in ${v.name} (${partLabel(v) || 'partial text'}).`);
+  const url = v.src === 'api' ? `https://bible-api.com/${encodeURIComponent(refOf(book, chapter))}?translation=${v.code}` : v.src === 'gb' ? `https://api.getbible.net/v2/${v.code}/${book}/${chapter}.json` : `https://bolls.life/get-chapter/${v.code}/${book}/${chapter}/`;
+  const r = await fetch(url); if (!r.ok) throw new Error(r.status === 404 ? `${refOf(book, chapter)} is not in ${v.name}.` : 'The Bible service is busy. Please try again in a moment.');
+  const d = await r.json(); let rows = v.src === 'bolls' ? d : (d.verses || []); if (!Array.isArray(rows) || !rows.length) throw new Error(`${refOf(book, chapter)} is not in ${v.name}.`);
+  rows = rows.map(x => ({ verse: +x.verse, text: strip(x.text), note: x.comment ? strip(x.comment) : '' }));
+  const out = { verses: rows.map(x => ({ verse: x.verse, text: x.text })), notes: rows.filter(x => x.note).map(x => ({ verse: x.verse, note: x.note })) };
+  cachePut(key, out); return out;
+}
 async function passage(ref, vid){
-  const v = VER[vid] || VER.web; const chapterOnly = !/\d:\d/.test(ref);
-  if (v.src === 'bg'){ const err = new Error(`${v.name} is copyrighted, so Mazar links to it instead of showing the text.`); err.bg = `https://www.biblegateway.com/passage/?search=${encodeURIComponent(ref)}&version=${v.code}`; throw err; }
-  if (v.src === 'api'){ const r = await fetch(`https://bible-api.com/${encodeURIComponent(ref)}?translation=${v.code}`); if (!r.ok) throw new Error(r.status === 404 ? 'I could not find that passage. Try a form like John 3:16 or Psalm 23.' : 'The Bible service is busy. Please try again in a moment.'); const d = await r.json(); return { reference: d.reference, verses: (d.verses || []).map(x => ({ verse: x.verse, text: strip(x.text) })), version: v }; }
-  const p = parseRef(ref); if (!p) throw new Error('I could not read that reference. Try a form like John 3:16 or Psalm 23.');
-  if (v.part === 'ot' && p.book > 39) throw new Error(`${v.name} covers the Old Testament only.`); if (v.part === 'nt' && p.book < 40) throw new Error(`${v.name} covers the New Testament only.`);
-  const url = v.src === 'gb' ? `https://api.getbible.net/v2/${v.code}/${p.book}/${p.chapter}.json` : `https://bolls.life/get-chapter/${v.code}/${p.book}/${p.chapter}/`;
-  const r = await fetch(url); if (!r.ok) throw new Error(r.status === 404 ? `${p.name} ${p.chapter} is not in ${v.name}.` : 'The Bible service is busy. Please try again in a moment.');
-  const d = await r.json(); let rows = v.src === 'gb' ? (d.verses || []) : d; if (!Array.isArray(rows) || !rows.length) throw new Error(`${p.name} ${p.chapter} is not in ${v.name}.`);
-  rows = rows.map(x => ({ verse: +x.verse, text: strip(x.text), note: x.comment ? strip(x.comment) : '' })).filter(x => !p.from || (x.verse >= p.from && x.verse <= p.to));
-  if (!rows.length) throw new Error('Those verses are not in this chapter.');
-  return { reference: `${p.name} ${p.chapter}${p.from ? ':' + p.from + (p.to > p.from ? '-' + p.to : '') : ''}`, verses: rows, version: v, notes: rows.filter(x => x.note).map(x => ({ verse: x.verse, note: x.note })) };
+  const v = VER[vid] || VER.web; const p = parseRef(ref); if (!p) throw new Error('I could not read that reference. Try a form like John 3:16 or Psalm 23.');
+  const d = await fetchChapter(v.id, p.book, p.chapter);
+  const verses = d.verses.filter(x => !p.from || (x.verse >= p.from && x.verse <= p.to)); if (!verses.length) throw new Error('Those verses are not in this chapter.');
+  const vs = p.from ? p.from + (p.to > p.from ? '-' + p.to : '') : '';
+  return { reference: refOf(p.book, p.chapter, vs), verses, version: v, notes: d.notes.filter(n => !p.from || (n.verse >= p.from && n.verse <= p.to)), book: p.book, chapter: p.chapter };
 }
 const VOTD = ['Psalm 23:1-3','Isaiah 41:10','Philippians 4:6-7','John 3:16','Romans 8:28','Jeremiah 29:11','Proverbs 3:5-6','Matthew 11:28-30','Joshua 1:9','Psalm 46:1','2 Corinthians 5:17','Lamentations 3:22-23','Romans 12:2','Galatians 5:22-23','Hebrews 11:1','1 Peter 5:7','Psalm 121:1-2','Isaiah 40:31','Matthew 6:33','John 14:27','Ephesians 2:8-9','Micah 6:8','Psalm 139:13-14','Romans 15:13','Colossians 3:23','James 1:5','John 15:5','Psalm 37:4','Acts 1:8','Acts 2:42','Zephaniah 3:17','Psalm 91:1-2','Deuteronomy 31:8','2 Timothy 1:7','Hebrews 13:8','1 John 1:9','Matthew 5:14-16','Psalm 119:105','Isaiah 26:3','Romans 5:8','John 11:25-26','Psalm 34:18','Nahum 1:7','Philippians 4:13','1 Corinthians 13:4-7','Psalm 27:1','Matthew 28:19-20','Isaiah 43:2','Psalm 100:4-5','John 8:12','Ephesians 3:20-21','Hebrews 12:1-2','Psalm 16:11','Romans 10:9','Proverbs 16:3','Mark 11:24','Psalm 145:18','John 1:5','Revelation 21:4','Numbers 6:24-26'];
 const dayKey = () => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
@@ -205,26 +189,34 @@ function applyFill(){
    below and a reflection beneath. Always moving; it listens, thinks,
    speaks, rejoices and flinches with the conversation.
    ================================================================ */
+const FIGS = new Set();
+const sprite = (rgb, s = 24) => { const c = document.createElement('canvas'); c.width = c.height = s; const x = c.getContext('2d'); const g = x.createRadialGradient(s/2, s/2, 0, s/2, s/2, s/2); g.addColorStop(0, `rgba(${rgb},1)`); g.addColorStop(0.25, `rgba(${rgb},.85)`); g.addColorStop(0.6, `rgba(${rgb},.18)`); g.addColorStop(1, `rgba(${rgb},0)`); x.fillStyle = g; x.fillRect(0, 0, s, s); return c; };
+/* every click or tap anywhere sends a gravitational pulse through each visible figure */
+document.addEventListener('pointerdown', () => FIGS.forEach(f => f.shock()), { passive: true });
 class Figure {
-  constructor(canvas, host){
-    this.c = canvas; this.x = canvas.getContext('2d'); this.host = host; this.state = 'idle'; this.t0 = performance.now();
+  /* opt.bg: large background figure (pointer from opt.pointer); opt.lite: tiny launcher, no accretion disk */
+  constructor(canvas, host, opt = {}){
+    this.c = canvas; this.x = canvas.getContext('2d'); this.host = host; this.opt = opt; this.bg = !!opt.bg; this.lite = !!opt.lite; this.state = 'idle'; this.t0 = performance.now(); this.last = this.t0;
     this.env = 0; this.burst = 0; this.err = 0; this.px = null; this.py = null; this.par = { x: 0, y: 0 }; this.spin = 0; this.spin2 = 0; this.glowT = 0.75; this.glow = 0.75;
-    this.parts = []; this.W = 0; this.H = 0; this.S = 0; this.dpr = Math.min(devicePixelRatio || 1, 1.5); this.visible = true; this.running = false;
+    this.parts = []; this.disk = []; this.waves = []; this.W = 0; this.H = 0; this.S = 0; this.dpr = Math.min(devicePixelRatio || 1, this.bg ? 1.25 : 1.5); this.visible = true; this.running = false;
     this.colors(); this.resize();
     this.ro = new ResizeObserver(() => this.resize()); this.ro.observe(host);
     this.io = new IntersectionObserver(es => { this.visible = es.some(e => e.isIntersecting); if (this.visible) this.start(); }, { threshold: 0.01 }); this.io.observe(canvas);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) this.start(); });
-    host.addEventListener('pointermove', e => { const r = this.c.getBoundingClientRect(); this.px = (e.clientX - r.left); this.py = (e.clientY - r.top); }, { passive: true });
-    host.addEventListener('pointerleave', () => { this.px = this.py = null; });
-    host.addEventListener('click', e => { if (e.target === canvas) this.joy(); });
+    const ph = opt.pointer || host;
+    ph.addEventListener('pointermove', e => { const r = this.c.getBoundingClientRect(); this.px = (e.clientX - r.left); this.py = (e.clientY - r.top); }, { passive: true });
+    ph.addEventListener('pointerleave', () => { this.px = this.py = null; });
+    FIGS.add(this);
     this.start();
   }
-  colors(){ const col = themeColors(this.host); this.col = col; this.rgb = hex2rgb(col.glow); this.rgbL = hex2rgb(col.light === '#fff' ? '#FFFFFF' : col.light); this.sprite = this.makeSprite(this.rgb, 24); this.spriteL = this.makeSprite(this.rgbL, 24); this.spriteErr = this.makeSprite('255,120,110', 24); }
-  makeSprite(rgb, s){ const c = document.createElement('canvas'); c.width = c.height = s; const x = c.getContext('2d'); const g = x.createRadialGradient(s/2, s/2, 0, s/2, s/2, s/2); g.addColorStop(0, `rgba(${rgb},1)`); g.addColorStop(0.25, `rgba(${rgb},.85)`); g.addColorStop(0.6, `rgba(${rgb},.18)`); g.addColorStop(1, `rgba(${rgb},0)`); x.fillStyle = g; x.fillRect(0, 0, s, s); return c; }
+  colors(){ const col = themeColors(this.host); this.col = col; this.rgb = hex2rgb(col.glow); this.rgbL = hex2rgb(col.light === '#fff' ? '#FFFFFF' : col.light); this.sprite = sprite(this.rgb); this.spriteL = sprite(this.rgbL); this.spriteErr = sprite('255,120,110'); }
+  makeSprite(rgb, s){ return sprite(rgb, s); }
   resize(){ const r = this.host.getBoundingClientRect(); const W = Math.max(40, Math.round(r.width)), H = Math.max(40, Math.round(r.height)); if (W === this.W && H === this.H) return; this.W = W; this.H = H; this.c.width = Math.round(W * this.dpr); this.c.height = Math.round(H * this.dpr); this.c.style.width = W + 'px'; this.c.style.height = H + 'px'; this.build(); }
   build(){
-    const W = this.W, H = this.H; const S = this.S = Math.min(W, H * 1.15); const cx = W / 2, cy = H * 0.5; this.cx = cx; this.cy = cy;
-    const n = Math.round(Math.min(2400, Math.max(420, S * (innerWidth < 720 ? 4.2 : 6.5))));
+    const W = this.W, H = this.H; const S = this.S = this.bg ? Math.min(W * .96, H * 1.04) : Math.min(W, H * 1.15);
+    const cx = W / 2, cy = H * (this.bg ? (this.opt.cy || .46) : .5); this.bx = this.cx = cx; this.by = this.cy = cy;
+    const cap = this.lite ? 700 : this.bg ? 3000 : 2400;
+    const n = Math.round(Math.min(cap, Math.max(this.lite ? 260 : 420, S * (innerWidth < 720 ? 4.2 : 6.5))));
     const P = []; const R = Math.random;
     const add = (x, y, b, g, sz) => P.push({ hx: cx + x, hy: cy + y, x: cx + x + (R() - .5) * S * .8, y: cy + y + (R() - .5) * S * .8, b, g, sz: sz || 1, ph: R() * 6.28, sp: .4 + R() * .8, r: Math.hypot(x, y), a: Math.atan2(y, x) });
     const nStar = Math.round(n * .46), nRing = Math.round(n * .3), nBeam = Math.round(n * .12), nRef = n - nStar - nRing - nBeam;
@@ -248,15 +240,20 @@ class Figure {
     }
     for (let i = 0; i < nRef; i++){ const d = Math.pow(R(), 1.3) * S * .2 * (R() < .5 ? -1 : 1); add(d, S * .5 + (R() - .5) * S * .05, .18 + (1 - Math.abs(d) / (S * .2)) * .25, 4, 1.8 + R() * 1.2); }
     this.parts = P;
+    /* the black hole: an accretion disk of stars spiralling in, lensed over the top of the shadow */
+    this.disk = []; if (!this.lite){ const nd = Math.round(n * (this.bg ? .45 : .34)); for (let i = 0; i < nd; i++) this.disk.push(this.diskStar(true)); }
     if (/[?&]mzsnap/.test(location.search)) for (let i = 0; i < 150; i++) this.frame();   /* screenshots: settle the stars at once */
   }
+  diskStar(fresh){ const rI = this.S * .128, R = Math.random; return { r: fresh ? rI * (1.22 + Math.pow(R(), 1.35) * 2.5) : rI * (3.2 + R() * .5), th: R() * 6.2832, j: (R() - .5) * this.S * .007, b: .35 + R() * .65, sz: .55 + R() * .9, life: fresh ? 1 : 0 }; }
   set(s){ if (this.state === s) return; this.state = s; if (s === 'error') this.err = 1; if (s === 'joy') this.burst = 1; }
   pulse(){ this.env = Math.min(1, this.env + .55); }
   joy(){ this.burst = 1; }
+  shock(){ if (!this.visible || !this.c.isConnected || !this.W) return; const now = performance.now(); if (now - (this.lastShock || 0) < 80) return; this.lastShock = now; this.waves.push(now); if (this.waves.length > 4) this.waves.shift(); this.env = Math.min(1, this.env + .75); this.burst = Math.min(1, this.burst + .3); this.start(); }
+  focus(frac){ this.cyT = this.H * frac; }
   start(){ if (this.running) return; this.running = true; const loop = () => { if (!this.visible || document.hidden){ this.running = false; return; } this.frame(); requestAnimationFrame(loop); }; requestAnimationFrame(loop); }
   frame(){
     const x = this.x, W = this.W, H = this.H, S = this.S, dpr = this.dpr, st = this.state;
-    const t = (performance.now() - this.t0) / 1000;
+    const now = performance.now(), t = (now - this.t0) / 1000, dt = Math.min(.05, Math.max(.001, (now - this.last) / 1000)); this.last = now;
     const still = RM;
     const wob = still ? 0 : (st === 'think' ? 1.9 : st === 'listen' ? .45 : st === 'speak' ? 1.1 : st === 'error' ? 2.4 : 1) * (S / 260);
     const spinV = still ? 0 : (st === 'think' ? .9 : st === 'listen' ? .22 : st === 'speak' ? .3 : .085) * (1 + this.env * .6);
@@ -264,41 +261,115 @@ class Figure {
     this.env *= .9; this.burst *= .93; this.err *= .92;
     this.glowT = st === 'listen' ? .95 : st === 'think' ? .8 + .12 * Math.sin(t * 5) : st === 'speak' ? .85 + this.env * .5 : st === 'error' ? .5 : .68 + .08 * Math.sin(t * .9);
     this.glow += (this.glowT - this.glow) * .08;
+    if (this.cyT != null) this.cy += (this.cyT - this.cy) * .05;
     const breath = still ? 1 : 1 + .02 * Math.sin(t * .95) + this.env * .05 + this.burst * .12;
-    const tx = this.px == null ? 0 : (this.px - W / 2) * .025, ty = this.py == null ? 0 : (this.py - H / 2) * .025;
+    const tx = this.px == null ? 0 : (this.px - W / 2) * (this.bg ? .012 : .025), ty = this.py == null ? 0 : (this.py - H / 2) * (this.bg ? .012 : .025);
     this.par.x += (tx - this.par.x) * .05; this.par.y += (ty - this.par.y) * .05;
-    const cx = this.cx + this.par.x, cy = this.cy + this.par.y;
+    const cx = this.cx + this.par.x, cy = this.cy + this.par.y, bx0 = this.bx, by0 = this.by;
     x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, W, H);
-    /* light from above and the core glow */
+    /* light from above */
     const rgb = this.err > .05 ? `255,${Math.round(200 - this.err * 90)},${Math.round(114 - this.err * 30)}` : this.rgb;
     const cone = x.createLinearGradient(0, 0, 0, cy); cone.addColorStop(0, `rgba(${rgb},${.16 * this.glow})`); cone.addColorStop(1, `rgba(${rgb},0)`);
     x.fillStyle = cone; x.beginPath(); x.moveTo(cx - S * .06, -10); x.lineTo(cx + S * .06, -10); x.lineTo(cx + S * .34, cy); x.lineTo(cx - S * .34, cy); x.closePath(); x.fill();
-    const core = x.createRadialGradient(cx, cy, 0, cx, cy, S * .26 * breath); core.addColorStop(0, `rgba(${rgb},${.55 * this.glow})`); core.addColorStop(.35, `rgba(${rgb},${.12 * this.glow})`); core.addColorStop(1, `rgba(${rgb},0)`);
+    const rI = S * .128, rs = S * .118 * breath;
+    /* event horizon: a soft shadow ring between the star of light and the halo */
+    if (!this.lite){ const sh = x.createRadialGradient(cx, cy, rs * .18, cx, cy, rs * 1.45); sh.addColorStop(0, 'rgba(0,0,0,0)'); sh.addColorStop(.38, 'rgba(0,0,0,.5)'); sh.addColorStop(.74, 'rgba(0,0,0,.4)'); sh.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = sh; x.beginPath(); x.arc(cx, cy, rs * 1.45, 0, 6.2832); x.fill(); }
+    const core = x.createRadialGradient(cx, cy, 0, cx, cy, S * (this.lite ? .26 : .2) * breath); core.addColorStop(0, `rgba(${rgb},${.55 * this.glow})`); core.addColorStop(.35, `rgba(${rgb},${.12 * this.glow})`); core.addColorStop(1, `rgba(${rgb},0)`);
     x.fillStyle = core; x.fillRect(cx - S * .3, cy - S * .3, S * .6, S * .6);
-    const refl = x.createRadialGradient(cx, cy + S * .5, 0, cx, cy + S * .5, S * .28); refl.addColorStop(0, `rgba(${rgb},${.18 * this.glow})`); refl.addColorStop(1, `rgba(${rgb},0)`);
+    const refl = x.createRadialGradient(cx, cy + S * .5, 0, cx, cy + S * .5, S * .28); refl.addColorStop(0, `rgba(${rgb},${(this.bg ? .06 : .18) * this.glow})`); refl.addColorStop(1, `rgba(${rgb},0)`);
     x.fillStyle = refl; x.fillRect(cx - S * .3, cy + S * .38, S * .6, S * .18);
-    /* the stars */
     x.globalCompositeOperation = 'lighter';
     const sp = this.err > .05 ? this.spriteErr : this.sprite, spL = this.spriteL;
+    /* photon ring */
+    if (!this.lite){ const pr = S * .122 * breath, a0 = .26 * this.glow + this.env * .22; const g = x.createRadialGradient(cx, cy, pr * .88, cx, cy, pr * 1.14); g.addColorStop(0, `rgba(${rgb},0)`); g.addColorStop(.5, `rgba(${rgb},${a0})`); g.addColorStop(1, `rgba(${rgb},0)`); x.fillStyle = g; x.beginPath(); x.arc(cx, cy, pr * 1.14, 0, 6.2832); x.arc(cx, cy, pr * .88, 0, 6.2832, true); x.fill(); }
+    /* gravitational pulses from clicks */
+    this.waves = this.waves.filter(w0 => now - w0 < 1700);
+    const W8 = this.waves.map(w0 => { const a = (now - w0) / 1700; return { a, R: S * (.13 + a * .62), amp: S * .032 * (1 - a) * (1 - a) }; });
+    for (const wv of W8){ x.strokeStyle = `rgba(${rgb},${.3 * (1 - wv.a) * (1 - wv.a)})`; x.lineWidth = Math.max(.6, S * .005 * (1 - wv.a)); x.beginPath(); x.arc(cx, cy, wv.R, 0, 6.2832); x.stroke(); }
+    const kick = (px, py) => { let ox = 0, oy = 0; for (const wv of W8){ const dx = px - cx, dy = py - cy, d = Math.hypot(dx, dy) || 1, f = Math.exp(-Math.pow((d - wv.R) / (S * .05), 2)) * wv.amp; ox += dx / d * f; oy += dy / d * f; } return [ox, oy]; };
+    /* accretion disk */
+    if (this.disk.length){
+      const tilt = this.bg ? .2 : .24, cr = Math.cos(-.1), sr = Math.sin(-.1);
+      const pace = still ? 0 : (st === 'think' ? 2.6 : st === 'speak' ? 1.6 : st === 'listen' ? .8 : 1) * (1 + this.env * 1.4);
+      for (const p of this.disk){
+        p.th += dt * .7 * pace * Math.pow(rI / p.r, 1.5); p.r -= dt * S * .0045 * pace * (rI * 1.5 / p.r);
+        if (p.r < rI * 1.02) Object.assign(p, this.diskStar(false));
+        p.life = Math.min(1, p.life + dt * .7);
+        const ct = Math.cos(p.th), stn = Math.sin(p.th), X = ct * p.r * breath, Z = stn * p.r * breath, yy = Z * tilt + p.j;
+        let qx = cx + X * cr - yy * sr, qy = cy + X * sr + yy * cr;
+        const heat = Math.max(0, 1 - (p.r - rI) / (rI * 2.6)), dop = .5 + .5 * -Math.cos(p.th + .5);
+        const a = p.b * p.life * (.22 + heat * .78) * (.35 + dop * .65) * (.5 + this.glow * .6);
+        if (W8.length){ const [ox, oy] = kick(qx, qy); qx += ox; qy += oy; }
+        const sz = p.sz * (S / 210) * (1.2 + heat * 1.3 + this.env * .6);
+        if (Z > 0 || Math.abs(X) > rs * 1.05){ x.globalAlpha = Math.min(1, a * (Z > 0 ? 1 : .7)); x.drawImage(heat > .62 ? spL : sp, qx - sz / 2, qy - sz / 2, sz, sz); }
+        if (p.r < rI * 2.7){ const L = rI * 1.03 + (p.r - rI) * .17, la = Z > 0 ? .14 : .55; x.globalAlpha = Math.min(1, a * la * (.4 + heat)); const ls = sz * .7; x.drawImage(sp, cx + ct * L - ls / 2, cy + stn * L * .98 - ls / 2, ls, ls); }
+      }
+    }
+    /* the stars of the figure */
     const pxr = this.px, pyr = this.py, rep = S * .16;
     for (const p of this.parts){
       let hx, hy;
       if (p.g === 1 || p.g === 2){ const a = p.a + (p.g === 1 ? this.spin : this.spin2); hx = cx + Math.cos(a) * p.r * breath; hy = cy + Math.sin(a) * p.r * breath; }
-      else if (p.g === 4){ hx = cx + (p.hx - this.cx) * breath; hy = cy + (p.hy - this.cy); }
-      else { hx = cx + (p.hx - this.cx) * breath; hy = cy + (p.hy - this.cy) * breath; }
+      else if (p.g === 4){ hx = cx + (p.hx - bx0) * breath; hy = cy + (p.hy - by0); }
+      else { hx = cx + (p.hx - bx0) * breath; hy = cy + (p.hy - by0) * breath; }
       if (this.burst > .01){ const d = Math.max(1, p.r); hx += (hx - cx) / d * this.burst * S * .12; hy += (hy - cy) / d * this.burst * S * .12; }
+      if (W8.length){ const [ox, oy] = kick(hx, hy); hx += ox; hy += oy; }
       const n = still ? 0 : wob * (1 + (1 - p.b) * 1.5);
       const txp = hx + Math.sin(t * p.sp * 1.7 + p.ph) * n, typ = hy + Math.cos(t * p.sp * 1.3 + p.ph * 1.7) * n;
       p.x += (txp - p.x) * .09; p.y += (typ - p.y) * .09;
       if (pxr != null){ const dx = p.x - pxr, dy = p.y - pyr, d2 = dx * dx + dy * dy; if (d2 < rep * rep && d2 > 0.01){ const d = Math.sqrt(d2), f = (1 - d / rep) * S * .05; p.x += dx / d * f; p.y += dy / d * f; } }
       const tw = .75 + .25 * Math.sin(t * 2.2 * p.sp + p.ph * 3);
-      const a = Math.min(1, p.b * tw * (p.g === 4 ? .7 : 1) * (.55 + this.glow * .6) * (st === 'error' ? .6 + .4 * Math.sin(t * 40) : 1));
+      const a = Math.min(1, p.b * tw * (p.g === 4 ? (this.bg ? .22 : .7) : 1) * (.55 + this.glow * .6) * (st === 'error' ? .6 + .4 * Math.sin(t * 40) : 1));
       const sz = (p.sz * (S / 210) * (1.9 + this.env * .8)) * (p.g === 4 ? 2.4 : 1);
       x.globalAlpha = a; x.drawImage(p.b > .85 && p.g === 0 ? spL : sp, p.x - sz / 2, p.y - sz / 2, sz, sz);
     }
     x.globalAlpha = 1; x.globalCompositeOperation = 'source-over';
   }
-  destroy(){ this.ro.disconnect(); this.io.disconnect(); this.visible = false; }
+  destroy(){ this.ro.disconnect(); this.io.disconnect(); this.visible = false; FIGS.delete(this); }
+}
+
+/* ---------- the sky: very faint stars, dust and distant galaxies behind Mazar, lensed around the black hole ---------- */
+class Sky {
+  constructor(canvas, host, fig, opt = {}){
+    this.c = canvas; this.x = canvas.getContext('2d'); this.host = host; this.fig = fig; this.opt = opt; this.dpr = Math.min(devicePixelRatio || 1, 1.5); this.W = this.H = 0; this.t0 = performance.now(); this.visible = true; this.running = false; this.n = 0;
+    this.ro = new ResizeObserver(() => this.resize()); this.ro.observe(host);
+    this.io = new IntersectionObserver(es => { this.visible = es.some(e => e.isIntersecting); if (this.visible) this.start(); }, { threshold: 0 }); this.io.observe(canvas);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) this.start(); });
+    this.resize(); this.start();
+  }
+  resize(){ const r = this.host.getBoundingClientRect(); const W = Math.max(40, Math.round(r.width)), H = Math.max(40, Math.round(r.height)); if (Math.abs(W - this.W) < 2 && Math.abs(H - this.H) < 2) return; this.W = W; this.H = H; this.c.width = Math.round(W * this.dpr); this.c.height = Math.round(H * this.dpr); this.c.style.width = W + 'px'; this.c.style.height = H + 'px'; this.build(); this.frame(); }
+  build(){
+    const W = this.W, H = this.H, D = Math.ceil(Math.hypot(W, H)), R = Math.random, col = themeColors(this.host), glow = hex2rgb(col.glow), light = hex2rgb(col.light), cool = '150,175,255';
+    const k = Math.min(1.5, this.dpr), o = this.off = document.createElement('canvas'); o.width = o.height = Math.ceil(D * k); const g = o.getContext('2d'); g.scale(k, k); this.D = D;
+    for (let i = 0; i < 6; i++){ const x0 = R() * D, y0 = R() * D, rr = D * (.12 + R() * .22), tint = i % 3 === 0 ? cool : glow, gr = g.createRadialGradient(x0, y0, 0, x0, y0, rr); gr.addColorStop(0, `rgba(${tint},${.022 + R() * .02})`); gr.addColorStop(1, `rgba(${tint},0)`); g.fillStyle = gr; g.fillRect(x0 - rr, y0 - rr, rr * 2, rr * 2); }
+    g.save(); g.translate(D / 2, D / 2); g.rotate(-.55 + R() * .3); const band = Math.round(2600 * D / 2000); for (let i = 0; i < band; i++){ g.fillStyle = `rgba(${light},${.025 + R() * .07})`; g.fillRect((R() - .5) * D, (R() + R() + R() - 1.5) * D * .08, .8, .8); } g.restore();
+    const faint = Math.round(D * D / (this.opt.lite ? 1500 : 700)); for (let i = 0; i < faint; i++){ const s = R() < .93 ? .7 : 1.2; g.fillStyle = `rgba(${R() < .16 ? glow : R() < .2 ? cool : light},${.04 + Math.pow(R(), 3) * .26})`; g.fillRect(R() * D, R() * D, s, s); }
+    const gal = this.opt.lite ? 5 : 11; for (let i = 0; i < gal; i++) this.galaxy(g, R() * D, R() * D, D * (.012 + Math.pow(R(), 2.2) * .05), R() < .68, R() < .5 ? glow : cool);
+    this.tw = []; const nt = Math.round(W * H / (this.opt.lite ? 4200 : 2200)); for (let i = 0; i < nt; i++) this.tw.push({ x: R() * W, y: R() * H, s: .7 + Math.pow(R(), 4) * 2, a: .1 + R() * .32, ph: R() * 6.28, sp: .4 + R() * 1.8, warm: R() < .22 });
+    this.sp = sprite(light, 16); this.spW = sprite(glow, 16);
+  }
+  galaxy(g, x0, y0, r, spiral, tint){
+    const R = Math.random; g.save(); g.translate(x0, y0); g.rotate(R() * 6.28); g.scale(1, .3 + R() * .6);
+    const core = g.createRadialGradient(0, 0, 0, 0, 0, r * .55); core.addColorStop(0, `rgba(${tint},.2)`); core.addColorStop(.3, `rgba(${tint},.06)`); core.addColorStop(1, `rgba(${tint},0)`); g.fillStyle = core; g.beginPath(); g.arc(0, 0, r * .55, 0, 6.2832); g.fill();
+    if (spiral){ const arms = R() < .3 ? 3 : 2; for (let a = 0; a < arms; a++){ const off = a * 6.2832 / arms; for (let i = 0; i < 240; i++){ const t = i / 240, ang = off + t * 7, rr = r * (.1 + t * .9), j = r * .1 * (.4 + t); g.fillStyle = `rgba(${tint},${.15 * (1 - t) + .02})`; g.fillRect(Math.cos(ang) * rr + (R() - .5) * j, Math.sin(ang) * rr + (R() - .5) * j, 1, 1); } } }
+    else { const e = g.createRadialGradient(0, 0, 0, 0, 0, r); e.addColorStop(0, `rgba(${tint},.09)`); e.addColorStop(1, `rgba(${tint},0)`); g.fillStyle = e; g.beginPath(); g.arc(0, 0, r, 0, 6.2832); g.fill(); }
+    g.restore();
+  }
+  center(){ const f = this.fig; if (!f || !f.W || !f.c.isConnected) return null; if (!this._cc || performance.now() - this._ct > 400){ const a = f.c.getBoundingClientRect(), b = this.c.getBoundingClientRect(); this._cc = a.width ? { ox: a.left - b.left, oy: a.top - b.top } : null; this._ct = performance.now(); } return this._cc ? { x: this._cc.ox + f.cx + f.par.x, y: this._cc.oy + f.cy + f.par.y, S: f.S } : null; }
+  start(){ if (this.running || RM) return; this.running = true; const loop = () => { if (!this.visible || document.hidden){ this.running = false; return; } if ((this.n++ & 1) === 0) this.frame(); requestAnimationFrame(loop); }; requestAnimationFrame(loop); }
+  frame(){
+    const x = this.x, W = this.W, H = this.H, t = (performance.now() - this.t0) / 1000, D = this.D;
+    x.setTransform(this.dpr, 0, 0, this.dpr, 0, 0); x.clearRect(0, 0, W, H);
+    x.save(); x.translate(W / 2, H / 2); x.rotate(RM ? 0 : t * .0035); x.drawImage(this.off, -D / 2, -D / 2, D, D); x.restore();
+    const fc = this.center(), E = fc ? fc.S * .2 : 0, E2 = E * E;
+    x.globalCompositeOperation = 'lighter';
+    for (const s of this.tw){
+      let sx = s.x, sy = s.y;
+      if (fc){ const dx = sx - fc.x, dy = sy - fc.y, d = Math.hypot(dx, dy) || 1; if (d < E * 4){ const k = E2 / d * (1 - d / (E * 4)); sx += dx / d * k; sy += dy / d * k; } }
+      x.globalAlpha = s.a * (.5 + .5 * Math.sin(t * s.sp + s.ph)); const z = s.s * 3.2; x.drawImage(s.warm ? this.spW : this.sp, sx - z / 2, sy - z / 2, z, z);
+    }
+    x.globalAlpha = 1; x.globalCompositeOperation = 'source-over';
+  }
 }
 
 /* ---------- marks and icons ---------- */
@@ -323,6 +394,13 @@ const I = {
   img: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg>',
   check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>',
   study: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14"/><path d="M4 19a2 2 0 0 0 2 2h14M8 7h8M8 11h8M8 15h5"/></svg>',
+  down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
+  prev: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
+  next: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>',
+  lang: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h9M8.5 3v2M11 5c-.6 3.5-2.8 6.6-6 8.5M6 8c1.2 2.6 3.4 4.6 6 5.5M13 21l4-10 4 10M14.5 17h5"/></svg>',
+  rail: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9.5 4v16"/></svg>',
+  clip: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 11.2l-8.4 8.4a5.3 5.3 0 0 1-7.5-7.5l8.9-8.9a3.6 3.6 0 0 1 5.1 5.1l-8.9 8.9a1.8 1.8 0 0 1-2.5-2.5l8.2-8.2"/></svg>',
+  file: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>',
   menu: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>',
   trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
   pen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17z"/><path d="M13 7l3 3"/></svg>',
@@ -357,7 +435,11 @@ const DOCTRINE = [
   ['Family is how we live', 'The church is a household. We share meals, carry one another\'s burdens and raise our children together.', 'Acts 2:42-47, Galatians 6:2'],
   ['Every disciple multiplies', 'Discipleship is not a class you finish. It is a life that reproduces, which is why missions and church planting are part of who we are.', 'Matthew 28:19-20, 2 Timothy 2:2'],
 ];
-const rich = t => { const e = esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/(https?:\/\/[^\s<]+)/g, u => `<a href="${u}" target="_blank" rel="noopener">${u.replace(/^https?:\/\//, '').slice(0, 48)}</a>`);
+const rich = t => { const links = []; const keep = h => { links.push(h); return `\u0001${links.length - 1}\u0001`; };
+  const e = esc(t).replace(/\[([^\]\n]{1,160})\]\((https?:\/\/[^\s)]+)\)/g, (_, l, u) => keep(`<a href="${u}" target="_blank" rel="noopener">${l}</a>`))
+    .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
+    .replace(/https?:\/\/[^\s<\u0001]+/g, m => { const u = m.replace(/[.,;:!?)]+$/, ''); return keep(`<a href="${u}" target="_blank" rel="noopener">${u.replace(/^https?:\/\//, '').slice(0, 48)}</a>`) + m.slice(u.length); })
+    .replace(/\u0001(\d+)\u0001/g, (_, i) => links[+i]);
   return e.split(/\n{2,}/).map(block => { const lines = block.split('\n'); if (lines.length && lines.every(l => /^\s*([-*•]|\d+\.)\s+/.test(l))) return `<ul>${lines.map(l => `<li>${l.replace(/^\s*([-*•]|\d+\.)\s+/, '')}</li>`).join('')}</ul>`; if (/^#{1,3}\s/.test(lines[0])) { const h = lines.shift().replace(/^#+\s*/, ''); return `<h4>${h}</h4>` + (lines.length ? `<p>${lines.join('<br>')}</p>` : ''); } return `<p>${lines.join('<br>')}</p>`; }).join(''); };
 const FIELD_LABEL = { first:'First name', middle:'Middle name', surname:'Surname', gender:'Gender', age:'Age', address:'Town', country:'Country', phone:'Phone', email:'Email', participation:'Taking part', detail:'Detail', days:'Days', dietary:'Dietary', expectation:'Expectation', name:'Name', gift:'Gift', experience:'Experience', church:'Church', message:'Message', contact:'Contact', topic:'Topic', via:'Reply by' };
 
@@ -369,37 +451,37 @@ function app(){
   const TABS = [['ask','Ask',I.chat],['bible','Bible',I.book],['today','Today',I.sun],['tasks','Tasks',I.spark]]; if (STUDIO) TABS.splice(3, 0, ['study','Study',I.study]);
   const fine = 'Mazar is an AI and can make mistakes. Check anything important with the Bible and with the church office.';
   w.innerHTML = `
-  ${FLOAT ? `<div class="mz__nudge" hidden><button class="mz__nudge-x" aria-label="Dismiss">&times;</button><b>Peace to you. I am Mazar.</b><span>${esc(PER_SITE.nudge)}</span></div>
+  ${FLOAT ? `<div class="mz__nudge" hidden><button class="mz__nudge-x" aria-label="Dismiss">&times;</button><b>Hi, I'm Mazar.</b><span>${esc(PER_SITE.nudge)}</span></div>
   <button class="mz__fab" aria-label="Open Mazar, the AI Bible companion" aria-expanded="false"><span class="mz__fab-orb"><span class="mz__fab-fig"><canvas></canvas></span><i class="mz__fab-x">${I.close}</i></span><span class="mz__fab-label">Ask Mazar</span></button>` : ''}
   <section class="mz__panel" ${FLOAT ? 'hidden' : ''} role="${FLOAT ? 'dialog' : 'region'}" aria-label="Mazar, the AI Bible companion">
-    <div class="mz__sky" aria-hidden="true"><i class="mz__stars"></i></div>
+    <div class="mz__sky" aria-hidden="true"><canvas class="mz__skycv"></canvas></div>
     ${STUDIO ? `<aside class="mz__side"><div class="mz__side-top"><a class="mz__brand" href="/">${markSvg()}<b>Mazar</b><small>by CCFC Zambia</small></a><button class="mz__btn mz__side-x" type="button" aria-label="Close menu">${I.close}</button></div>
       <button class="mz__newchat" type="button">${I.plus}<span>New conversation</span></button>
       <nav class="mz__convos" aria-label="Conversations"></nav>
       <div class="mz__side-bottom"><a class="mz__side-link" href="https://ccfczambia.org" target="_blank" rel="noopener">${I.ext}<span>Christ Connect Family Church</span></a><a class="mz__side-link" href="https://ccfczambia.org/library" target="_blank" rel="noopener">${I.book}<span>Upper Room library</span></a></div></aside>` : ''}
     <div class="mz__main">
       <header class="mz__head">
-        ${STUDIO ? `<button class="mz__btn mz__menu" type="button" aria-label="Open menu">${I.menu}</button>` : ''}
+        ${STUDIO ? `<button class="mz__btn mz__menu" type="button" aria-label="Open menu">${I.menu}</button>` : ''}<button class="mz__btn mz__rail" type="button" aria-label="Collapse sidebar" title="Collapse sidebar" aria-expanded="true">${I.rail}</button>
         <span class="mz__id">${markSvg()}<span><b>Mazar${STUDIO ? '' : ''}</b><small><i class="mz__live"></i>${STUDIO ? 'AI Bible companion' : 'AI companion &middot; ' + esc(PER_SITE.name)}</small></span></span>
         <span class="mz__tools">${STUDIO ? '' : `<a class="mz__btn mz__open" href="${STUDIO_URL}" target="_blank" rel="noopener" aria-label="Open the full Mazar platform" title="Open the full Mazar platform">${I.ext}</a>`}<button class="mz__btn mz__new" type="button" aria-label="New conversation" title="New conversation">${I.plus}</button>${FLOAT ? `<button class="mz__btn mz__size" type="button" aria-label="Expand" title="Expand">${I.expand}</button><button class="mz__btn mz__close" type="button" aria-label="Close">${I.close}</button>` : ''}</span>
       </header>
       <nav class="mz__tabs" role="tablist" aria-label="Mazar">${TABS.map(([k,l,ic]) => `<button role="tab" type="button" data-tab="${k}" aria-selected="false">${ic}<span>${l}</span></button>`).join('')}<i class="mz__tabline" aria-hidden="true"></i></nav>
-      <div class="mz__views">
+      <div class="mz__views"><div class="mz__bgfig" aria-hidden="true"><canvas></canvas></div>
         <div class="mz__view mz__view--ask" data-view="ask" role="tabpanel">
-          <div class="mz__log" aria-live="polite"><div class="mz__stage"><canvas></canvas></div></div>
+          <div class="mz__log" aria-live="polite"><div class="mz__stage" aria-hidden="true"></div></div>
           <div class="mz__sugg">${(PER_SITE.suggest || []).map((s, i) => `<button type="button" style="--i:${i}">${esc(s)}</button>`).join('')}</div>
-          <form class="mz__form"><textarea name="q" rows="1" autocomplete="off" placeholder="${esc(PER_SITE.placeholder)}" aria-label="Message Mazar" maxlength="2000"></textarea><button class="mz__send" type="submit" aria-label="Send">${I.send}</button></form>
+          <form class="mz__form">${STUDIO ? `<div class="mz__atts" hidden></div><button class="mz__attach" type="button" aria-label="Attach images or documents" title="Attach images, PDFs or documents">${I.clip}</button><input class="mz__file" type="file" multiple hidden accept="image/*,.pdf,.docx,.txt,.md,.markdown,.csv,.json,.html,.htm,.srt,.vtt">` : ''}<textarea name="q" rows="1" autocomplete="off" placeholder="${esc(PER_SITE.placeholder)}" aria-label="Message Mazar" maxlength="2000"></textarea><button class="mz__send" type="submit" aria-label="Send">${I.send}</button></form>
         </div>
         <div class="mz__view mz__view--bible" data-view="bible" role="tabpanel" hidden>
-          <form class="mz__ref"><input name="ref" autocomplete="off" placeholder="John 3:16, Psalm 23, Romans 8" aria-label="Bible passage" maxlength="60" list="mz-books"><select name="tr" aria-label="Bible version">${VERSIONS.map(([g, list]) => `<optgroup label="${esc(g)}">${list.map(v => `<option value="${v[0]}" ${v[0] === prefs.tr ? 'selected' : ''}>${esc(v[1])} &middot; ${esc(v[2])} (${esc(v[3])})</option>`).join('')}</optgroup>`).join('')}</select><button class="mz__send" type="submit" aria-label="Open passage">${I.arrow}</button></form>
-          <datalist id="mz-books">${BOOKS.map(b => `<option value="${b} 1">`).join('')}</datalist>
-          <div class="mz__picks">${['Psalm 23','John 1:1-14','Romans 8:28-39','Matthew 5:1-12','Isaiah 40:28-31','Acts 2:37-47','1 Corinthians 13','Ephesians 6:10-18','Genesis 1','Revelation 21:1-7'].map(r => `<button type="button">${r}</button>`).join('')}</div>
-          <article class="mz__scroll" aria-live="polite"><div class="mz__empty">${markSvg()}<p>Open any passage in ${Object.keys(VER).filter(k => VER[k].src !== 'bg').length} versions: Hebrew, Greek and Latin originals, Wycliffe, Tyndale, Geneva and Douay-Rheims from before the King James, the classics, and today's free translations. Then ask Mazar to explain it, study it or pray it with you.</p><small class="mz__note">${esc(NOT_DIGITISED)}</small></div></article>
+          <div class="mz__bnav"><button class="mz__bbtn mz__bbook" type="button" aria-haspopup="dialog"><b>John 3</b>${I.down}</button><button class="mz__bbtn mz__bver" type="button" aria-haspopup="dialog"><b>WEB</b>${I.down}</button><span class="mz__bsp"></span><button class="mz__btn mz__bprev" type="button" aria-label="Previous chapter">${I.prev}</button><button class="mz__btn mz__bnext" type="button" aria-label="Next chapter">${I.next}</button></div>
+          <article class="mz__scroll" aria-live="polite"><div class="mz__loading"><i></i><i></i><i></i></div></article>
+          <div class="mz__vsheet" hidden><b class="mz__vsheet-ref"></b><div class="mz-card__row"><button type="button" class="mz-chip mz-chip--gold" data-vs="explain">${I.spark}Explain</button><button type="button" class="mz-chip" data-vs="copy">${I.copy}Copy</button><button type="button" class="mz-chip" data-vs="image">${I.img}Share image</button><button type="button" class="mz-chip" data-vs="compare">${I.cross}Compare</button><button type="button" class="mz-chip mz__vs-tr" data-vs="translate">${I.lang}Translate</button><button type="button" class="mz-chip" data-vs="clear">${I.close}</button></div></div>
+          <div class="mz__picker" hidden role="dialog" aria-label="Choose a passage or version"></div>
         </div>
         <div class="mz__view mz__view--today" data-view="today" role="tabpanel" hidden><div class="mz__todayin"></div></div>
         ${STUDIO ? `<div class="mz__view mz__view--study" data-view="study" role="tabpanel" hidden>
           <p class="mz__lead">Pick a passage or book, then choose how you want to study it. Mazar teaches in line with the historic evangelical faith held by CCFC.</p>
-          <form class="mz__ref mz__ref--study"><input name="ref" autocomplete="off" placeholder="Passage or book, for example Romans 8 or Jonah" aria-label="Passage to study" maxlength="60" list="mz-books"></form>
+          <form class="mz__ref mz__ref--study"><input name="ref" autocomplete="off" placeholder="Passage or book, for example Romans 8 or Jonah" aria-label="Passage to study" maxlength="60" list="mz-books"></form><datalist id="mz-books">${BOOKS.map(b => `<option value="${b} 1">`).join('')}</datalist>
           <div class="mz__tasks">${STUDY.map(([ic, t, s, p], i) => `<button type="button" class="mz__task" style="--i:${i}" data-prompt="${esc(p)}"><span class="mz__task-ico">${I[ic]}</span><b>${esc(t)}</b><small>${esc(s)}</small></button>`).join('')}</div>
           <section class="mz__doctrine"><h4>What CCFC believes</h4>${DOCTRINE.map(([h, b, r]) => `<details><summary><b>${esc(h)}</b><small>${esc(r)}</small></summary><p>${esc(b)}</p><button type="button" class="mz-chip" data-ask="Explain this CCFC belief with Scripture: ${esc(h)}. ${esc(b)}">${I.spark}Explain with Mazar</button></details>`).join('')}</section>
         </div>` : ''}
@@ -414,8 +496,12 @@ function app(){
   host.appendChild(w);
 
   const fab = $('.mz__fab', w), panel = $('.mz__panel', w), log = $('.mz__log', w), form = $('.mz__form', w), input = $('textarea', form), nudge = $('.mz__nudge', w), stage = $('.mz__stage', w);
-  const fig = new Figure($('canvas', stage), stage);
-  const fabFig = fab ? new Figure($('.mz__fab-fig canvas', fab), $('.mz__fab-fig', fab)) : null;
+  const bgHost = $('.mz__bgfig', w);
+  const fig = new Figure($('canvas', bgHost), bgHost, { bg: true, pointer: panel, cy: FLOAT ? .42 : .45 });
+  const fabFig = fab ? new Figure($('.mz__fab-fig canvas', fab), $('.mz__fab-fig', fab), { lite: true }) : null;
+  new Sky($('.mz__skycv', w), panel, fig, { lite: FLOAT });
+  const fitStage = () => { if (w.classList.contains('has-history')){ stage.style.height = ''; return; } const lr = log.getBoundingClientRect(), vr = bgHost.getBoundingClientRect(); if (!vr.height || !lr.height) return; const want = (vr.top - lr.top) + log.scrollTop + fig.cy + fig.S * .21; stage.style.height = Math.round(Math.max(110, Math.min(want, vr.height - 240))) + 'px'; };
+  new ResizeObserver(() => requestAnimationFrame(fitStage)).observe(bgHost);
   const figs = [fig, fabFig].filter(Boolean);
   const mood = s => figs.forEach(f => f.set(s));
   const col = () => themeColors(w);
@@ -432,7 +518,7 @@ function app(){
 
   const renderConvos = () => { const nav = $('.mz__convos', w); if (!nav) return; const groups = [['Today', 0], ['Yesterday', 1], ['Earlier', 99]]; const day = t => Math.floor((Date.now() - new Date(t).setHours(0,0,0,0)) / 864e5);
     nav.innerHTML = groups.map(([label, d]) => { const rows = convos.filter(c => (d === 99 ? day(c.t) > 1 : day(c.t) === d)); return rows.length ? `<h5>${label}</h5>` + rows.map(c => `<div class="mz__convo ${c.id === state.id ? 'is-on' : ''}" data-id="${c.id}"><button type="button" class="mz__convo-open">${esc(c.title)}</button><button type="button" class="mz__convo-del" aria-label="Delete conversation">${I.trash}</button></div>`).join('') : ''; }).join('') || '<p class="mz__side-empty">Your conversations will appear here.</p>'; };
-  const switchConvo = id => { const c = convos.find(x => x.id === id); if (!c) return; Object.keys(state).forEach(k => delete state[k]); Object.assign(state, c); convos[convos.indexOf(c)] = state; log.querySelectorAll('.mz-msg').forEach(n => n.remove()); w.classList.toggle('has-history', state.log.some(m => m.who === 'user')); state.log.forEach(m => add(m.who, m.text, m.go, m.actions, true)); if (!state.log.length) add('bot', PER_SITE.greet); setTab('ask'); renderConvos(); closeSide(); };
+  const switchConvo = id => { const c = convos.find(x => x.id === id); if (!c) return; Object.keys(state).forEach(k => delete state[k]); Object.assign(state, c); convos[convos.indexOf(c)] = state; log.querySelectorAll('.mz-msg').forEach(n => n.remove()); w.classList.toggle('has-history', state.log.some(m => m.who === 'user')); requestAnimationFrame(fitStage); state.log.forEach(m => add(m.who, m.text, m.go, m.actions, true, m.files)); if (!state.log.length) add('bot', PER_SITE.greet); setTab('ask'); renderConvos(); closeSide(); };
   if (STUDIO){ $('.mz__convos', w).addEventListener('click', e => { const row = e.target.closest('.mz__convo'); if (!row) return; if (e.target.closest('.mz__convo-del')){ if (!confirm('Delete this conversation?')) return; convos = convos.filter(c => c.id !== row.dataset.id); if (row.dataset.id === state.id){ const n = newConvo(); convos.unshift(n); switchConvo(n.id); } ls.set(CONVOS_KEY, convos); renderConvos(); return; } switchConvo(row.dataset.id); });
     const startNew = () => { if (!state.log.some(m => m.who === 'user')){ setTab('ask', true); closeSide(); return; } const n = newConvo(); convos.unshift(n); switchConvo(n.id); input.focus(); };
     $('.mz__newchat', w).addEventListener('click', startNew);
@@ -441,9 +527,15 @@ function app(){
     w.closeSide = closeSide; }
   function closeSide(){ if (w.closeSide) w.closeSide(); }
 
+  /* ---- retractable sidebar (wide layouts): conversations and the tab rail fold away ---- */
+  const RAIL_KEY = 'mazar:rail:' + MODE;
+  const setRail = on => { w.classList.toggle('is-rail', on); const b = $('.mz__rail', w); const l = on ? 'Expand sidebar' : 'Collapse sidebar'; b.setAttribute('aria-label', l); b.title = l; b.setAttribute('aria-expanded', String(!on)); ls.set(RAIL_KEY, on); clearTimeout(setRail.t); setRail.t = setTimeout(() => { setTab(state.tab || 'ask'); fig.resize(); }, 480); };
+  $('.mz__rail', w).addEventListener('click', () => setRail(!w.classList.contains('is-rail')));
+  if (ls.get(RAIL_KEY, false)) w.classList.add('is-rail');
+
   /* ---- tabs ---- */
   const setTab = (k, focus) => { if (!$(`.mz__tabs [data-tab="${k}"]`, w)) k = 'ask'; state.tab = k; persist(); $$('.mz__tabs [role=tab]', w).forEach(b => { const on = b.dataset.tab === k; b.setAttribute('aria-selected', on); b.tabIndex = on ? 0 : -1; if (on){ const line = $('.mz__tabline', w); line.style.transform = `translateX(${b.offsetLeft}px)`; line.style.width = b.offsetWidth + 'px'; } });
-    $$('.mz__view', w).forEach(v => { v.hidden = v.dataset.view !== k; }); if (k === 'today') renderToday(); if (k === 'ask'){ log.scrollTop = log.scrollHeight; fig.resize(); if (focus) input.focus({ preventScroll: true }); } };
+    $$('.mz__view', w).forEach(v => { v.hidden = v.dataset.view !== k; }); if (k === 'today') renderToday(); if (k === 'bible' && w._rd && !w._rd.loaded && !w._rd.loading) showChapter(); w.dataset.tab = k; if (k === 'ask'){ log.scrollTop = log.scrollHeight; fig.resize(); requestAnimationFrame(fitStage); if (focus) input.focus({ preventScroll: true }); } };
   $$('.mz__tabs [role=tab]', w).forEach((b, i, all) => { b.addEventListener('click', () => setTab(b.dataset.tab, true)); b.addEventListener('keydown', e => { if (!/Arrow(Left|Right)/.test(e.key)) return; const n = all[(i + (e.key === 'ArrowRight' ? 1 : all.length - 1)) % all.length]; n.focus(); setTab(n.dataset.tab); }); });
 
   /* ---- messages and action cards ---- */
@@ -456,11 +548,13 @@ function app(){
     if (a.type === 'compare') return `<div class="mz-card mz-card--wide"><div><span class="mz-card__k">${esc(a.reference)} in ${a.rows.length} translations</span><div class="mz-cmp">${a.rows.map(r => `<div class="mz-cmp__row"><b>${esc(r.translation)}</b><p>${esc(r.text)}</p></div>`).join('')}</div></div></div>`;
     if (a.type === 'quiz') return `<div class="mz-card mz-card--wide mz-quiz" data-n="${a.questions.length}"><div><span class="mz-card__k">Quiz &middot; ${esc(a.title || '')}</span><ol>${a.questions.map((q, i) => `<li class="mz-quiz__q" data-answer="${q.answer}"><b>${esc(q.q)}</b><div class="mz-quiz__opts">${q.options.map((o, j) => `<button type="button" data-i="${j}">${esc(o)}</button>`).join('')}</div>${q.why ? `<small class="mz-quiz__why" hidden>${esc(q.why)}</small>` : ''}</li>`).join('')}</ol><p class="mz-quiz__score" hidden></p></div></div>`;
     if (a.type === 'memory') return `<div class="mz-card mz-card--verse mz-memo" data-ref="${esc(a.reference)}" data-tr="${esc(a.translation)}"><span class="mz-card__k">Memory verse &middot; ${esc(a.reference)}</span><blockquote>${esc(a.text)}</blockquote>${a.hint ? `<small class="mz-memo__hint">${esc(a.hint)}</small>` : ''}<div class="mz-card__row"><button type="button" class="mz-chip mz-chip--gold" data-act="hide">Hide the words</button><button type="button" class="mz-chip" data-act="copy">${I.copy}Copy</button><button type="button" class="mz-chip" data-act="image">${I.img}Share image</button></div></div>`;
+    if (a.type === 'sources') return `<div class="mz-card mz-card--wide mz-src"><div><span class="mz-card__k">${esc(a.site || 'Sources')}</span><ul>${(a.items || []).slice(0, 5).map(x => `<li><a href="${esc(x.url)}" target="_blank" rel="noopener"><span>${esc(x.title)}</span>${I.ext}</a>${x.date ? `<small>${esc(String(x.date).slice(0, 4))}</small>` : ''}</li>`).join('')}</ul></div></div>`;
     return '';
   };
-  const add = (who, text, go, actions, restored) => { const el = document.createElement('div'); el.className = 'mz-msg is-' + who + (restored ? ' is-restored' : '');
-    if (!restored){ state.log.push({ who, text, go, actions }); if (STUDIO && who === 'user' && state.title === 'New conversation'){ state.title = text.slice(0, 48) + (text.length > 48 ? '…' : ''); } persist(); }
-    el.innerHTML = who === 'bot' ? `<span class="mz-msg__mark">${markSvg()}</span><div class="mz-msg__body"><div class="mz-rich">${rich(text)}</div>${(actions || []).map(cardHtml).join('')}${go ? `<a class="mz-go" href="${esc(go[0])}" data-mz-go>${esc(go[1])} ${I.arrow}</a>` : ''}</div>` : `<div class="mz-msg__body">${esc(text)}</div>`;
+  const add = (who, text, go, actions, restored, files) => { const el = document.createElement('div'); el.className = 'mz-msg is-' + who + (restored ? ' is-restored' : '');
+    if (!restored){ state.log.push({ who, text, go, actions, ...(files && files.length ? { files } : {}) }); if (STUDIO && who === 'user' && state.title === 'New conversation'){ const tt = text || (files && files[0] ? files[0].name : 'Attachment'); state.title = tt.slice(0, 48) + (tt.length > 48 ? '…' : ''); } persist(); }
+    const fl = files && files.length ? `<div class="mz-msg__files">${files.map(f => f.thumb ? `<img src="${esc(f.thumb)}" alt="${esc(f.name)}" title="${esc(f.name)}">` : `<span class="mz-att mz-att--sent">${I.file}<b>${esc(f.name)}</b></span>`).join('')}</div>` : '';
+    el.innerHTML = who === 'bot' ? `<span class="mz-msg__mark">${markSvg()}</span><div class="mz-msg__body"><div class="mz-rich">${rich(text)}</div>${(actions || []).map(cardHtml).join('')}${go ? `<a class="mz-go" href="${esc(go[0])}" data-mz-go>${esc(go[1])} ${I.arrow}</a>` : ''}</div>` : `<div class="mz-msg__col">${fl}${text ? `<div class="mz-msg__body">${esc(text)}</div>` : ''}</div>`;
     log.appendChild(el);
     if (who === 'bot' && !restored && !RM){ const nodes = $$('.mz-rich p, .mz-rich li, .mz-rich h4', el); const extras = $$('.mz-card, .mz-go', el); extras.forEach(x => x.classList.add('is-wait')); nodes.forEach(n => { n._full = n.innerHTML; n._parts = n.innerHTML.split(/(\s+)/); n.innerHTML = ''; }); const total = nodes.reduce((s, n) => s + n._parts.length, 0), step = Math.max(2, Math.ceil(total / 55));
       mood('speak'); let k = 0;
@@ -486,14 +580,48 @@ function app(){
   document.addEventListener('click', e => { const t = e.target.closest('[data-mazar],[data-ozer]'); if (!t) return; e.preventDefault(); const closer = $('.drawer.is-open .drawer__close, .menu.is-open .menu__close, .is-menu-open .menu__close'); if (closer) closer.click(); if (FLOAT){ if (innerWidth > 900) setExpanded(true); open(true); } const tab = t.dataset.mazar || t.dataset.ozer; if (tab) setTab(tab, true); else if (!FLOAT){ input.focus(); w.scrollIntoView({ behavior: 'smooth', block: 'start' }); } });
 
   /* ---- ask ---- */
-  const ask = async q => { if (w.classList.contains('is-busy')) return; setTab('ask'); history().push({ role:'user', content:q }); add('user', q); w.classList.add('has-history'); fig.resize(); const t = thinking(); w.classList.add('is-busy'); mood('think');
+  const ask = async q => { if (w.classList.contains('is-busy')) return; setTab('ask');
+    const sent = STUDIO ? atts.splice(0) : []; if (STUDIO) renderAtts();
+    const entry = { role:'user', content: q || 'Please look at what I attached.' }; if (sent.length){ entry.att = true; ATTS.set(entry, sent); }
+    history().push(entry); add('user', q, null, null, false, sent.map(a => ({ kind: a.kind, name: a.name, thumb: a.thumb }))); w.classList.add('has-history'); fitStage(); fig.resize(); const t = thinking(); w.classList.add('is-busy'); mood('think');
     let ans, failed = false; try { ans = CFG.chatEndpoint ? await remote(history().slice(-10)) : local(q); } catch (e){ ans = local(q); failed = !!CFG.chatEndpoint; }
     t.remove(); w.classList.remove('is-busy'); if (failed){ mood('error'); setTimeout(() => mood('idle'), 900); } history().push({ role:'assistant', content: ans.text }); add('bot', ans.text, ans.go, (ans.actions || []).slice(0, 6)); };
   const grow = () => { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 160) + 'px'; };
   input.addEventListener('input', () => { grow(); mood(input.value ? 'listen' : 'idle'); });
   input.addEventListener('focus', () => mood('listen')); input.addEventListener('blur', () => { if (!w.classList.contains('is-busy')) mood('idle'); });
   input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); form.requestSubmit(); } });
-  form.addEventListener('submit', e => { e.preventDefault(); const q = input.value.trim(); if (!q) return; input.value = ''; grow(); ask(q); });
+  form.addEventListener('submit', e => { e.preventDefault(); const q = input.value.trim(); if (!q && !(STUDIO && atts.length)) return; input.value = ''; grow(); ask(q); });
+
+  /* ---- attachments (Mazar platform only): images, PDFs, Word documents and text files ---- */
+  const atts = []; const attBox = $('.mz__atts', w);
+  const renderAtts = () => { if (!attBox) return; attBox.hidden = !atts.length && !attBox.dataset.note; attBox.innerHTML = atts.map((a, i) => `<span class="mz-att">${a.kind === 'image' ? `<img src="${a.thumb}" alt="">` : I.file}<b>${esc(a.name)}</b><button type="button" data-rm="${i}" aria-label="Remove ${esc(a.name)}">${I.close}</button></span>`).join('') + (attBox.dataset.note ? `<small class="mz-att__note">${esc(attBox.dataset.note)}</small>` : ''); };
+  const attNote = m => { if (!attBox) return; attBox.dataset.note = m; renderAtts(); clearTimeout(attNote.t); attNote.t = setTimeout(() => { delete attBox.dataset.note; renderAtts(); }, 5000); };
+  const imageData = async file => { const url = URL.createObjectURL(file); try { const im = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; }); const k = Math.min(1, 1600 / Math.max(im.naturalWidth, im.naturalHeight)); const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(im.naturalWidth * k)); c.height = Math.max(1, Math.round(im.naturalHeight * k)); const cx = c.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, c.width, c.height); cx.drawImage(im, 0, 0, c.width, c.height); const tk = Math.min(1, 180 / Math.max(c.width, c.height)); const tc = document.createElement('canvas'); tc.width = Math.max(1, Math.round(c.width * tk)); tc.height = Math.max(1, Math.round(c.height * tk)); tc.getContext('2d').drawImage(c, 0, 0, tc.width, tc.height); return { data: c.toDataURL('image/jpeg', .86), thumb: tc.toDataURL('image/jpeg', .7) }; } finally { URL.revokeObjectURL(url); } };
+  const docxText = async file => { const buf = new Uint8Array(await file.arrayBuffer()), dv = new DataView(buf.buffer), dec = new TextDecoder(); let e = -1; for (let i = buf.length - 22; i >= Math.max(0, buf.length - 66000); i--) if (dv.getUint32(i, true) === 0x06054b50){ e = i; break; } if (e < 0) throw new Error('not a zip');
+    let q = dv.getUint32(e + 16, true); for (let n = dv.getUint16(e + 10, true); n > 0; n--){ const method = dv.getUint16(q + 10, true), size = dv.getUint32(q + 20, true), nl = dv.getUint16(q + 28, true), xl = dv.getUint16(q + 30, true), cl = dv.getUint16(q + 32, true), off = dv.getUint32(q + 42, true), name = dec.decode(buf.subarray(q + 46, q + 46 + nl)); q += 46 + nl + xl + cl; if (name !== 'word/document.xml') continue;
+      const start = off + 30 + dv.getUint16(off + 26, true) + dv.getUint16(off + 28, true), raw = buf.subarray(start, start + size);
+      const xml = method === 0 ? dec.decode(raw) : await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();
+      return xml.replace(/<w:tab\/>/g, '\t').replace(/<w:br[^>]*\/>|<\/w:p>/g, '\n').replace(/<[^>]+>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&').replace(/\n{3,}/g, '\n\n').trim(); }
+    throw new Error('no document text'); };
+  const addFiles = async files => { for (const f of [...files]){ if (atts.length >= 5){ attNote('Up to 5 files per message.'); break; } const ext = (f.name.split('.').pop() || '').toLowerCase();
+      try {
+        if (/^image\//.test(f.type)){ if (f.size > 25e6) throw new Error('big'); const d = await imageData(f); atts.push({ kind: 'image', name: f.name, ...d }); }
+        else if (f.type === 'application/pdf' || ext === 'pdf'){ if (f.size > 8e6){ attNote(`${f.name} is over 8 MB. Try a smaller PDF.`); continue; } const d = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = rej; r.readAsDataURL(f); }); atts.push({ kind: 'pdf', name: f.name, data: d.replace(/^data:[^;,]*;/, 'data:application/pdf;') }); }
+        else if (ext === 'docx'){ atts.push({ kind: 'text', name: f.name, data: await docxText(f) }); }
+        else if (/^text\//.test(f.type) || ['txt','md','markdown','csv','json','html','htm','srt','vtt'].includes(ext)){ if (f.size > 4e6) throw new Error('big'); let t = await f.text(); if (/^html?$/.test(ext)) t = new DOMParser().parseFromString(t, 'text/html').body.textContent || ''; atts.push({ kind: 'text', name: f.name, data: t.trim() }); }
+        else attNote('Mazar reads images, PDFs, Word (.docx) and text files.');
+      } catch (_) { attNote(`Couldn't open ${f.name}.`); }
+    }
+    renderAtts(); if (atts.length){ figs.forEach(f => f.joy()); mood('listen'); input.focus({ preventScroll: true }); } };
+  if (STUDIO){
+    attBox.addEventListener('click', e => { const b = e.target.closest('[data-rm]'); if (!b) return; atts.splice(+b.dataset.rm, 1); renderAtts(); });
+    $('.mz__attach', w).addEventListener('click', () => $('.mz__file', w).click());
+    $('.mz__file', w).addEventListener('change', e => { addFiles(e.target.files); e.target.value = ''; });
+    input.addEventListener('paste', e => { const fs = [...((e.clipboardData && e.clipboardData.files) || [])]; if (fs.length){ e.preventDefault(); addFiles(fs); } });
+    panel.addEventListener('dragover', e => { if (e.dataTransfer && [...e.dataTransfer.types].includes('Files')){ e.preventDefault(); w.classList.add('is-drop'); } });
+    panel.addEventListener('dragleave', e => { if (!e.relatedTarget || !panel.contains(e.relatedTarget)) w.classList.remove('is-drop'); });
+    panel.addEventListener('drop', e => { w.classList.remove('is-drop'); if (!e.dataTransfer || !e.dataTransfer.files.length) return; e.preventDefault(); setTab('ask'); addFiles(e.dataTransfer.files); });
+  }
   $$('.mz__sugg button', w).forEach(b => b.addEventListener('click', () => ask(b.textContent)));
   $$('.mz__view--tasks .mz__task', w).forEach(b => b.addEventListener('click', () => ask(b.dataset.prompt)));
   if (STUDIO){ const sref = $('.mz__ref--study input', w); const refOr = () => sref.value.trim() || ($('.mz__scroll', w).dataset.ref) || '';
@@ -508,7 +636,7 @@ function app(){
     const opt = e.target.closest('.mz-quiz__opts button'); if (opt){ const li = opt.closest('.mz-quiz__q'); if (li.dataset.done) return; li.dataset.done = '1'; const ok = +opt.dataset.i === +li.dataset.answer; opt.classList.add(ok ? 'is-right' : 'is-wrong'); $$('button', li).forEach(b => { b.disabled = true; if (+b.dataset.i === +li.dataset.answer) b.classList.add('is-right'); }); const why = $('.mz-quiz__why', li); if (why) why.hidden = false; const card = li.closest('.mz-quiz'); const done = $$('.mz-quiz__q[data-done]', card), right = $$('.mz-quiz__opts .is-right:not([disabled])', card); if (done.length === +card.dataset.n){ const score = $$('.mz-quiz__q', card).filter(q => $('.mz-quiz__opts .is-wrong', q) == null).length; const sc = $('.mz-quiz__score', card); sc.hidden = false; sc.textContent = `You scored ${score} of ${card.dataset.n}.`; if (score === +card.dataset.n) figs.forEach(f => f.joy()); } else if (ok) figs.forEach(f => f.pulse()); return; }
     const b = e.target.closest('[data-act]'); if (!b) return; const card = b.closest('.mz-card'); const act = b.dataset.act;
     if (act === 'copy' || act === 'image'){ const ref = card.dataset.ref, tr = card.dataset.tr, text = $('blockquote', card).textContent; b.disabled = true; const msg = act === 'copy' ? await (async () => { try { await navigator.clipboard.writeText(`"${text}" ${ref} (${tr})`); return 'Copied.'; } catch (_) { return 'Could not copy.'; } })() : await shareVerse(ref, text, tr, true, col()); b.disabled = false; if (msg) flash(b, msg); }
-    if (act === 'read'){ openPassage(card.dataset.ref.replace(/:\d+(-\d+)?$/, ''), null); }
+    if (act === 'read'){ openPassage(card.dataset.ref); }
     if (act === 'study'){ ask(`Give me a full study guide on ${card.dataset.ref}: historical context, what it says, what it means, how it applies to my life, cross references and three discussion questions.`); }
     if (act === 'hide'){ const q = $('blockquote', card); const on = card.classList.toggle('is-hidden'); q.dataset.full = q.dataset.full || q.textContent; q.textContent = on ? q.dataset.full.replace(/[A-Za-z]/g, c => (Math.random() < .25 ? c : '_')) : q.dataset.full; b.textContent = on ? 'Show the words' : 'Hide the words'; }
     if (act === 'ics'){ const a = JSON.parse(card.dataset.cal); const z = d => new Date(d).toISOString().replace(/[-:]/g, '').replace(/\.\d+/, ''); const ics = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//CCFC Zambia//Mazar//EN','BEGIN:VEVENT',`UID:${Date.now()}@ccfczambia.org`,`DTSTAMP:${z(Date.now())}`,`DTSTART:${z(a.start)}`,`DTEND:${z(a.end)}`,`SUMMARY:${a.title.replace(/[,;]/g, '\\$&')}`,`LOCATION:${(a.location || '').replace(/[,;]/g, '\\$&')}`,`DESCRIPTION:${(a.details || '').replace(/\n/g, '\\n').replace(/[,;]/g, '\\$&')}`,'BEGIN:VALARM','TRIGGER:-PT2H','ACTION:DISPLAY','DESCRIPTION:Reminder','END:VALARM','END:VEVENT','END:VCALENDAR'].join('\r\n');
@@ -517,24 +645,101 @@ function app(){
     if (act === 'plan'){ const p = JSON.parse(card.dataset.plan); const plans = loadPlans(); plans.unshift({ id: Date.now(), title: p.title, days: p.days, done: [] }); ls.set(PLANS_KEY, plans.slice(0, 8)); flash(b, 'Saved to Today.'); figs.forEach(f => f.joy()); setTimeout(() => setTab('today'), 700); }
   });
 
-  /* ---- Bible reader ---- */
-  const scroll = $('.mz__scroll', w), refForm = $('.mz__ref:not(.mz__ref--study)', w);
-  const openPassage = async (ref, tr) => { tr = tr || refForm.tr.value; refForm.ref.value = ref; setTab('bible'); scroll.innerHTML = '<div class="mz__loading"><i></i><i></i><i></i></div>'; mood('think');
-    try { const d = await passage(ref, tr); prefs.tr = tr; ls.set(PREF_KEY, prefs); const text = d.verses.map(v => v.text).join(' '); const V = d.version;
-      scroll.innerHTML = `<header><span class="mz-card__k">${esc(V.name)} <i>${esc(V.year)}</i></span><h3>${esc(d.reference)}</h3></header><div class="mz__text mz__text--${esc(V.lang)}" lang="${esc(V.lang)}" ${V.lang === 'he' ? 'dir="rtl"' : ''}>${d.verses.map(v => `<span class="mz__v"><sup>${v.verse}</sup>${esc(v.text)} </span>`).join('')}</div>${d.notes && d.notes.length ? `<details class="mz__notes"><summary>${esc(V.abbr)} study notes (${d.notes.length})</summary>${d.notes.map(n => `<p><b>${n.verse}</b> ${esc(n.note)}</p>`).join('')}</details>` : ''}
-        <div class="mz-card__row mz__bibleacts"><button type="button" class="mz-chip mz-chip--gold" data-b="explain">${I.spark}Explain with Mazar</button>${STUDIO ? `<button type="button" class="mz-chip" data-b="study">${I.study}Study guide</button>` : ''}<button type="button" class="mz-chip" data-b="pray">Pray this</button><button type="button" class="mz-chip" data-b="image">${I.img}Share image</button><button type="button" class="mz-chip" data-b="copy">${I.copy}Copy</button></div>`;
-      scroll.scrollTop = 0; scroll.dataset.ref = d.reference; scroll.dataset.text = text.slice(0, 1400); scroll.dataset.tr = TR_NAME[tr]; mood('idle'); figs.forEach(f => f.pulse()); }
-    catch (err){ scroll.innerHTML = `<div class="mz__empty"><p>${esc(err.message)}</p>${err.bg ? `<a class="mz-chip mz-chip--gold" href="${esc(err.bg)}" target="_blank" rel="noopener">Read ${esc(ref)} on BibleGateway ${I.ext}</a>` : ''}</div>`; if (!err.bg){ mood('error'); setTimeout(() => mood('idle'), 900); } } };
-  refForm.addEventListener('submit', e => { e.preventDefault(); const r = refForm.ref.value.trim(); if (r) openPassage(r); });
-  refForm.tr.addEventListener('change', () => { if (scroll.dataset.ref) openPassage(scroll.dataset.ref); });
-  $$('.mz__picks button', w).forEach(b => b.addEventListener('click', () => openPassage(b.textContent)));
-  scroll.addEventListener('click', async e => { const b = e.target.closest('[data-b]'); if (!b) return; const { ref, text, tr } = scroll.dataset;
+  /* ---- Bible reader (YouVersion-style: book and chapter picker, version picker, verse selection, parallel English) ---- */
+  const scroll = $('.mz__scroll', w), bnav = $('.mz__bnav', w), picker = $('.mz__picker', w), vsheet = $('.mz__vsheet', w);
+  const RD = { book: Math.min(Math.max(+prefs.book || 43, 1), 66), chapter: +prefs.chapter || 3, vid: VER[prefs.tr] ? prefs.tr : 'web', sel: new Set(), par: !!prefs.par, pk: null };
+  RD.chapter = Math.min(Math.max(RD.chapter, 1), CHAPTERS[RD.book - 1]); w._rd = RD;
+  const curV = () => VER[RD.vid] || VER.web;
+  const savePos = () => { prefs.book = RD.book; prefs.chapter = RD.chapter; prefs.tr = RD.vid; prefs.par = RD.par; prefs.recent = [RD.vid, ...(prefs.recent || []).filter(x => x !== RD.vid && VER[x])].slice(0, 6); ls.set(PREF_KEY, prefs); };
+  const updateNav = () => { $('.mz__bbook b', bnav).textContent = refOf(RD.book, RD.chapter); $('.mz__bver b', bnav).textContent = curV().abbr; $('.mz__bprev', bnav).disabled = RD.book === 1 && RD.chapter === 1; $('.mz__bnext', bnav).disabled = RD.book === 66 && RD.chapter === CHAPTERS[65]; };
+  const rangeLabel = vs => { const out = []; let a = vs[0], b = vs[0]; for (let i = 1; i <= vs.length; i++){ if (vs[i] === b + 1){ b = vs[i]; continue; } out.push(a === b ? String(a) : `${a}-${b}`); a = b = vs[i]; } return out.join(', '); };
+  const selVerses = () => [...RD.sel].sort((a, b) => a - b);
+  const selText = () => selVerses().map(n => { const el = $(`.mz__v[data-v="${n}"]`, scroll); return el ? el.textContent.replace(/^\d+\s*/, '').trim() : ''; }).filter(Boolean).join(' ');
+  const selRef = () => refOf(RD.book, RD.chapter, rangeLabel(selVerses()));
+  const hideSheet = () => { vsheet.hidden = true; };
+  const updateSheet = () => { $$('.mz__v', scroll).forEach(el => el.classList.toggle('is-sel', RD.sel.has(+el.dataset.v))); if (!RD.sel.size){ hideSheet(); return; } vsheet.hidden = false; $('.mz__vsheet-ref', vsheet).textContent = selRef(); $('.mz__vs-tr', vsheet).hidden = curV().lang === 'en'; };
+  const closePicker = () => { picker.hidden = true; picker.innerHTML = ''; RD.pk = null; };
+  async function showChapter(opts = {}){
+    const v = curV(); updateNav(); savePos(); closePicker(); RD.sel.clear(); hideSheet(); RD.loading = true;
+    scroll.innerHTML = '<div class="mz__loading"><i></i><i></i><i></i></div>'; delete scroll.dataset.ref; mood('think');
+    try {
+      const d = await fetchChapter(v.id, RD.book, RD.chapter);
+      let enMap = null; if (RD.par && v.lang !== 'en'){ try { const en = await fetchChapter('web', RD.book, RD.chapter); enMap = Object.fromEntries(en.verses.map(x => [x.verse, x.text])); } catch (_) {} }
+      const prevRef = RD.book === 1 && RD.chapter === 1 ? '' : (RD.chapter > 1 ? refOf(RD.book, RD.chapter - 1) : refOf(RD.book - 1, CHAPTERS[RD.book - 2]));
+      const nextRef = RD.book === 66 && RD.chapter === CHAPTERS[65] ? '' : (RD.chapter < CHAPTERS[RD.book - 1] ? refOf(RD.book, RD.chapter + 1) : refOf(RD.book + 1, 1));
+      scroll.innerHTML = `<header><span class="mz-card__k">${esc(v.name)} <i>${esc(v.year)}</i>${v.lang !== 'en' ? ` <i>&middot; ${esc(v.langName)}</i>` : ''}</span><h3>${esc(refOf(RD.book, RD.chapter))}</h3></header>
+        <div class="mz__text mz__text--${esc(v.lang)}${enMap ? ' mz__text--par' : ''}" lang="${esc(v.lang)}"${v.dir === 'rtl' ? ' dir="rtl"' : ''}>${d.verses.map(x => enMap ? `<div class="mz__pv"><span class="mz__v" data-v="${x.verse}" tabindex="0"><sup>${x.verse}</sup>${esc(x.text)}</span><span class="mz__pv-en" dir="ltr" lang="en">${esc(enMap[x.verse] || '')}</span></div>` : `<span class="mz__v" data-v="${x.verse}" tabindex="0"><sup>${x.verse}</sup>${esc(x.text)} </span>`).join('')}</div>
+        ${d.notes.length ? `<details class="mz__notes"><summary>${esc(v.abbr)} study notes (${d.notes.length})</summary>${d.notes.map(n => `<p><b>${n.verse}</b> ${esc(n.note)}</p>`).join('')}</details>` : ''}
+        <p class="mz__hint">Tap a verse to copy, share, explain${v.lang !== 'en' ? ' or translate' : ''} it.</p>
+        <div class="mz-card__row mz__bibleacts"><button type="button" class="mz-chip mz-chip--gold" data-b="explain">${I.spark}Explain this chapter</button>${STUDIO ? `<button type="button" class="mz-chip" data-b="study">${I.study}Study guide</button>` : ''}<button type="button" class="mz-chip" data-b="pray">Pray this</button>${v.lang !== 'en' ? `<button type="button" class="mz-chip${RD.par ? ' is-on' : ''}" data-b="par">${I.lang}${RD.par ? 'Hide English' : 'Show English alongside'}</button><button type="button" class="mz-chip" data-b="translate">${I.spark}Translate with Mazar</button>` : ''}<button type="button" class="mz-chip" data-b="image">${I.img}Share image</button></div>
+        <div class="mz__chnav">${prevRef ? `<button type="button" class="mz__chnav-b" data-step="-1">${I.prev}<span>${esc(prevRef)}</span></button>` : '<span></span>'}${nextRef ? `<button type="button" class="mz__chnav-b" data-step="1"><span>${esc(nextRef)}</span>${I.next}</button>` : ''}</div>`;
+      scroll.dataset.ref = refOf(RD.book, RD.chapter); scroll.dataset.text = d.verses.map(x => x.text).join(' ').slice(0, 1400); scroll.dataset.tr = v.name;
+      if (opts.focus){ const [a, b] = opts.focus; for (let n = a; n <= (b || a); n++) if ($(`.mz__v[data-v="${n}"]`, scroll)) RD.sel.add(n); updateSheet(); const first = $(`.mz__v[data-v="${a}"]`, scroll); if (first) setTimeout(() => first.scrollIntoView({ block: 'center', behavior: RM ? 'auto' : 'smooth' }), 60); }
+      else scroll.scrollTop = 0;
+      mood('idle'); figs.forEach(f => f.pulse());
+    } catch (err){ scroll.innerHTML = `<div class="mz__empty">${markSvg()}<p>${esc(err.message)}</p>${err.bg ? `<a class="mz-chip mz-chip--gold" href="${esc(err.bg)}" target="_blank" rel="noopener">Read ${esc(refOf(RD.book, RD.chapter))} on BibleGateway ${I.ext}</a>` : ''}<button type="button" class="mz-chip" data-b="pickver">Choose another version</button></div>`; if (!err.bg){ mood('error'); setTimeout(() => mood('idle'), 900); } else mood('idle'); }
+    RD.loading = false; RD.loaded = true;
+  }
+  const step = dir => { let b = RD.book, c = RD.chapter + dir; if (c < 1){ if (b === 1) return; b--; c = CHAPTERS[b - 1]; } else if (c > CHAPTERS[b - 1]){ if (b === 66) return; b++; c = 1; } RD.book = b; RD.chapter = c; showChapter(); };
+  $('.mz__bprev', bnav).addEventListener('click', () => step(-1)); $('.mz__bnext', bnav).addEventListener('click', () => step(1));
+  w.addEventListener('keydown', e => { if (state.tab !== 'bible' || /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return; if (e.key === 'ArrowLeft') step(-1); if (e.key === 'ArrowRight') step(1); if (e.key === 'Escape' && !picker.hidden){ e.stopPropagation(); closePicker(); } });
+  /* pickers */
+  const BOOK_SHORT = BOOKS.map(b => b.replace('Song of Solomon', 'Song of Songs'));
+  function openPicker(kind){ RD.pk = kind; picker.hidden = false; renderPicker(); }
+  function renderPicker(bookFor){
+    const v = curV();
+    if (RD.pk === 'book'){
+      if (bookFor){ picker.innerHTML = `<div class="mz__pk-head"><button type="button" class="mz__pk-back mz-chip">${I.prev}Books</button><b>${esc(BOOKS[bookFor - 1])}</b><button type="button" class="mz__btn mz__pk-x" aria-label="Close">${I.close}</button></div><div class="mz__pk-chapters">${Array.from({ length: CHAPTERS[bookFor - 1] }, (_, i) => `<button type="button" data-c="${i + 1}" class="${bookFor === RD.book && i + 1 === RD.chapter ? 'is-on' : ''}">${i + 1}</button>`).join('')}</div>`;
+        $('.mz__pk-back', picker).addEventListener('click', () => renderPicker()); $$('[data-c]', picker).forEach(b => b.addEventListener('click', () => { RD.book = bookFor; RD.chapter = +b.dataset.c; showChapter(); })); }
+      else { const t = RD.book > 39 ? 'nt' : 'ot';
+        picker.innerHTML = `<div class="mz__pk-head"><input class="mz__pk-q" type="search" autocomplete="off" placeholder="Search books, or type John 3:16" aria-label="Search books or a reference"><button type="button" class="mz__btn mz__pk-x" aria-label="Close">${I.close}</button></div><div class="mz__pk-tabs"><button type="button" data-t="ot" class="${t === 'ot' ? 'is-on' : ''}">Old Testament</button><button type="button" data-t="nt" class="${t === 'nt' ? 'is-on' : ''}">New Testament</button></div><div class="mz__pk-books"></div>`;
+        const grid = $('.mz__pk-books', picker), q = $('.mz__pk-q', picker);
+        const draw = (tab, filter) => { const f = (filter || '').toLowerCase().replace(/[^a-z0-9]/g, ''); grid.innerHTML = BOOKS.map((b, i) => ({ b, i })).filter(({ b, i }) => f ? b.toLowerCase().replace(/[^a-z0-9]/g, '').includes(f) : (tab === 'ot' ? i < 39 : i >= 39)).map(({ b, i }) => `<button type="button" data-b="${i + 1}" class="${i + 1 === RD.book ? 'is-on' : ''}${hasBook(v, i + 1) ? '' : ' is-off'}" title="${hasBook(v, i + 1) ? '' : 'Not in ' + esc(v.abbr)}">${esc(BOOK_SHORT[i])}<small>${CHAPTERS[i]}</small></button>`).join('') || '<p class="mz__pk-none">No book matches. Try a reference like Romans 8:28.</p>'; $$('[data-b]', grid).forEach(x => x.addEventListener('click', () => renderPicker(+x.dataset.b))); };
+        draw(t); $$('.mz__pk-tabs button', picker).forEach(b => b.addEventListener('click', () => { $$('.mz__pk-tabs button', picker).forEach(x => x.classList.toggle('is-on', x === b)); q.value = ''; draw(b.dataset.t); }));
+        q.addEventListener('input', () => draw($('.mz__pk-tabs .is-on', picker).dataset.t, q.value));
+        q.addEventListener('keydown', e => { if (e.key !== 'Enter') return; e.preventDefault(); const p = parseRef(q.value); if (p){ RD.book = p.book; RD.chapter = p.chapter; showChapter({ focus: p.from ? [p.from, p.to] : null }); } else { const first = $('[data-b]', grid); if (first) first.click(); } });
+        setTimeout(() => q.focus(), 50); }
+    } else {
+      picker.innerHTML = `<div class="mz__pk-head"><input class="mz__pk-q" type="search" autocomplete="off" placeholder="Search ${BIBLES.length} versions or a language" aria-label="Search versions"><button type="button" class="mz__btn mz__pk-x" aria-label="Close">${I.close}</button></div><div class="mz__pk-list"></div>`;
+      const list = $('.mz__pk-list', picker), q = $('.mz__pk-q', picker);
+      const item = x => `<button type="button" data-vid="${x.id}" class="${x.id === RD.vid ? 'is-on' : ''}${x.src === 'bg' ? ' is-bg' : ''}"><b>${esc(x.abbr)}</b><span>${esc(x.name)}</span><small>${[x.year, x.langName, partLabel(x), x.src === 'bg' ? 'opens on BibleGateway' : ''].filter(Boolean).join(' · ')}</small></button>`;
+      const draw = filter => { const f = (filter || '').trim().toLowerCase(); const all = Object.values(VER); const hit = x => !f || (x.abbr + ' ' + x.name + ' ' + x.langName + ' ' + x.year + ' ' + x.lang).toLowerCase().includes(f);
+        const sections = []; if (!f && prefs.recent && prefs.recent.length) sections.push(['Recent', prefs.recent.map(id => VER[id]).filter(Boolean)]);
+        sections.push(['English', all.filter(x => x.lang === 'en' && x.src !== 'bg' && hit(x))]); sections.push(['Original languages', all.filter(x => ORIGINAL_LANGS.includes(x.lang) && hit(x))]);
+        const others = {}; all.filter(x => x.lang !== 'en' && !ORIGINAL_LANGS.includes(x.lang) && hit(x)).forEach(x => { (others[x.langName] = others[x.langName] || []).push(x); }); Object.keys(others).sort((a, b) => a.localeCompare(b)).forEach(k => sections.push([k, others[k]]));
+        sections.push(['Copyrighted English editions', all.filter(x => x.src === 'bg' && hit(x))]);
+        list.innerHTML = sections.filter(([, xs]) => xs.length).map(([h, xs]) => `<h5>${esc(h)} <i>${xs.length}</i></h5>${xs.map(item).join('')}`).join('') || '<p class="mz__pk-none">No version matches.</p>';
+        $$('[data-vid]', list).forEach(b => b.addEventListener('click', () => { RD.vid = b.dataset.vid; showChapter(); })); };
+      draw(''); q.addEventListener('input', () => draw(q.value)); setTimeout(() => q.focus(), 50);
+    }
+    $$('.mz__pk-x', picker).forEach(b => b.addEventListener('click', closePicker));
+  }
+  $('.mz__bbook', bnav).addEventListener('click', () => (RD.pk === 'book' ? closePicker() : openPicker('book')));
+  $('.mz__bver', bnav).addEventListener('click', () => (RD.pk === 'version' ? closePicker() : openPicker('version')));
+  const openPassage = (ref, vid) => { const p = parseRef(ref); if (!p) return; if (vid && VER[vid]) RD.vid = vid; RD.book = p.book; RD.chapter = p.chapter; setTab('bible'); showChapter({ focus: p.from ? [p.from, p.to] : null }); };
+  const translatePrompt = (ref, text) => `Translate ${ref} from ${curV().langName} (${curV().name}) into English: first as literally as possible, word by word where it helps, then a natural English rendering. Text: "${text}"`;
+  scroll.addEventListener('click', async e => {
+    const vEl = e.target.closest('.mz__v'); if (vEl){ const n = +vEl.dataset.v; if (RD.sel.has(n)) RD.sel.delete(n); else RD.sel.add(n); updateSheet(); return; }
+    const st = e.target.closest('[data-step]'); if (st){ step(+st.dataset.step); return; }
+    const b = e.target.closest('[data-b]'); if (!b) return; const { ref, text, tr } = scroll.dataset; const v = curV();
     if (b.dataset.b === 'explain') ask(`Explain ${ref} for me: what it meant then and what it means for my life today.`);
     if (b.dataset.b === 'study') ask(`Give me a full study guide on ${ref}: historical context, what it says, what it means, how it applies to my life, cross references and three discussion questions.`);
     if (b.dataset.b === 'pray') ask(`Write a short prayer from ${ref} that I can pray today.`);
+    if (b.dataset.b === 'par'){ RD.par = !RD.par; showChapter(); }
+    if (b.dataset.b === 'translate') ask(translatePrompt(ref, (text || '').slice(0, 900)));
     if (b.dataset.b === 'image'){ const m = await shareVerse(ref, text, tr, true, col()); if (m) flash(b, m); }
-    if (b.dataset.b === 'copy'){ try { await navigator.clipboard.writeText(`${ref} (${tr})\n${text}`); flash(b, 'Copied.'); } catch (_) {} } });
-
+    if (b.dataset.b === 'pickver') openPicker('version');
+  });
+  scroll.addEventListener('keydown', e => { const vEl = e.target.closest('.mz__v'); if (vEl && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); vEl.click(); } });
+  vsheet.addEventListener('click', async e => { const b = e.target.closest('[data-vs]'); if (!b) return; const ref = selRef(), text = selText();
+    if (b.dataset.vs === 'copy'){ try { await navigator.clipboard.writeText(`"${text}" ${ref} (${curV().name})`); flash(b, 'Copied.'); } catch (_) { flash(b, 'Could not copy.'); } }
+    if (b.dataset.vs === 'image'){ const m = await shareVerse(ref, text, curV().name, true, col()); if (m) flash(b, m); }
+    if (b.dataset.vs === 'explain') ask(`Explain ${ref} (${curV().name}) for me: what it meant then and what it means for my life today.`);
+    if (b.dataset.vs === 'compare') ask(`Compare ${ref} in the original language, the Geneva Bible, the King James Version and the World English Bible, and explain any differences that matter.`);
+    if (b.dataset.vs === 'translate') ask(translatePrompt(ref, text.slice(0, 900)));
+    if (b.dataset.vs === 'clear'){ RD.sel.clear(); updateSheet(); }
+  });
+  updateNav();
   /* ---- Today: verse of the day + reading plans ---- */
   const todayEl = $('.mz__todayin', w);
   async function renderToday(){
@@ -552,7 +757,7 @@ function app(){
     const t = e.target.closest('[data-t]'); const ref = votdRef();
     if (t){ const k = t.dataset.t;
       if (k === 'reflect') ask(`Give me a short devotional on today's verse, ${ref}: a reflection, one question to think about, and a one line prayer.`);
-      if (k === 'read') openPassage(ref.replace(/:\d+(-\d+)?$/, ''));
+      if (k === 'read') openPassage(ref);
       if (k === 'image' && todayEl.dataset.text){ const m = await shareVerse(ref, todayEl.dataset.text, TR_NAME[prefs.tr], true, col()); if (m) flash(t, m); }
       if (k === 'new') ask('Create a Bible reading plan for me. Ask me the topic and how many days.');
       return; }
@@ -564,8 +769,8 @@ function app(){
   });
 
   /* ---- restore ---- */
-  if (state.log.length){ state.log.forEach(m => add(m.who, m.text, m.go, m.actions, true)); if (state.log.some(m => m.who === 'user')) w.classList.add('has-history'); }
-  $('.mz__new', w).addEventListener('click', () => { if (STUDIO){ $('.mz__newchat', w).click(); return; } const keepOpen = state.open, big = state.big; mem.clear(); state.log = []; state.history.length = 0; state.open = keepOpen; state.big = big; log.querySelectorAll('.mz-msg').forEach(n => n.remove()); w.classList.remove('has-history'); setTab('ask'); add('bot', PER_SITE.greet); fig.resize(); input.focus(); });
+  if (state.log.length){ state.log.forEach(m => add(m.who, m.text, m.go, m.actions, true, m.files)); if (state.log.some(m => m.who === 'user')) w.classList.add('has-history'); }
+  $('.mz__new', w).addEventListener('click', () => { if (STUDIO){ $('.mz__newchat', w).click(); return; } const keepOpen = state.open, big = state.big; mem.clear(); state.log = []; state.history.length = 0; state.open = keepOpen; state.big = big; log.querySelectorAll('.mz-msg').forEach(n => n.remove()); w.classList.remove('has-history'); fitStage(); setTab('ask'); add('bot', PER_SITE.greet); fig.resize(); input.focus(); });
   if (STUDIO) renderConvos();
   const qp = new URLSearchParams(location.search); const deep = qp.get('mazar') || qp.get('ozer') || qp.get('chat');
   if (FLOAT){

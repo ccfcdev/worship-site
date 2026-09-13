@@ -346,3 +346,14 @@ h2::after{content:"";display:block;width:56px;height:3px;background:var(--gold);
 /* phone header: keep logo, call to action and menu on one line */
 @media (max-width:959px){.nav .wrap{gap:.8rem}.nav .row{flex-wrap:nowrap;gap:.5rem}}
 @media (max-width:560px){.nav__brand{gap:.5rem}.nav__brand img{height:34px}.nav__brand b{font-size:.98rem}.nav__brand b i{display:none}}
+
+/* phones: brand keeps its word, menu button goes icon-only */
+.nav__brand{flex:none}
+@media (max-width:520px){
+  .nav .wrap{gap:.5rem}
+  .nav .row{gap:.4rem;flex-wrap:nowrap}
+  .nav__burger{width:44px;padding:0;justify-content:center;font-size:0;gap:0}
+  .nav__brand img{height:30px}
+  .nav__brand b{font-size:.92rem}
+}
+@media (max-width:360px){.nav__brand b{display:none}}
