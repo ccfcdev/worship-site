@@ -1,0 +1,8 @@
+assets/src
+qa
+/qa-*.png
+qa-*.jpg
+tools-*.py
+shot.sh
+supabase
+.DS_Store

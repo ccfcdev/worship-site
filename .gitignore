@@ -1,0 +1,10 @@
+# raw source media, QA captures and local tooling never go to GitHub
+assets/src/
+qa/
+qa-*.png
+qa-*.jpg
+.DS_Store
+node_modules/
+.vercel/
+.env
+.env.*
