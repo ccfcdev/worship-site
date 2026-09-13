@@ -62,7 +62,7 @@ ${SEO.headTags({ origin: ORIGIN, file: p.file, title: WSEO[p.file][0], desc: WSE
 <header class="nav"><div class="wrap">
   <a class="nav__brand" href="index.html" aria-label="Worship Connect, home"><img src="assets/logo/ccfc-mark-white.png?v=2" alt="Christ Connect Family Church"><b>WORSHIP<i>Connect</i></b></a>
   <ul class="nav__links">${links}</ul>
-  <div class="row">${SEO.mazarNav()}<span class="nav__account"></span><a class="btn btn--ghost nav__home" href="${MAIN}" title="Back to the main church website">${ICON.back}Church website</a><a class="btn nav__cta" href="join.html"><span class="nav__cta-long">Join the team</span><span class="nav__cta-short">Join</span> ${ICON.arrow}</a><button class="nav__burger" aria-label="Open menu" aria-expanded="false" aria-controls="menu"><i></i><span>Menu</span></button></div>
+  <div class="row">${SEO.mazarNav()}<span class="nav__account"></span><a class="btn btn--ghost nav__home" href="${MAIN}" title="Back to the main church website" aria-label="Church website">${ICON.back}<span class="nav__home-t">Church website</span></a><a class="btn nav__cta" href="join.html"><span class="nav__cta-long">Join the team</span><span class="nav__cta-short">Join</span> ${ICON.arrow}</a><button class="nav__burger" aria-label="Open menu" aria-expanded="false" aria-controls="menu"><i></i><span>Menu</span></button></div>
 </div></header>
 <div class="menu__veil"></div>
 <nav class="menu" aria-label="Site menu" id="menu">
