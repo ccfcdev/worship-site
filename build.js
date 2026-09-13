@@ -28,7 +28,7 @@ function layout(p){
 <link rel="canonical" href="https://worship.ccfczambia.org/${p.file === 'index.html' ? '' : p.file.replace(/\.html$/, '')}">
 <meta name="robots" content="index, follow, max-image-preview:large">
 <meta name="theme-color" content="#0A0A0B">
-<link rel="icon" href="assets/logo/favicon.png" type="image/png"><link rel="apple-touch-icon" href="assets/logo/apple-touch-icon.png">
+<link rel="icon" href="assets/logo/favicon.png?v=2" type="image/png"><link rel="apple-touch-icon" href="assets/logo/apple-touch-icon.png?v=2">
 <meta property="og:type" content="website"><meta property="og:site_name" content="Worship Connect"><meta property="og:title" content="${p.title} | Worship Connect"><meta property="og:description" content="${p.desc}"><meta property="og:image" content="assets/img/${p.og||'worship-1'}-1280.webp">
 <link rel="preload" href="assets/fonts/BricolageGrotesque-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/fonts.css?v=${V.fonts}"><link rel="stylesheet" href="css/site.css?v=${V.css}">
@@ -37,11 +37,11 @@ function layout(p){
 <body>
 <a class="sr" href="#main">Skip to content</a>
 <header class="nav"><div class="wrap">
-  <a class="nav__brand" href="index.html" aria-label="Worship Connect, home"><img src="assets/logo/ccfc-mark-white.png" alt="Christ Connect Family Church"><b>WORSHIP<i>Connect</i></b></a>
+  <a class="nav__brand" href="index.html" aria-label="Worship Connect, home"><img src="assets/logo/ccfc-mark-white.png?v=2" alt="Christ Connect Family Church"><b>WORSHIP<i>Connect</i></b></a>
   <ul class="nav__links">${links}</ul>
   <div class="row"><a class="btn btn--ghost nav__home" href="${MAIN}" title="Back to the main church website">${ICON.back}Church website</a><a class="btn nav__cta" href="join.html">Join the team ${ICON.arrow}</a><button class="nav__burger" aria-label="Open menu" aria-expanded="false"><i></i><i></i><i></i></button></div>
 </div></header>
-<nav class="menu" aria-label="Site menu"><div class="menu__top"><img src="assets/logo/ccfc-mark-white.png" alt="" style="height:40px"><button class="menu__close" aria-label="Close menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+<nav class="menu" aria-label="Site menu"><div class="menu__top"><img src="assets/logo/ccfc-mark-white.png?v=2" alt="" style="height:40px"><button class="menu__close" aria-label="Close menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
   <ul class="menu__list">${links}<li><a class="menu__home" href="${MAIN}">${ICON.back}Back to the church website</a></li><li><a href="${KOI}">Koinonia</a></li></ul><div></div></nav>
 <main id="main">${p.body}</main>
 <footer class="foot"><div class="wrap"><span>Worship Connect is the praise and worship team of Christ Connect Family Church Zambia.</span><span><a href="${MAIN}">CCFC Zambia</a> &nbsp;&middot;&nbsp; <a href="${KOI}">Koinonia</a> &nbsp;&middot;&nbsp; <a href="${YT}" target="_blank" rel="noopener">YouTube</a> &nbsp;&middot;&nbsp; <a href="https://wa.me/${WA}" target="_blank" rel="noopener">WhatsApp</a></span><span>&copy; <span class="year"></span> CCFC</span></div></footer>
