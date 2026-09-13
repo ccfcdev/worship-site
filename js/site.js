@@ -56,6 +56,9 @@ function joinForm(){ const f = $('.join'); if (!f) return; const status = $('.re
       if (api.error) throw api.error;
       f.reset(); status.innerHTML = `Thank you, ${d.name.split(' ')[0]}. The team has your application and will reply on WhatsApp. <a href="${wa}" target="_blank" rel="noopener">Say hello on WhatsApp now</a> if you like.`; status.className = 'reg__status is-ok';
     } catch (err){ status.innerHTML = `We could not save that. <a href="${wa}" target="_blank" rel="noopener">Send it on WhatsApp instead</a>.`; status.className = 'reg__status is-err'; } finally { btn.disabled = false; } }); }
-function boot(){ register(); tabs(); joinForm(); split(); grain(); nav(); reveals(); hero(); lightbox(); countdown(); capture(); $$('.year').forEach(e => e.textContent = new Date().getFullYear()); }
+function revealSafety(){ const inView = () => $$('[data-rv]:not(.is-rv),[data-rv-stagger]:not(.is-rv)').forEach(e => { const r = e.getBoundingClientRect(); if (r.top < innerHeight && r.bottom > 0) e.classList.add('is-rv'); });
+  const target = () => { const id = location.hash.slice(1); const t = id && document.getElementById(id); if (t) $$('[data-rv],[data-rv-stagger]', t).forEach(e => e.classList.add('is-rv')); inView(); };
+  addEventListener('hashchange', () => setTimeout(target, 50)); addEventListener('pageshow', () => setTimeout(target, 50)); setTimeout(target, 400); setTimeout(inView, 1800); }
+function boot(){ register(); tabs(); joinForm(); split(); grain(); nav(); reveals(); revealSafety(); hero(); lightbox(); countdown(); capture(); $$('.year').forEach(e => e.textContent = new Date().getFullYear()); }
 document.readyState === 'loading' ? addEventListener('DOMContentLoaded', boot) : boot();
 })();
