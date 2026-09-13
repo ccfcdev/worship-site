@@ -86,7 +86,31 @@ const ICO = {
 
 let sb = null, session = null, profile = null;
 const ready = !!(CFG.supabaseUrl && CFG.supabaseKey && window.supabase);
-if (ready) sb = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseKey, { auth: { persistSession:true, autoRefreshToken:true } });
+/* ---------- one sign-in for all three sites ----------
+   Browsers keep localStorage per hostname, so a session made on ccfczambia.org would not exist on koinonia. or worship.
+   On the church domain the session is kept in cookies scoped to .ccfczambia.org instead (chunked, because a Supabase
+   session is bigger than one cookie allows). Local previews keep using localStorage. */
+const ROOT_DOMAIN = 'ccfczambia.org';
+const sharedDomain = location.hostname === ROOT_DOMAIN || location.hostname.endsWith('.' + ROOT_DOMAIN);
+const cookieStore = (() => {
+  const CH = 2800, attrs = `; Domain=.${ROOT_DOMAIN}; Path=/; Max-Age=31536000; SameSite=Lax; Secure`;
+  const read = name => { const m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/[.$?*|{}()[\]\\/+^]/g, '\\$&') + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : null; };
+  const write = (name, val) => { document.cookie = `${name}=${encodeURIComponent(val)}${attrs}`; };
+  const kill = name => { document.cookie = `${name}=; Domain=.${ROOT_DOMAIN}; Path=/; Max-Age=0; SameSite=Lax; Secure`; };
+  const count = k => +(read(k + '.n') || 0);
+  return {
+    getItem(k){ const n = count(k); if (!n) return read(k); let out = ''; for (let i = 0; i < n; i++){ const c = read(`${k}.${i}`); if (c === null) return null; out += c; } return out; },
+    setItem(k, v){ this.removeItem(k); if (v.length <= CH){ write(k, v); return; } const n = Math.ceil(v.length / CH); for (let i = 0; i < n; i++) write(`${k}.${i}`, v.slice(i*CH, (i+1)*CH)); write(k + '.n', String(n)); },
+    removeItem(k){ const n = count(k); for (let i = 0; i < n; i++) kill(`${k}.${i}`); kill(k + '.n'); kill(k); },
+  };
+})();
+const STORAGE_KEY = 'ccfc-auth';
+if (ready){
+  if (sharedDomain){ /* carry an older per-site session across, once */
+    try { const legacy = localStorage.getItem('sb-' + new URL(CFG.supabaseUrl).hostname.split('.')[0] + '-auth-token'); if (legacy && !cookieStore.getItem(STORAGE_KEY)){ cookieStore.setItem(STORAGE_KEY, legacy); localStorage.removeItem('sb-' + new URL(CFG.supabaseUrl).hostname.split('.')[0] + '-auth-token'); } } catch (_) {}
+  }
+  sb = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseKey, { auth: { persistSession:true, autoRefreshToken:true, storageKey: STORAGE_KEY, storage: sharedDomain ? cookieStore : undefined } });
+}
 const role = () => profile?.role || null;
 const here = () => location.origin + location.pathname;
 
