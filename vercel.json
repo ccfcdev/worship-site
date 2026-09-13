@@ -91,6 +91,16 @@
       "source": "/faq",
       "destination": "/join#faq",
       "permanent": true
+    },
+    {
+      "source": "/dashboard",
+      "destination": "https://madmin.ccfczambia.org/?site=worship",
+      "permanent": false
+    },
+    {
+      "source": "/admin",
+      "destination": "https://madmin.ccfczambia.org/?site=worship",
+      "permanent": false
     }
   ]
 }

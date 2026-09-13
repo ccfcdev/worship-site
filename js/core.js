@@ -34,16 +34,20 @@ const KINDS = { news:'News', announcement:'Announcement', photo:'Photos', video:
 const SITES = {
   ccfc:     { label:'CCFC Zambia', short:'CCFC', origin:'https://ccfczambia.org', feed:'/feed', feedLabel:'Church feed', feedWord:'the family',
               kinds:['news','photo','video','announcement'], logo:'/assets/logo/ccfc-mark.png?v=2', dashTitle:'Church dashboard',
-              links: r => [['/account','Account Center'], ['/feed','Church feed'], ['/blog','Blog'], ['/library','Upper Room library'], can.staff(r) ? ['/dashboard','Dashboard'] : null] },
+              links: r => [['/account','Account Center'], ['/feed','Church feed'], ['/blog','Blog'], ['/library','Upper Room library'], can.staff(r) ? [ADMIN_ORIGIN + '/?site=ccfc','Admin panel'] : null] },
   koinonia: { label:'Koinonia Experience', short:'Koinonia', origin:'https://koinonia.ccfczambia.org', feed:'/updates', feedLabel:'Conference updates', feedWord:'everyone coming to Koinonia',
               kinds:['news','announcement','video','photo'], logo:'/assets/logo/ccfc-mark.png?v=2', dashTitle:'Koinonia dashboard',
-              links: r => [['https://ccfczambia.org/account','Account Center'], ['/updates','Updates'], ['/k26#register',"Register for Koi 26'"], can.staff(r) ? ['/dashboard','Dashboard'] : null] },
+              links: r => [['https://ccfczambia.org/account','Account Center'], ['/updates','Updates'], ['/k26#register',"Register for Koi 26'"], can.staff(r) ? [ADMIN_ORIGIN + '/?site=koinonia','Admin panel'] : null] },
   worship:  { label:'Worship Connect', short:'Worship', origin:'https://worship.ccfczambia.org', feed:'/latest', feedLabel:'Latest from the team', feedWord:'the team',
               kinds:['video','music','photo','news'], logo:'/assets/logo/ccfc-mark-white.png?v=2', dashTitle:'Worship Connect dashboard',
-              links: r => [['https://ccfczambia.org/account','Account Center'], ['/latest','Latest'], ['/team','The team'], ['/join','Join the team'], can.staff(r) ? ['/dashboard','Dashboard'] : null] },
+              links: r => [['https://ccfczambia.org/account','Account Center'], ['/latest','Latest'], ['/team','The team'], ['/join','Join the team'], can.staff(r) ? [ADMIN_ORIGIN + '/?site=worship','Admin panel'] : null] },
 };
 const SITE_KEY = (window.CCFC_SITE && SITES[window.CCFC_SITE.key]) ? window.CCFC_SITE.key : 'ccfc';
 const SITE = Object.assign({}, SITES[SITE_KEY], window.CCFC_SITE || {});
+/* the admin panel lives on its own subdomain and can show any site's dashboard (?site=ccfc|koinonia|worship) */
+const ADMIN_ORIGIN = 'https://madmin.ccfczambia.org';
+const IS_ADMIN = !!(window.CCFC_SITE && window.CCFC_SITE.admin);
+if (IS_ADMIN) SITE.feed = SITE.origin + SITE.feed;
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const when = iso => { if (!iso) return ''; const d = new Date(iso), diff = (Date.now()-d)/1000;
@@ -265,6 +269,57 @@ function wireComments(box, key, id, modal, onCount){
   }; return load;
 }
 function autosize(ta){ if (!ta) return; const fit = () => { ta.style.height = 'auto'; ta.style.height = Math.min(600, ta.scrollHeight + 2) + 'px'; }; ta.addEventListener('input', fit); fit(); }
+
+/* ================================================================ FEED ANNOUNCEMENTS (leaders and admins manage them in place) */
+const ICO_MEGA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>';
+async function feedAnnouncements(root, site){
+  const col = ($('.feed__filters', root) || $('.feed__composer', root) || $('.feed__list', root)); if (!col) return;
+  let box = $('.feed__announce', root);
+  if (!box){ box = document.createElement('section'); box.className = 'feed__announce'; box.setAttribute('aria-label', 'Announcements'); box.hidden = true; col.parentElement.insertBefore(box, col); }
+  const canEdit = can.moderate(role());
+  const fmt = d => new Date(d).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+  const dateVal = d => d ? new Date(d).toISOString().slice(0, 10) : '';
+  let items = [];
+  const card = a => { const expired = a.ends_at && new Date(a.ends_at) < new Date();
+    return `<article class="ann${a.active && !expired ? '' : ' is-off'}${a.pinned ? ' is-pinned' : ''}" data-id="${a.id}">
+      <div class="ann__body"><b>${esc(a.title)}</b>${a.body ? `<div class="ann__text">${md(a.body)}</div>` : ''}${a.link_url ? `<a class="ann__link" href="${esc(a.link_url)}"${/^https?:\/\/([a-z0-9-]+\.)?ccfczambia\.org/i.test(a.link_url) ? '' : ' target="_blank" rel="noopener"'}>${esc(a.link_label || 'Find out more')} ${ICO.arrow}</a>` : ''}
+        ${canEdit ? `<span class="ann__meta">${a.active ? (expired ? 'Expired' : 'Live') : 'Hidden'}${a.ends_at ? ' &middot; until ' + esc(fmt(a.ends_at)) : ''} &middot; updated ${esc(when(a.updated_at))}${a.editor?.full_name ? ' by ' + esc(a.editor.full_name) : ''}</span>` : ''}</div>
+      ${canEdit ? `<div class="ann__acts"><button type="button" class="pill ann__edit">Edit</button><button type="button" class="pill ann__toggle">${a.active ? 'Hide' : 'Show'}</button><button type="button" class="pill pill--danger ann__del">Delete</button></div>` : ''}</article>`; };
+  const form = (a = {}) => `<form class="ann ann--form" data-id="${a.id || ''}" novalidate>
+      <div class="field"><label>Title</label><input name="title" required maxlength="140" value="${esc(a.title || '')}" placeholder="Youth camp registration closes Friday"></div>
+      <div class="field"><label>Message <small>(optional)</small></label><textarea name="body" rows="3" maxlength="1200" placeholder="Short details people need to know">${esc(a.body || '')}</textarea></div>
+      <div class="ann__row"><div class="field"><label>Link <small>(optional)</small></label><input name="link_url" type="url" value="${esc(a.link_url || '')}" placeholder="https://"></div><div class="field"><label>Link text</label><input name="link_label" maxlength="40" value="${esc(a.link_label || '')}" placeholder="Register now"></div></div>
+      <div class="ann__row"><div class="field"><label>Show until <small>(optional)</small></label><input name="ends_at" type="date" value="${dateVal(a.ends_at)}"></div><label class="ann__check"><input type="checkbox" name="pinned" ${a.pinned ? 'checked' : ''}> Pin to the top</label></div>
+      <div class="row"><button class="btn" type="submit">${a.id ? 'Save changes' : 'Publish announcement'}</button><button class="btn btn--ghost ann__cancel" type="button">Cancel</button><span class="form__status" aria-live="polite"></span></div></form>`;
+  async function load(){
+    const { data } = await sb.from('announcements').select('*, editor:updated_by(full_name)').eq('site', site).order('pinned', { ascending:false }).order('updated_at', { ascending:false }).limit(20);
+    items = (data || []).filter(a => canEdit || (a.active && (!a.ends_at || new Date(a.ends_at) > new Date()))); render();
+  }
+  function render(){
+    if (!items.length && !canEdit){ box.hidden = true; return; }
+    box.hidden = false;
+    box.innerHTML = `<div class="ann__head"><span class="ann__ico">${ICO_MEGA}</span><h2>Announcements</h2>${canEdit ? '<button type="button" class="pill pill--orange ann__add">New announcement</button>' : ''}</div>
+      <div class="ann__list">${items.length ? items.map(card).join('') : `<p class="ann__empty">No announcements yet. As a ${esc(ROLES[role()].label)} you can post one for everyone who opens the feed.</p>`}</div>`;
+    if (!canEdit) return;
+    $('.ann__add', box).addEventListener('click', () => { $('.ann__list', box).insertAdjacentHTML('afterbegin', form()); wireForm($('.ann--form', box)); });
+    $$('.ann', box).forEach(el => { const a = items.find(x => x.id === el.dataset.id); if (!a) return;
+      $('.ann__edit', el)?.addEventListener('click', () => { el.outerHTML = form(a); wireForm($(`.ann--form[data-id="${a.id}"]`, box)); });
+      $('.ann__toggle', el)?.addEventListener('click', async () => { const { error } = await sb.from('announcements').update({ active: !a.active, updated_by: profile.id }).eq('id', a.id); if (error) toast(friendly(error), false); else { toast(a.active ? 'Hidden from the feed.' : 'Showing on the feed.'); load(); } });
+      $('.ann__del', el)?.addEventListener('click', async () => { if (!confirm(`Delete "${a.title}"?`)) return; const { error } = await sb.from('announcements').delete().eq('id', a.id); if (error) toast(friendly(error), false); else { toast('Announcement deleted.'); load(); } }); });
+  }
+  function wireForm(f){ const st = $('.form__status', f); f.title.focus();
+    $('.ann__cancel', f).addEventListener('click', render);
+    f.addEventListener('submit', async e => { e.preventDefault(); const title = f.title.value.trim(); const url = f.link_url.value.trim();
+      if (!title){ st.textContent = 'A title is needed.'; st.className = 'form__status is-err'; return; }
+      if (url && !/^https?:\/\//i.test(url)){ st.textContent = 'Links must start with https://'; st.className = 'form__status is-err'; return; }
+      const row = { site, title, body: f.body.value.trim(), link_url: url || null, link_label: f.link_label.value.trim() || null, pinned: f.pinned.checked, ends_at: f.ends_at.value ? new Date(f.ends_at.value + 'T23:59:59').toISOString() : null, updated_by: profile.id };
+      st.textContent = 'Saving...'; st.className = 'form__status';
+      const q = f.dataset.id ? sb.from('announcements').update(row).eq('id', f.dataset.id) : sb.from('announcements').insert({ ...row, created_by: profile.id, active: true });
+      const { error } = await q; if (error){ st.textContent = friendly(error); st.className = 'form__status is-err'; return; }
+      toast(f.dataset.id ? 'Announcement updated.' : 'Announcement published.'); load(); }); }
+  load();
+}
+
 async function feedPage(modal){
   const root = $('#feed'); if (!root) return; const site = root.dataset.site || SITE_KEY;
   const list = $('.feed__list', root), composerSlot = $('.feed__composer', root), filters = $('.feed__filters', root);
@@ -272,6 +327,7 @@ async function feedPage(modal){
   const q = new URLSearchParams(location.search); let kind = q.get('kind') || '', page = 0; const PAGE = 20; let mine = new Set(); const lb = lightbox();
   if (filters){ const kinds = ['', ...SITES[site].kinds]; filters.innerHTML = kinds.map(k => `<button class="chip ${k === kind ? 'is-on' : ''}" data-k="${k}">${k ? KINDS[k] : 'All'}</button>`).join('');
     $$('.chip', filters).forEach(b => b.addEventListener('click', () => { kind = b.dataset.k; $$('.chip', filters).forEach(x => x.classList.toggle('is-on', x === b)); history.replaceState(null, '', location.pathname + (kind ? `?kind=${kind}` : '')); page = 0; load(); })); }
+  feedAnnouncements(root, site);
   if (can.post(role())) composer(composerSlot, site, () => { page = 0; load(); }); else if (composerSlot) composerSlot.innerHTML = '';
   async function load(append=false){
     if (!append) list.innerHTML = '<div class="skel"></div><div class="skel"></div><div class="skel"></div>';
@@ -364,7 +420,7 @@ async function blogPage(modal){
   const root = $('#blog'); if (!root) return; const list = $('.blog__list', root), single = $('.blog__single', root), editorSlot = $('.blog__editor', root);
   if (!ready){ list.innerHTML = `<div class="empty"><h3>The blog is almost ready</h3><p>Articles from the CCFC bloggers will appear here once accounts are switched on.</p></div>`; return; }
   const slug = new URLSearchParams(location.search).get('post');
-  if (can.blog(role())) editorSlot.innerHTML = `<div class="row"><button class="btn btn--navy blog__new">Write a post</button><a class="link" href="/dashboard?site=ccfc&tab=blogs">Manage my posts</a></div>`;
+  if (can.blog(role())) editorSlot.innerHTML = `<div class="row"><button class="btn btn--navy blog__new">Write a post</button><a class="link" href="${ADMIN_ORIGIN}/?site=ccfc&tab=blogs">Manage my posts</a></div>`;
   $('.blog__new', root)?.addEventListener('click', () => { editorSlot.innerHTML = ''; blogEditor(editorSlot, null, () => location.href = '/blog'); editorSlot.scrollIntoView({ behavior:'smooth' }); });
   if (slug){ list.hidden = true; single.hidden = false;
     const { data:b } = await sb.from('blog_feed').select('*').eq('slug', slug).maybeSingle();
@@ -541,14 +597,14 @@ async function dashboardPage(modal){
   const q = new URLSearchParams(location.search);
   $('.dash__head', app).innerHTML = `<span class="eyebrow">${esc(D.eyebrow)}</span><h1>${esc(SITE.dashTitle)}</h1><p class="sub">${esc(D.intro)}</p>
     <div class="dash__who">${avatar(profile.full_name, profile.avatar_url)}<div><b>${esc(profile.full_name || profile.email)}</b><span class="pill pill--orange">${esc(ROLES[r].label)}</span></div>
-    ${can.admin(r) ? `<div class="dash__others">${Object.entries(SITES).filter(([k]) => k !== site).map(([k,s]) => `<a href="${s.origin}/dashboard">${esc(s.short)} dashboard ${ICO.arrow}</a>`).join('')}</div>` : ''}</div>`;
+    ${can.admin(r) && !IS_ADMIN ? `<div class="dash__others">${Object.entries(SITES).filter(([k]) => k !== site).map(([k,s]) => `<a href="${ADMIN_ORIGIN}/?site=${k}">${esc(s.short)} dashboard ${ICO.arrow}</a>`).join('')}</div>` : ''}</div>`;
   const bar = $('.dash__tabs', app), panel = $('.dash__panel', app), statsEl = $('.dash__stats', app);
   const { data: stats } = await sb.rpc('dashboard_stats', { p_site: site });
   statsEl.innerHTML = D.stats(stats).map(([k,v]) => `<div class="stat"><b>${v ?? 0}</b><span>${k}</span></div>`).join('');
   const tabs = D.tabs(r).filter(Boolean);
   bar.innerHTML = tabs.map(t => `<button class="dash__tab" data-t="${t[0]}">${t[1]}</button>`).join('');
-  const show = t => { $$('.dash__tab', bar).forEach(x => x.classList.toggle('is-on', x.dataset.t === t)); history.replaceState(null, '', `/dashboard?tab=${t}`); panel.innerHTML = '<div class="skel"></div>';
-    ({ assistant: assistantTab, settings: settingsTab, posts: postsTab, regs: regsTab, apps: appsTab, team: teamTab, blogs: blogsTab, library: () => { location.href = '/library'; }, users: usersTab, audit: auditTab, roles: rolesTab })[t](); };
+  const show = t => { $$('.dash__tab', bar).forEach(x => x.classList.toggle('is-on', x.dataset.t === t)); history.replaceState(null, '', IS_ADMIN ? `/?site=${site}&tab=${t}` : `/dashboard?tab=${t}`); panel.innerHTML = '<div class="skel"></div>';
+    ({ assistant: assistantTab, settings: settingsTab, posts: postsTab, regs: regsTab, apps: appsTab, team: teamTab, blogs: blogsTab, library: () => { location.href = 'https://ccfczambia.org/library'; }, users: usersTab, audit: auditTab, roles: rolesTab })[t](); };
   $$('.dash__tab', bar).forEach(b => b.addEventListener('click', () => show(b.dataset.t)));
   const want = q.get('tab'); show(tabs.find(t => t[0] === want) ? want : tabs[0][0]);
   const csvOf = (name, cols, rows) => { const body = [cols.join(','), ...rows.map(x => cols.map(c => '"' + String(x[c] ?? '').replace(/"/g,'""') + '"').join(','))].join('\n'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([body], { type:'text/csv' })); a.download = name; a.click(); };
@@ -777,7 +833,7 @@ const Consent = (() => {
   const read = () => { const m = document.cookie.match(/(?:^|;\s*)ccfc-consent=([^;]*)/); if (!m) return null; try { const v = JSON.parse(decodeURIComponent(m[1])); return v && v.v === VER ? v : null; } catch (_) { return null; } };
   const write = v => { document.cookie = `${NAME}=${encodeURIComponent(JSON.stringify(v))}; Max-Age=${60 * 60 * 24 * 180}; Path=/; SameSite=Lax${location.protocol === 'https:' ? '; Secure' : ''}${onDomain ? '; Domain=.ccfczambia.org' : ''}`; };
   let state = read(), el = null;
-  const analytics = () => { if (window.__ccfcVA || !onDomain) return; window.__ccfcVA = true;
+  const analytics = () => { if (window.__ccfcVA || !onDomain || (window.CCFC_SITE && window.CCFC_SITE.admin)) return; window.__ccfcVA = true;
     window.va = window.va || function(){ (window.vaq = window.vaq || []).push(arguments); };
     window.si = window.si || function(){ (window.siq = window.siq || []).push(arguments); };
     ['/_vercel/insights/script.js', '/_vercel/speed-insights/script.js'].forEach(src => { const sc = document.createElement('script'); sc.defer = true; sc.src = src; document.head.appendChild(sc); }); };

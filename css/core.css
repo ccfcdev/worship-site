@@ -585,3 +585,48 @@ html{overflow-x:clip}
 .nav__cta-short{display:none}
 @media (max-width:959px){.nav .nav__cta{display:inline-flex;padding:.55rem .9rem;font-size:.84rem;gap:.35rem;min-height:40px}.nav__cta-long{display:none}.nav__cta-short{display:inline}.nav .nav__cta svg{width:14px;height:14px}}
 @media (max-width:370px){.nav .nav__cta{display:none}}
+
+/* ---------- feed announcements ---------- */
+.feed__announce{margin-bottom:1.4rem;border-radius:var(--k-radius);background:var(--k-panel);border:1px solid var(--k-line);box-shadow:var(--k-shadow);overflow:hidden}
+.ann__head{display:flex;align-items:center;gap:.6rem;padding:.9rem 1.1rem;border-bottom:1px solid var(--k-line);background:linear-gradient(90deg,color-mix(in srgb,var(--k-accent) 10%,var(--k-panel)),var(--k-panel))}
+.ann__head h2{font-size:1.1rem;color:var(--k-head);margin:0;letter-spacing:-.01em}
+.ann__ico{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:var(--k-accent);color:var(--k-on-accent);flex:none;animation:ann-pulse 2.8s ease-in-out infinite}
+.ann__ico svg{width:17px;height:17px}
+@keyframes ann-pulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--k-accent) 40%,transparent)}50%{box-shadow:0 0 0 7px transparent}}
+.ann__add{margin-left:auto;cursor:pointer}
+.ann__list{display:grid}
+.ann{display:grid;grid-template-columns:1fr auto;gap:.6rem 1rem;align-items:start;padding:1rem 1.1rem;border-top:1px solid var(--k-line)}
+.ann:first-child{border-top:0}
+.ann.is-pinned{background:color-mix(in srgb,var(--k-accent) 5%,var(--k-panel))}
+.ann.is-off{opacity:.55}
+.ann__body{display:grid;gap:.35rem;min-width:0}
+.ann__body b{font-family:var(--font-display);font-size:1.05rem;color:var(--k-head);line-height:1.25}
+.ann__text{color:var(--k-muted);font-size:.93rem;line-height:1.55}
+.ann__text p{margin:0 0 .4rem}
+.ann__link{display:inline-flex;align-items:center;gap:.3rem;font-weight:600;color:var(--k-accent);font-size:.9rem;justify-self:start}
+.ann__link svg{width:15px;height:15px}
+.ann__meta{font-size:.75rem;color:var(--k-faint)}
+.ann__acts{display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end}
+.ann__acts .pill{cursor:pointer}
+.ann__empty{padding:1rem 1.1rem;color:var(--k-muted);font-size:.92rem;margin:0}
+.ann--form{grid-template-columns:1fr;gap:.8rem;background:var(--k-soft)}
+.ann__row{display:grid;gap:.8rem}
+@media (min-width:640px){.ann__row{grid-template-columns:1fr 1fr;align-items:end}}
+.ann__check{display:flex;gap:.5rem;align-items:center;font-size:.9rem;font-weight:600;color:var(--k-head);padding-bottom:.6rem}
+.ann__check input{accent-color:var(--k-accent);width:18px;height:18px}
+@media (max-width:560px){.ann{grid-template-columns:1fr}.ann__acts{justify-content:flex-start}}
+@media (prefers-reduced-motion:reduce){.ann__ico{animation:none}}
+
+/* ---------- Ozer, the AI assistant ---------- */
+.chat__avatar--ozer{position:relative;background:conic-gradient(from 200deg,var(--orange-bright,#F15A29),#FFB36B,#8C7CFF,var(--orange-bright,#F15A29));border:0;padding:2px}
+.chat__avatar--ozer i{width:100%;height:100%;border-radius:50%;display:grid;place-items:center;background:rgba(10,0,85,.82);font-style:normal;font-family:var(--font-display);font-weight:700;font-size:1.05rem;color:#fff}
+.chat__avatar--ozer::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:1px solid rgba(255,255,255,.25);animation:ozer-halo 3.2s ease-in-out infinite}
+@keyframes ozer-halo{0%,100%{transform:scale(.94);opacity:.2}50%{transform:scale(1.06);opacity:.7}}
+.chat__ai{display:inline-block;margin-left:.35rem;padding:.1rem .38rem;border-radius:6px;background:rgba(255,255,255,.16);font-style:normal;font-family:var(--font-body);font-size:.62rem;font-weight:700;letter-spacing:.08em;vertical-align:middle}
+.chat__rich{display:grid;gap:.45rem}
+.chat__rich p{margin:0}
+.chat__rich ul{margin:0;padding-left:1.1rem;display:grid;gap:.2rem}
+.chat__rich b{font-weight:700}
+.chat__rich a{text-decoration:underline;text-underline-offset:2px;word-break:break-word}
+.chat.has-history .chat__sugg{display:none}
+@media (prefers-reduced-motion:reduce){.chat__avatar--ozer::after{animation:none}}

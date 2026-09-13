@@ -1,5 +1,5 @@
 /* ================================================================
-   CCFC ministry assistant ("Ask Connect")
+   Ozer, the AI assistant for the CCFC sites
    Answers questions about the church and helps people navigate.
    Works offline from a built-in knowledge base; when
    CCFC_CONFIG.chatEndpoint is set (Supabase Edge Function proxying
@@ -16,9 +16,9 @@ const SITE_KEY = (window.CCFC_SITE && window.CCFC_SITE.key) || 'ccfc';
 const MAIN = SITE_KEY === 'ccfc' ? '' : 'https://ccfczambia.org';   /* church page links from the subdomains */
 const HERE = location.hostname + location.pathname;
 const PER_SITE = {
-  ccfc:     { name: 'CCFC Zambia', greet: 'Hello, I am Connect. Ask me anything about CCFC Zambia, or pick a question below.', nudge: 'Service times, directions, giving, Koinonia. Ask me anything.', placeholder: 'Ask about services, directions, giving...', suggest: ['Service times', 'Where do you meet?', 'What should I expect?', 'Watch a sermon', 'How do I give?', "Koi 26'"] },
-  koinonia: { name: 'Koinonia', greet: "Hello, I am Connect. Ask me anything about Koinonia Experience, registering for Koi 26', or the church.", nudge: "Dates, registration, cost, Koi 25' photos. Ask me anything.", placeholder: "Ask about Koi 26', registration, photos...", suggest: ["When is Koi 26'?", 'How do I register?', 'How much does it cost?', "Koi 25' photos", 'Watch the worship', 'Contact the office'] },
-  worship:  { name: 'Worship Connect', greet: 'Hello, I am Connect. Ask me about Worship Connect, joining the team, or the church.', nudge: 'Joining the team, rehearsals, every set. Ask me anything.', placeholder: 'Ask about joining, rehearsals, songs...', suggest: ['How do I join the team?', 'When do you rehearse?', 'Watch every set', 'Service times', 'Where do you meet?', 'Contact the office'] },
+  ccfc:     { name: 'CCFC Zambia', greet: 'Hi, I am Ozer, the AI assistant for Christ Connect Family Church Zambia. Ask me anything: service times, directions, giving, Koinonia, or where to find something on the site.', nudge: 'Service times, directions, giving, Koinonia. Ask me anything.', placeholder: 'Ask about services, directions, giving...', suggest: ['Service times', 'Where do you meet?', 'What should I expect?', 'Watch a sermon', 'How do I give?', "Koi 26'"] },
+  koinonia: { name: 'Koinonia', greet: "Hi, I am Ozer, the AI assistant for Koinonia Experience. Ask me about Koi 26', registering, the Koi 25' photos, or anything about the church.", nudge: "Dates, registration, cost, Koi 25' photos. Ask me anything.", placeholder: "Ask about Koi 26', registration, photos...", suggest: ["When is Koi 26'?", 'How do I register?', 'How much does it cost?', "Koi 25' photos", 'Watch the worship', 'Contact the office'] },
+  worship:  { name: 'Worship Connect', greet: 'Hi, I am Ozer, the AI assistant for Worship Connect. Ask me about joining the team, rehearsals, the songs we sing, or the church.', nudge: 'Joining the team, rehearsals, every set. Ask me anything.', placeholder: 'Ask about joining, rehearsals, songs...', suggest: ['How do I join the team?', 'When do you rehearse?', 'Watch every set', 'Service times', 'Where do you meet?', 'Contact the office'] },
 }[SITE_KEY] || {};
 const abs = h => (!h || /^https?:/.test(h)) ? h : MAIN + h;
 /* conversation memory: survives page changes on this site, kept on this device only, cleared by New chat or after 7 days */
@@ -68,19 +68,22 @@ async function remote(history){
   return ans;
 }
 
+
+const rich = t => { const e = esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/(https?:\/\/[^\s<]+)/g, u => `<a href="${u}" target="_blank" rel="noopener">${u.replace(/^https?:\/\//, '').slice(0, 48)}</a>`);
+  return e.split(/\n{2,}/).map(block => { const lines = block.split('\n'); return lines.every(l => /^\s*([-*•]|\d+\.)\s+/.test(l)) ? `<ul>${lines.map(l => `<li>${l.replace(/^\s*([-*•]|\d+\.)\s+/, '')}</li>`).join('')}</ul>` : `<p>${lines.join('<br>')}</p>`; }).join(''); };
 function widget(){
   const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const w = document.createElement('div'); w.className = 'chat';
   const ARROW = '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
   w.innerHTML = `
-  <div class="chat__nudge" hidden><button class="chat__nudge-x" aria-label="Dismiss">&times;</button><b>Hi, I am Connect.</b><span>${esc(PER_SITE.nudge)}</span></div>
-  <button class="chat__fab" aria-label="Ask a question" aria-expanded="false"><span class="chat__ring"></span><span class="chat__ico"><svg class="chat__ico-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1.1-4.2A8 8 0 1 1 21 12z"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01"/></svg><svg class="chat__ico-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></span><span class="chat__fab-label">Ask Connect</span></button>
-  <div class="chat__panel" hidden role="dialog" aria-label="Ask Connect, the ${esc(PER_SITE.name)} assistant">
-    <div class="chat__head"><div class="chat__orb" aria-hidden="true"></div><div class="chat__who"><span class="chat__avatar"><img src="/assets/logo/ccfc-mark-white.png?v=2" alt=""></span><div><b>Connect</b><span><i class="chat__dot"></i>${esc(PER_SITE.name)} assistant, online</span></div></div><button class="chat__new" type="button" aria-label="Start a new chat" title="New chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></button><button class="chat__close" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="chat__nudge" hidden><button class="chat__nudge-x" aria-label="Dismiss">&times;</button><b>Hi, I am Ozer.</b><span>${esc(PER_SITE.nudge)}</span></div>
+  <button class="chat__fab" aria-label="Chat with Ozer, the AI assistant" aria-expanded="false"><span class="chat__ring"></span><span class="chat__ico"><svg class="chat__ico-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1.1-4.2A8 8 0 1 1 21 12z"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01"/></svg><svg class="chat__ico-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></span><span class="chat__fab-label">Ask Ozer</span></button>
+  <div class="chat__panel" hidden role="dialog" aria-label="Ozer, the ${esc(PER_SITE.name)} AI assistant">
+    <div class="chat__head"><div class="chat__orb" aria-hidden="true"></div><div class="chat__who"><span class="chat__avatar chat__avatar--ozer" aria-hidden="true"><i>O</i></span><div><b>Ozer <em class="chat__ai">AI</em></b><span><i class="chat__dot"></i>${esc(PER_SITE.name)} assistant</span></div></div><button class="chat__new" type="button" aria-label="Start a new chat" title="New chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></button><button class="chat__close" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
     <div class="chat__log" aria-live="polite"></div>
     <div class="chat__sugg">${SUGGEST.map((s, i) => `<button style="--i:${i}">${esc(s)}</button>`).join('')}</div>
     <form class="chat__form"><input name="q" autocomplete="off" placeholder="${esc(PER_SITE.placeholder)}" aria-label="Your question" maxlength="400"><button class="chat__send" type="submit" aria-label="Send">${ARROW}</button></form>
-    <p class="chat__fine">${CFG.chatEndpoint ? 'Answers are generated with AI from the church\'s own information and can be wrong. For anything important, message the office.' : 'Answers come from the church\'s published information. For anything else, message the office on WhatsApp.'}</p>
+    <p class="chat__fine">Ozer is an AI assistant. It answers from the church\'s own information and can make mistakes, so please check anything important with the office.</p>
   </div>`;
   document.body.appendChild(w);
   const fab = $('.chat__fab', w), panel = $('.chat__panel', w), log = $('.chat__log', w), form = $('.chat__form', w), input = $('input', form), nudge = $('.chat__nudge', w);
@@ -89,9 +92,10 @@ function widget(){
   const persist = () => mem.save(state);
   const add = (who, text, go, restored) => { const el = document.createElement('div'); el.className = 'chat__msg is-' + who + (restored ? ' is-restored' : '');
     if (!restored){ state.log.push({ who, text, go }); persist(); }
-    el.innerHTML = `${who === 'bot' ? '<span class="chat__mark" aria-hidden="true">C</span>' : ''}<div>${esc(text)}${go ? `<a class="chat__go" href="${esc(go[0])}" data-chat-go>${esc(go[1])} ${ARROW}</a>` : ''}</div>`;
+    el.innerHTML = `${who === 'bot' ? '<span class="chat__mark" aria-hidden="true">O</span>' : ''}<div>${who === 'bot' ? `<div class="chat__rich">${rich(text)}</div>` : esc(text)}${go ? `<a class="chat__go" href="${esc(go[0])}" data-chat-go>${esc(go[1])} ${ARROW}</a>` : ''}</div>`;
+    if (who === 'bot' && !restored && !RM){ const words = $$('.chat__rich p, .chat__rich li', el); const all = words.map(n => { const h = n.innerHTML; n.dataset.full = h; return n; }); let total = 0; all.forEach(n => { const parts = n.dataset.full.split(/(\s+)/); n.innerHTML = ''; n._parts = parts; total += parts.length; }); let i = 0; const step = Math.max(2, Math.ceil(total / 45)); const go1 = $('.chat__go', el); if (go1) go1.style.opacity = '0'; const tick = () => { let left = step; for (const n of all){ while (n._parts.length && left){ n.innerHTML += n._parts.shift(); left--; } if (left === 0) break; } log.scrollTop = log.scrollHeight; if (all.some(n => n._parts.length)) setTimeout(tick, 16); else { all.forEach(n => { n.innerHTML = n.dataset.full; }); if (go1){ go1.style.transition = 'opacity .3s'; go1.style.opacity = '1'; } } }; tick(); }
     log.appendChild(el); log.scrollTo({ top: log.scrollHeight, behavior: RM || restored ? 'auto' : 'smooth' }); return el; };
-  const typing = () => { const el = document.createElement('div'); el.className = 'chat__msg is-bot is-typing'; el.innerHTML = '<span class="chat__mark" aria-hidden="true">C</span><div><i></i><i></i><i></i></div>'; log.appendChild(el); log.scrollTop = log.scrollHeight; return el; };
+  const typing = () => { const el = document.createElement('div'); el.className = 'chat__msg is-bot is-typing'; el.innerHTML = '<span class="chat__mark" aria-hidden="true">O</span><div><i></i><i></i><i></i></div>'; log.appendChild(el); log.scrollTop = log.scrollHeight; return el; };
   const hideNudge = () => { nudge.hidden = true; try { sessionStorage.setItem('ccfc:nudged', '1'); } catch (e){} };
   const open = (on, quiet) => { clearTimeout(closing); fab.setAttribute('aria-expanded', on); w.classList.toggle('is-open', on); hideNudge(); state.open = on; persist();
     if (on){ panel.hidden = false; requestAnimationFrame(() => panel.classList.add('is-in')); if (!quiet) setTimeout(() => input.focus({ preventScroll:true }), 350); if (!log.children.length) add('bot', PER_SITE.greet); log.scrollTop = log.scrollHeight; }
@@ -100,7 +104,7 @@ function widget(){
   $('.chat__nudge-x', w).addEventListener('click', e => { e.stopPropagation(); hideNudge(); }); nudge.addEventListener('click', () => open(true));
   addEventListener('keydown', e => { if (e.key === 'Escape' && !panel.hidden) open(false); });
   document.addEventListener('click', e => { if (!panel.hidden && !w.contains(e.target) && innerWidth > 640) open(false); });
-  const ask = async q => { history.push({ role:'user', content:q }); add('user', q); const t = typing(); w.classList.add('is-busy');
+  const ask = async q => { history.push({ role:'user', content:q }); add('user', q); w.classList.add('has-history'); const t = typing(); w.classList.add('is-busy');
     let ans; try { ans = CFG.chatEndpoint ? await remote(history.slice(-8)) : local(q); } catch (e){ ans = local(q); }
     t.remove(); w.classList.remove('is-busy'); history.push({ role:'assistant', content: ans.text }); add('bot', ans.text, ans.go); };
   form.addEventListener('submit', e => { e.preventDefault(); const q = input.value.trim(); if (!q) return; input.value = ''; ask(q); });

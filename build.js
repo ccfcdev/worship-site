@@ -173,14 +173,14 @@ const notFound = { file:'404.html', title:'Page not found', og:'worship-1', noin
     <li><a href="${MAIN}"><b>CCFC Zambia</b><span>The church website</span></a></li>
   </ul>
 </div></section>` };
-const pages = [home, videos, latest, team, join, dashboard, notFound];
+const pages = [home, videos, latest, team, join, notFound];
 for (const p of pages){ SEO.lint(p, WSEO[p.file][0], WSEO[p.file][1]); const html = SEO.clean(layout(p)); if (/[—–]/.test(html)) { console.error('dash in', p.file); process.exit(1); } fs.writeFileSync(path.join(__dirname, p.file), html); }
 fs.writeFileSync(path.join(__dirname, 'sitemap.xml'), SEO.sitemapXml(ORIGIN, pages.map(p => Object.assign({ priority: { 'videos.html':'0.9', 'join.html':'0.8', 'team.html':'0.7' }[p.file], changefreq: ['index.html','latest.html','videos.html'].includes(p.file) ? 'weekly' : 'monthly' }, p))));
 fs.writeFileSync(path.join(__dirname, 'robots.txt'), SEO.robotsTxt(ORIGIN));
 fs.writeFileSync(path.join(__dirname, 'site.webmanifest'), SEO.manifestJson({ name: 'Worship Connect', short: 'Worship Connect', themeColor: '#0A0A0B', background: '#0A0A0B' }));
 console.log('built', pages.length, 'pages', V);
 
-/* Knowledge base for the Ask Connect assistant: the visible text of every page, rebuilt on each deploy (kb.json). */
+/* Knowledge base for Ozer, the AI assistant: the visible text of every page, rebuilt on each deploy (kb.json). */
 function writeKb(pages, site){
   const strip = html => { const main = (html.match(/<main[^>]*>([\s\S]*?)<\/main>/) || [,''])[1];
     return main.replace(/<(script|style|svg|video|iframe|form)[\s\S]*?<\/\1>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;|&middot;|&amp;|&quot;|&#39;/g, m => ({'&nbsp;':' ','&middot;':'.','&amp;':'&','&quot;':'"','&#39;':"'"}[m])).replace(/\s+/g, ' ').trim().slice(0, 6000); };
