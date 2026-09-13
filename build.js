@@ -141,3 +141,13 @@ const dashboard = { file:'dashboard.html', title:'Dashboard', og:'worship-1', de
 const pages = [home, videos, latest, team, join, dashboard];
 for (const p of pages){ const html = layout(p); if (/[—–]/.test(html)) { console.error('dash in', p.file); process.exit(1); } fs.writeFileSync(path.join(__dirname, p.file), html); }
 console.log('built', pages.length, 'pages', V);
+
+/* Knowledge base for the Ask Connect assistant: the visible text of every page, rebuilt on each deploy (kb.json). */
+function writeKb(pages, site){
+  const strip = html => { const main = (html.match(/<main[^>]*>([\s\S]*?)<\/main>/) || [,''])[1];
+    return main.replace(/<(script|style|svg|video|iframe|form)[\s\S]*?<\/\1>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;|&middot;|&amp;|&quot;|&#39;/g, m => ({'&nbsp;':' ','&middot;':'.','&amp;':'&','&quot;':'"','&#39;':"'"}[m])).replace(/\s+/g, ' ').trim().slice(0, 6000); };
+  const out = { site, built: new Date().toISOString(), pages: pages.filter(p => !p.noindex).map(p => ({ url: site.origin + '/' + p.file.replace(/\.html$/, '').replace(/^index$/, ''), file: p.file, title: p.title, description: p.desc, text: strip(fs.readFileSync(path.join(__dirname, p.file), 'utf8')) })) };
+  fs.writeFileSync(path.join(__dirname, 'kb.json'), JSON.stringify(out));
+}
+
+writeKb(pages, { key:'worship', name:'Worship Connect', origin:'https://worship.ccfczambia.org' });
