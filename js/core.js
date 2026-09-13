@@ -33,13 +33,13 @@ const KINDS = { news:'News', announcement:'Announcement', photo:'Photos', video:
 const SITES = {
   ccfc:     { label:'CCFC Zambia', short:'CCFC', origin:'https://ccfczambia.org', feed:'feed.html', feedLabel:'Church feed', feedWord:'the family',
               kinds:['news','photo','video','announcement'], logo:'assets/logo/ccfc-mark.png?v=2', dashTitle:'Church dashboard',
-              links: r => [['feed.html','Church feed'], ['blog.html','Blog'], ['library.html','Upper Room library'], can.staff(r) ? ['dashboard.html','Dashboard'] : null] },
+              links: r => [['account.html','Account Center'], ['feed.html','Church feed'], ['blog.html','Blog'], ['library.html','Upper Room library'], can.staff(r) ? ['dashboard.html','Dashboard'] : null] },
   koinonia: { label:'Koinonia Experience', short:'Koinonia', origin:'https://koinonia.ccfczambia.org', feed:'updates.html', feedLabel:'Conference updates', feedWord:'everyone coming to Koinonia',
               kinds:['news','announcement','video','photo'], logo:'assets/logo/ccfc-mark.png?v=2', dashTitle:'Koinonia dashboard',
-              links: r => [['updates.html','Updates'], ['k26.html#register','Register for K26'], can.staff(r) ? ['dashboard.html','Dashboard'] : null] },
+              links: r => [['https://ccfczambia.org/account.html','Account Center'], ['updates.html','Updates'], ['k26.html#register','Register for K26'], can.staff(r) ? ['dashboard.html','Dashboard'] : null] },
   worship:  { label:'Worship Connect', short:'Worship', origin:'https://worship.ccfczambia.org', feed:'latest.html', feedLabel:'Latest from the team', feedWord:'the team',
               kinds:['video','music','photo','news'], logo:'assets/logo/ccfc-mark-white.png?v=2', dashTitle:'Worship Connect dashboard',
-              links: r => [['latest.html','Latest'], ['team.html','The team'], ['join.html','Join the team'], can.staff(r) ? ['dashboard.html','Dashboard'] : null] },
+              links: r => [['https://ccfczambia.org/account.html','Account Center'], ['latest.html','Latest'], ['team.html','The team'], ['join.html','Join the team'], can.staff(r) ? ['dashboard.html','Dashboard'] : null] },
 };
 const SITE_KEY = (window.CCFC_SITE && SITES[window.CCFC_SITE.key]) ? window.CCFC_SITE.key : 'ccfc';
 const SITE = Object.assign({}, SITES[SITE_KEY], window.CCFC_SITE || {});
@@ -561,6 +561,81 @@ async function dashboardPage(modal){
   function rolesTab(){ panel.innerHTML = `<div class="values">${Object.values(ROLES).map(x => `<div class="value"><h3>${esc(x.label)}</h3><p>${esc(x.desc)}</p></div>`).join('')}</div>`; }
 }
 
+
+/* ================================================================ ACCOUNT CENTER */
+async function accountPage(modal){
+  const root = $('#account'); if (!root) return; const gate = $('.acct__gate', root), app = $('.acct__app', root);
+  if (!ready){ gate.innerHTML = `<h2>Almost ready</h2><p class="sub">Accounts switch on as soon as the church team finishes setup.</p>`; return; }
+  if (!session){ gate.innerHTML = `<h2>Your account</h2><p class="sub">Sign in to update your name, photo, phone number, email and password. One account works on all three CCFC sites.</p><div class="row mt-2"><button class="btn" data-auth="in">Sign in</button><button class="btn btn--ghost" data-auth="up">Create account</button></div>`; accountUI(modal); return; }
+  gate.hidden = true; app.hidden = false;
+  const u = session.user, providers = (u.app_metadata?.providers || [u.app_metadata?.provider || 'email']);
+  const render = () => { app.innerHTML = `
+    <div class="acct__grid">
+      <section class="acct__card acct__photo">
+        <div class="acct__avatar">${avatar(profile.full_name || profile.email, profile.avatar_url, 'ava--xl')}<label class="acct__camera" title="Change photo"><input type="file" accept="image/*" hidden>${ICO.image}</label></div>
+        <b>${esc(profile.full_name || 'Add your name')}</b><span class="pill">${esc(ROLES[role()||'member'].label)}</span>
+        <p class="sub">${esc(profile.email)}</p>
+        <div class="row"><button class="btn btn--ghost acct__pick">Change photo</button>${profile.avatar_url ? '<button class="pill pill--danger acct__unpick">Remove</button>' : ''}</div>
+        <small class="acct__note">JPG or PNG. The photo is resized in your browser before upload and shows next to your posts and comments.</small>
+      </section>
+      <section class="acct__card">
+        <h2>Profile</h2>
+        <form class="acct__form" novalidate>
+          <div class="field"><label for="ac-name">Profile name</label><input id="ac-name" name="full_name" required maxlength="80" value="${esc(profile.full_name||'')}" placeholder="Your name as it shows on the feed"></div>
+          <div class="field"><label for="ac-phone">Phone number</label><input id="ac-phone" name="phone" type="tel" autocomplete="tel" maxlength="30" value="${esc(profile.phone||'')}" placeholder="+260 97 ..."><small>Only the church team can see it. Used to reach you about registrations and ministry.</small></div>
+          <div class="row"><button class="btn" type="submit">Save profile</button><span class="form__status" aria-live="polite"></span></div>
+        </form>
+      </section>
+      <section class="acct__card">
+        <h2>Email address</h2>
+        <form class="acct__email" novalidate>
+          <div class="field"><label for="ac-email">Email</label><input id="ac-email" name="email" type="email" autocomplete="email" required value="${esc(u.email||'')}"><small>${providers.includes('google') || providers.includes('facebook') ? 'You sign in with ' + providers.filter(p => p !== 'email').map(p => p[0].toUpperCase() + p.slice(1)).join(' and ') + '. Changing the email here changes where church emails reach you.' : 'We send a confirmation link to both the old and the new address.'}</small></div>
+          <div class="row"><button class="btn btn--ghost" type="submit">Update email</button><span class="form__status" aria-live="polite"></span></div>
+        </form>
+      </section>
+      <section class="acct__card">
+        <h2>Password</h2>
+        <form class="acct__pass" novalidate>
+          <div class="field"><label for="ac-pass">New password</label><input id="ac-pass" name="password" type="password" autocomplete="new-password" minlength="8" placeholder="At least 8 characters"></div>
+          <div class="field"><label for="ac-pass2">Repeat it</label><input id="ac-pass2" name="password2" type="password" autocomplete="new-password"></div>
+          <div class="row"><button class="btn btn--ghost" type="submit">Change password</button><span class="form__status" aria-live="polite"></span></div>
+        </form>
+        <small class="acct__note">${providers.every(p => p !== 'email') ? 'Setting a password also lets you sign in with your email, alongside ' + providers.map(p => p[0].toUpperCase() + p.slice(1)).join(' and ') + '.' : ''}</small>
+      </section>
+      <section class="acct__card acct__meta">
+        <h2>Your account</h2>
+        <dl class="drow__dl"><dt>Role</dt><dd>${esc(ROLES[role()||'member'].label)}: ${esc(ROLES[role()||'member'].desc)}</dd><dt>Signs in with</dt><dd>${esc(providers.map(p => p === 'email' ? 'Email and password' : p[0].toUpperCase() + p.slice(1)).join(', '))}</dd><dt>Member since</dt><dd>${esc(fullDate(profile.created_at))}</dd><dt>Works on</dt><dd>ccfczambia.org, koinonia.ccfczambia.org, worship.ccfczambia.org</dd></dl>
+        <div class="row mt-2"><button class="btn btn--ghost nav__signout">Sign out</button><a class="link" href="privacy.html">Privacy policy</a></div>
+      </section>
+    </div>`;
+    const setStatus = (f, msg, ok) => { const st = $('.form__status', f); st.textContent = msg; st.className = 'form__status ' + (ok ? 'is-ok' : 'is-err'); };
+    const file = $('.acct__camera input', app); const pick = () => file.click();
+    $('.acct__pick', app).addEventListener('click', pick); $('.acct__camera', app).addEventListener('click', e => { e.preventDefault(); pick(); });
+    file.addEventListener('change', async () => { const fl = file.files[0]; if (!fl) return; if (!fl.type.startsWith('image')){ toast('Please choose an image.', false); return; }
+      toast('Uploading photo...');
+      try { const small = await shrink(fl, 512, .85); const path = `avatars/${profile.id}/${Date.now()}.jpg`;
+        const { error } = await sb.storage.from('feed').upload(path, small, { contentType:'image/jpeg', upsert:true }); if (error) throw error;
+        const url = sb.storage.from('feed').getPublicUrl(path).data.publicUrl;
+        const { error: e2 } = await sb.from('profiles').update({ avatar_url: url }).eq('id', profile.id); if (e2) throw e2;
+        await sb.auth.updateUser({ data: { avatar_url: url } }); profile.avatar_url = url; accountUI(modal); render(); toast('Photo updated.');
+      } catch (err){ toast(friendly(err), false); } });
+    $('.acct__unpick', app)?.addEventListener('click', async () => { const { error } = await sb.from('profiles').update({ avatar_url: null }).eq('id', profile.id); if (error) toast(friendly(error), false); else { profile.avatar_url = null; accountUI(modal); render(); toast('Photo removed.'); } });
+    $('.acct__form', app).addEventListener('submit', async e => { e.preventDefault(); const f = e.target; const full_name = f.full_name.value.trim(), phone = f.phone.value.trim();
+      if (!full_name){ setStatus(f, 'Please enter your name.', false); return; }
+      const { error } = await sb.from('profiles').update({ full_name, phone: phone || null }).eq('id', profile.id); if (error){ setStatus(f, friendly(error), false); return; }
+      await sb.auth.updateUser({ data: { full_name } }); profile.full_name = full_name; profile.phone = phone; accountUI(modal); $('.acct__photo b', app).textContent = full_name; setStatus(f, 'Saved.', true); });
+    $('.acct__email', app).addEventListener('submit', async e => { e.preventDefault(); const f = e.target; const email = f.email.value.trim();
+      if (!/^\S+@\S+\.\S+$/.test(email)){ setStatus(f, 'Please enter a valid email address.', false); return; } if (email === u.email){ setStatus(f, 'That is already your email.', false); return; }
+      const { error } = await sb.auth.updateUser({ email }, { emailRedirectTo: here() }); if (error){ setStatus(f, friendly(error), false); return; }
+      setStatus(f, 'Check both inboxes and confirm the change from the links we sent.', true); });
+    $('.acct__pass', app).addEventListener('submit', async e => { e.preventDefault(); const f = e.target; const p1 = f.password.value, p2 = f.password2.value;
+      if (p1.length < 8){ setStatus(f, 'Use at least 8 characters.', false); return; } if (p1 !== p2){ setStatus(f, 'The two passwords do not match.', false); return; }
+      const { error } = await sb.auth.updateUser({ password: p1 }); if (error){ setStatus(f, friendly(error), false); return; } f.reset(); setStatus(f, 'Password changed.', true); });
+    $('.nav__signout', app).addEventListener('click', async () => { await sb.auth.signOut(); location.href = 'index.html'; });
+  };
+  render();
+}
+
 /* ================================================================ PUBLIC TEAM PAGE (Worship Connect) */
 async function teamPage(){
   const root = $('#team'); if (!root || !ready) return; const grid = $('.team__grid', root); if (!grid) return;
@@ -591,11 +666,11 @@ async function boot(){
       const uid = s?.user?.id || null; if (uid === lastUid) return;
       lastUid = uid; session = s; await loadProfile(); accountUI(modal);
       const key = uid || 'signed-out'; if (mem(RL) === key) return; mem(RL, key);
-      if ($('#feed,#dashboard,#library,#blog')){ if (location.hash) history.replaceState(null, '', location.pathname + location.search); location.reload(); }
+      if ($('#feed,#dashboard,#library,#blog,#account')){ if (location.hash) history.replaceState(null, '', location.pathname + location.search); location.reload(); }
     });
     if (new URLSearchParams(location.search).get('reset')){ const p = prompt('Choose a new password (at least 8 characters)'); if (p && p.length >= 8){ const { error } = await sb.auth.updateUser({ password:p }); toast(error ? friendly(error) : 'Password updated.', !error); } } }
   accountUI(modal);
-  feedPage(modal); blogPage(modal); libraryPage(modal); dashboardPage(modal); teamPage();
+  feedPage(modal); blogPage(modal); libraryPage(modal); dashboardPage(modal); teamPage(); accountPage(modal);
   if (new URLSearchParams(location.search).get('signin')) modal.open('in');
   if (new URLSearchParams(location.search).get('new') && $('#blog') && can.blog(role())) $('.blog__new')?.click();
 }
