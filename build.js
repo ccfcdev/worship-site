@@ -57,7 +57,7 @@ function layout(p){
   <div class="menu__bottom"><div class="menu__account"></div><a class="menu__wa" href="https://wa.me/${WA}" target="_blank" rel="noopener">WhatsApp the office</a></div>
 </nav>
 <main id="main">${p.body}</main>
-<footer class="foot"><div class="wrap"><span>Worship Connect is the praise and worship team of Christ Connect Family Church Zambia.</span><span><a href="${MAIN}">CCFC Zambia</a> &nbsp;&middot;&nbsp; <a href="${KOI}">Koinonia</a> &nbsp;&middot;&nbsp; <a href="${YT}" target="_blank" rel="noopener">YouTube</a> &nbsp;&middot;&nbsp; <a href="https://wa.me/${WA}" target="_blank" rel="noopener">WhatsApp</a></span><span>&copy; <span class="year"></span> CCFC</span></div></footer>
+<footer class="foot"><div class="wrap"><span>Worship Connect is the praise and worship team of Christ Connect Family Church Zambia.</span><span><a href="${MAIN}">CCFC Zambia</a> &nbsp;&middot;&nbsp; <a href="${KOI}">Koinonia</a> &nbsp;&middot;&nbsp; <a href="${YT}" target="_blank" rel="noopener">YouTube</a> &nbsp;&middot;&nbsp; <a href="https://wa.me/${WA}" target="_blank" rel="noopener">WhatsApp</a></span><span><a href="${MAIN}/sitemap">Site map</a> &nbsp;&middot;&nbsp; &copy; <span class="year"></span> CCFC</span></div></footer>
 <script src="js/site.js?v=${V.js}" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js" defer></script>
 <script>window.CCFC_SITE={key:'worship'};window.CCFC_CONFIG=window.CCFC_CONFIG||{supabaseUrl:'https://dcqydtkjzgilyjnjyisb.supabase.co',supabaseKey:'sb_publishable_gPig-ePcoJIUnQ4fij6viw_ukAhlifp'}</script>
