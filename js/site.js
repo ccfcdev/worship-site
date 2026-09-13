@@ -44,8 +44,16 @@ function register(){ const f = $('.reg'); if (!f) return; const g = $('.reg__gfo
       f.reset(); status.textContent = 'Registered. Thank you, ' + d.first + '. We will be in touch with dates and delegate rates.'; status.className = 'reg__status is-ok';
     } catch (err){ status.textContent = 'Something went wrong. Please try again or WhatsApp the office.'; status.className = 'reg__status is-err'; } finally { btn.disabled = false; } }); }
 function tabs(){ $$('.tabs').forEach(t => { const bs = $$('.tabs__btn', t), ps = $$('.tabs__panel', t); const go = i => { bs.forEach((b,j) => b.classList.toggle('is-on', j===i)); ps.forEach((p,j) => p.hidden = j!==i); }; bs.forEach((b,i) => b.addEventListener('click', () => go(i))); go(+(Q.get('tab')||0)||0); }); }
-function joinForm(){ const f = $('.join'); if (!f) return; f.addEventListener('submit', e => { e.preventDefault(); const d = Object.fromEntries(new FormData(f).entries()); if (!d.name.trim() || !d.phone.trim()){ $('.reg__status', f).textContent = 'Name and phone are needed.'; $('.reg__status', f).className = 'reg__status is-err'; return; }
-  const text = `Hello Worship Connect, I would like to join.\nName: ${d.name}\nPhone: ${d.phone}\nI can: ${d.gift}\nExperience: ${d.experience || '-'}\nChurch: ${d.church || '-'}`; window.open(`https://wa.me/${f.dataset.wa}?text=${encodeURIComponent(text)}`, '_blank', 'noopener'); $('.reg__status', f).textContent = 'Opening WhatsApp with your message ready to send.'; $('.reg__status', f).className = 'reg__status is-ok'; }); }
+function joinForm(){ const f = $('.join'); if (!f) return; const status = $('.reg__status', f);
+  f.addEventListener('submit', async e => { e.preventDefault(); const d = Object.fromEntries(new FormData(f).entries());
+    if (!d.name.trim() || !d.phone.trim()){ status.textContent = 'Your name and WhatsApp number are needed.'; status.className = 'reg__status is-err'; return; }
+    const btn = $('.btn', f); btn.disabled = true; status.className = 'reg__status'; status.textContent = 'Sending...';
+    const text = `Hello Worship Connect, I would like to join.\nName: ${d.name}\nPhone: ${d.phone}\nI can: ${d.gift}\nExperience: ${d.experience || '-'}\nChurch: ${d.church || '-'}`;
+    const wa = `https://wa.me/${f.dataset.wa}?text=${encodeURIComponent(text)}`;
+    try { const api = window.CCFC && window.CCFC.apply ? await window.CCFC.apply({ name:d.name.trim(), phone:d.phone.trim(), email:d.email?.trim() || null, gift:d.gift, experience:d.experience?.trim() || null, church:d.church?.trim() || null, message:d.message?.trim() || null }) : { offline:true };
+      if (api.error) throw api.error;
+      f.reset(); status.innerHTML = `Thank you, ${d.name.split(' ')[0]}. The team has your application and will reply on WhatsApp. <a href="${wa}" target="_blank" rel="noopener">Say hello on WhatsApp now</a> if you like.`; status.className = 'reg__status is-ok';
+    } catch (err){ status.innerHTML = `We could not save that. <a href="${wa}" target="_blank" rel="noopener">Send it on WhatsApp instead</a>.`; status.className = 'reg__status is-err'; } finally { btn.disabled = false; } }); }
 function boot(){ register(); tabs(); joinForm(); split(); grain(); nav(); reveals(); hero(); lightbox(); countdown(); capture(); $$('.year').forEach(e => e.textContent = new Date().getFullYear()); }
 document.readyState === 'loading' ? addEventListener('DOMContentLoaded', boot) : boot();
 })();
