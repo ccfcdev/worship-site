@@ -8,7 +8,7 @@ const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').
 const slug = file => (file === 'index.html' ? '' : file.replace(/\.html$/, ''));
 const urlOf = (origin, file) => origin + '/' + slug(file);
 
-function headTags({ origin, file, title, desc, noindex, ogImage, ogAlt, siteName, themeColor, locale = 'en_ZM', type = 'website' }) {
+function headTags({ origin, file, title, desc, noindex, ogImage, ogAlt, siteName, themeColor, locale = 'en_ZM', type = 'website', preloadImage }) {
   const url = urlOf(origin, file);
   const img = /^https?:/.test(ogImage) ? ogImage : origin + '/' + String(ogImage).replace(/^\//, '');
   return [
@@ -22,6 +22,7 @@ function headTags({ origin, file, title, desc, noindex, ogImage, ogAlt, siteName
     `<meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(desc)}"><meta property="og:url" content="${url}">`,
     `<meta property="og:image" content="${img}"><meta property="og:image:secure_url" content="${img}"><meta property="og:image:type" content="image/jpeg"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="${esc(ogAlt || title)}">`,
     `<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${esc(title)}"><meta name="twitter:description" content="${esc(desc)}"><meta name="twitter:image" content="${img}"><meta name="twitter:image:alt" content="${esc(ogAlt || title)}">`,
+    preloadImage ? `<link rel="preload" as="image" href="${preloadImage}" fetchpriority="high">` : '',
     `<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><link rel="preconnect" href="https://dcqydtkjzgilyjnjyisb.supabase.co" crossorigin>`,
   ].join('\n');
 }
@@ -31,7 +32,7 @@ function clean(html) {
   return html
     .replace(/(href|action)="(?:\.\/)?([a-z0-9][a-z0-9-]*)\.html((?:\?[^"#]*)?)((?:#[^"]*)?)"/gi, (m, attr, name, q, h) => `${attr}="/${name === 'index' ? '' : name}${q}${h}"`)
     .replace(/(href)="(https:\/\/(?:koinonia\.|worship\.)?ccfczambia\.org)\/([a-z0-9][a-z0-9-]*)\.html/gi, (m, attr, o, name) => `${attr}="${o}/${name === 'index' ? '' : name}`)
-    .replace(/(\s(?:src|href|poster|data-src|data-src4k)=")(assets|css|js)\//g, '$1/$2/')
+    .replace(/(\s(?:src|href|poster|data-src|data-src720|data-src4k)=")(assets|css|js)\//g, '$1/$2/')
     .replace(/(\ssrcset=")([^"]+)"/g, (m, a, v) => a + v.replace(/(^|,\s*)assets\//g, '$1/assets/') + '"')
     .replace(/url\((['"]?)assets\//g, 'url($1/assets/');
 }
