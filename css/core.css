@@ -36,11 +36,13 @@
 .nav__user{position:relative}
 .nav__avatar{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;padding:0;overflow:hidden;box-shadow:0 0 0 2px rgba(255,255,255,.25)}
 .nav__avatar .ava{width:40px;height:40px;background:var(--k-accent);color:var(--k-on-accent)}
-.nav__menu{position:absolute;right:0;top:calc(100% + 10px);min-width:230px;background:var(--k-panel);color:var(--k-ink);border:1px solid var(--k-line);padding:1rem 1.1rem;display:grid;gap:.4rem;box-shadow:var(--k-shadow);z-index:80;border-radius:14px}
+[hidden]{display:none!important}
+.nav__menu{animation:navMenuIn .22s var(--ease) both;transform-origin:top right;position:absolute;right:0;top:calc(100% + 10px);min-width:230px;background:var(--k-panel);color:var(--k-ink);border:1px solid var(--k-line);padding:1rem 1.1rem;display:grid;gap:.4rem;box-shadow:var(--k-shadow);z-index:80;border-radius:14px}
 .nav__menu b{font-family:var(--font-display);color:var(--k-head)}
 .nav__menu a,.nav__menu button{text-align:left;padding:.4rem 0;font-size:.95rem;color:var(--k-ink);font-weight:500}
 .nav__menu a:hover,.nav__menu button:hover{color:var(--k-accent)}
 .nav__menu .pill{justify-self:start}
+@keyframes navMenuIn{from{opacity:0;transform:translateY(-6px) scale(.98)}to{opacity:1;transform:none}}
 .menu__account{display:grid;gap:.4rem;padding-top:1rem;margin-top:1rem;border-top:1px solid var(--k-line)}
 .menu__account .nav__signin{justify-self:start;background:var(--k-accent);color:var(--k-on-accent);padding:.75rem 1.2rem}
 .menu__account a{font-weight:500;padding:.35rem 0}
