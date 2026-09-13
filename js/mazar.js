@@ -248,6 +248,7 @@ class Figure {
     }
     for (let i = 0; i < nRef; i++){ const d = Math.pow(R(), 1.3) * S * .2 * (R() < .5 ? -1 : 1); add(d, S * .5 + (R() - .5) * S * .05, .18 + (1 - Math.abs(d) / (S * .2)) * .25, 4, 1.8 + R() * 1.2); }
     this.parts = P;
+    if (/[?&]mzsnap/.test(location.search)) for (let i = 0; i < 150; i++) this.frame();   /* screenshots: settle the stars at once */
   }
   set(s){ if (this.state === s) return; this.state = s; if (s === 'error') this.err = 1; if (s === 'joy') this.burst = 1; }
   pulse(){ this.env = Math.min(1, this.env + .55); }
@@ -341,7 +342,7 @@ const TASKS = [
 ];
 const STUDY = [
   ['study', 'Study a passage', 'Context, meaning, application, questions', 'Give me a full study guide on {ref}: historical context, what it says, what it means, how it applies to my life, cross references and three discussion questions.'],
-  ['cross', 'Compare translations', 'WEB, KJV, BBE and ASV side by side', 'Compare the translations of {ref} and explain any differences that matter.'],
+  ['cross', 'Compare versions', 'Hebrew, Greek, Geneva, King James and today, side by side', 'Compare {ref} in the original language, the Geneva Bible, the King James Version and the World English Bible, and explain any differences that matter.'],
   ['q', 'Quiz me', 'Ten questions with answers', 'Quiz me on {ref} with ten multiple choice questions.'],
   ['heart', 'Memory verse', 'Learn it, then hide it', 'Help me memorise {ref}: show it as a memory card and give me a way to remember it.'],
   ['pen', 'Sermon or lesson notes', 'An outline you can teach from', 'Write a teaching outline on {ref} for a small group: big idea, three points with verses, illustration ideas and a closing challenge.'],
