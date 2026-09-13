@@ -159,6 +159,13 @@ p{margin:0}
 .vgrid{display:grid;gap:1.4rem}
 @media (min-width:800px){.vgrid{grid-template-columns:1fr 1fr}}
 .vcard{position:relative;display:block;background:var(--panel);overflow:hidden;border:1px solid var(--line)}
+.vcard__main{position:relative;display:block}
+.vcard__songs{display:flex;flex-wrap:wrap;gap:.4rem;padding:0 1.3rem 1.2rem}
+.vcard__songs a{display:inline-flex;align-items:center;gap:.45rem;padding:.4rem .75rem .4rem .5rem;border-radius:999px;font-size:.82rem;font-weight:600;background:rgba(255,255,255,.06);color:var(--white);transition:background .25s,color .25s}
+.vcard__songs a:hover{background:var(--gold);color:#141208}
+.vcard__songs i{font-style:normal;font-size:.7rem;padding:.15rem .4rem;border-radius:999px;background:rgba(231,184,74,.2);color:var(--gold-2)}
+.vcard__songs a:hover i{background:rgba(0,0,0,.15);color:#141208}
+.song .pill svg{width:12px;height:12px;fill:currentColor}
 .vcard .ph{aspect-ratio:16/9;overflow:hidden}
 .vcard .ph img{width:100%;height:100%;object-fit:cover;transition:transform 1.4s var(--ease)}
 .vcard:hover .ph img{transform:scale(1.04)}

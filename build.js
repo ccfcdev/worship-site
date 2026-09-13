@@ -9,14 +9,18 @@ const img = (n, alt, sizes='(min-width:900px) 50vw, 100vw', eager=false) => `<im
 
 /* Every Worship Connect video on the church channel (add new ones here; the Media team can also post to the Worship feed) */
 const VIDEOS = [
-  { id:'Xq1RXcOhWmE', t:'Praise and Worship Medley: Chawama, Hallelujah Hosanna', where:'Koinonia 25 Experience, Lusaka', when:'December 2025', dur:'20:27', kind:'Worship set', img:'worship-2', songs:['Chawama','Hallelujah Hosanna'] },
-  { id:'wrOzwYRt4yM', t:'Praise Medley: You Are So Good, Bena Ba Suma Kuli Ine', where:'Koinonia 25 Experience, Lusaka', when:'December 2025', dur:'20:38', kind:'Praise set', img:'worship-5', songs:['You Are So Good','Bena Ba Suma Kuli Ine'] },
+  { id:'Xq1RXcOhWmE', t:'Praise and Worship Medley: Chawama, Hallelujah Hosanna', where:'Koinonia 25 Experience, Lusaka', when:'December 2025', dur:'20:27', kind:'Worship set', img:'worship-2',
+    songs:[['Chawama', 23], ['Hallelujah Hosanna', 250], ['Twasumbula Ishina Lyenu', 665], ['You Are Yahweh', 952]] },
+  { id:'wrOzwYRt4yM', t:'Praise Medley: You Are So Good, Bena Ba Suma Kuli Ine', where:'Koinonia 25 Experience, Lusaka', when:'December 2025', dur:'20:38', kind:'Praise set', img:'worship-5',
+    songs:[['You Are So Good', 29], ['Bena Ba Suma Kuli Ine', 274]] },
 ];
+/* songs we sing: [title, style, video id, start in seconds] */
 const SONGS = [
-  ['Chawama', 'Praise, Nyanja', 'Xq1RXcOhWmE'], ['Hallelujah Hosanna', 'Worship', 'Xq1RXcOhWmE'],
-  ['You Are So Good', 'Praise', 'wrOzwYRt4yM'], ['Bena Ba Suma Kuli Ine', 'Praise, Bemba', 'wrOzwYRt4yM'],
+  ['You Are So Good', 'Praise', 'wrOzwYRt4yM', 29], ['Bena Ba Suma Kuli Ine', 'Praise, Bemba', 'wrOzwYRt4yM', 274],
+  ['Chawama', 'Praise, Nyanja', 'Xq1RXcOhWmE', 23], ['Hallelujah Hosanna', 'Worship', 'Xq1RXcOhWmE', 250],
+  ['Twasumbula Ishina Lyenu', 'Worship, Bemba', 'Xq1RXcOhWmE', 665], ['You Are Yahweh', 'Worship', 'Xq1RXcOhWmE', 952],
 ];
-
+const mmss = s => `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
 const MENU = [['index.html','Home','The praise and worship team'],['videos.html','Videos','Every set we have recorded'],['latest.html','Latest','New sets, songs, rehearsal news'],['team.html','The team','Who leads worship'],['join.html','Join the team','Vocals, band, sound, media']];
 function layout(p){
   const links = [['index.html','Home'],['videos.html','Videos'],['latest.html','Latest'],['team.html','Team'],['join.html','Join the team']].map(([f,l]) => `<li><a href="${f}"${f===p.file?' aria-current="page"':''}>${l}</a></li>`).join('');
@@ -60,7 +64,8 @@ function layout(p){
 <script src="js/core.js?v=${V.corejs}" defer></script>
 </body></html>`;
 }
-const vcard = v => `<a href="https://www.youtube.com/watch?v=${v.id}" class="vcard" data-lb="${v.id}" data-title="${v.t}" aria-label="Play: ${v.t}"><div class="ph">${img(v.img,'','(min-width:800px) 50vw, 100vw')}</div><span class="vcard__play" aria-hidden="true">${ICON.play}</span><div class="vcard__meta"><b>${v.t}</b><span>${v.where} &middot; ${v.when} &middot; ${v.dur}</span></div></a>`;
+const vcard = v => `<div class="vcard"><a href="https://www.youtube.com/watch?v=${v.id}" class="vcard__main" data-lb="${v.id}" data-title="${v.t}" aria-label="Play: ${v.t}"><div class="ph">${img(v.img,'','(min-width:800px) 50vw, 100vw')}</div><span class="vcard__play" aria-hidden="true">${ICON.play}</span><div class="vcard__meta"><b>${v.t}</b><span>${v.where} &middot; ${v.when} &middot; ${v.dur}</span></div></a>
+  <div class="vcard__songs" aria-label="Songs in this set">${v.songs.map(([s,t]) => `<a href="https://www.youtube.com/watch?v=${v.id}&t=${t}s" data-lb="${v.id}" data-start="${t}" data-title="${s}, from ${v.t}"><i>${mmss(t)}</i>${s}</a>`).join('')}</div></div>`;
 const closeBlock = () => `<section class="close"><div class="bg">${img('p-band','','100vw')}</div><div class="wrap"><h2 data-split>Can you sing,<br>play or mix?</h2><p>Worship Connect is always growing. Vocalists, keys, guitar, bass, drums, sound and media: if God has given you a gift, bring it.</p><div class="row"><a class="btn" href="join.html">Join the team ${ICON.arrow}</a><a class="btn btn--ghost" href="${YT}" target="_blank" rel="noopener">Subscribe on YouTube</a></div></div></section>`;
 
 const home = { file:'index.html', title:'Home', og:'worship-1', desc:'Worship Connect, the praise and worship team of Christ Connect Family Church Zambia. Watch every set, learn the songs, join the team.',
@@ -74,8 +79,8 @@ const home = { file:'index.html', title:'Home', og:'worship-1', desc:'Worship Co
   <div class="hero__meta" data-rv-stagger><div><b>Latest</b><span>Koinonia 25 worship sets</span></div><div><b>Where we lead</b><span>Every Sunday from 08:30, Mandevu</span></div><div><b>Rehearsals</b><span>Ask us for the weekly slot</span></div></div></div>
 </section>
 <section class="sec"><div class="wrap"><h2 class="mb-2" data-split>Latest sets</h2><div class="vgrid" data-rv-stagger>${VIDEOS.map(vcard).join('')}</div><div class="row mt-2" data-rv><a class="link" href="videos.html">All videos ${ICON.arrow}</a></div></div></section>
-<section class="sec" style="padding-top:0"><div class="wrap"><h2 data-split>Songs we sing</h2><p class="lede mt-1 mb-2" data-rv>The songs from our recorded sets, so you can learn them before Sunday. Tap a song to jump to the set it is in.</p>
-  <div class="songs" data-rv-stagger>${SONGS.map(([s,k,id]) => `<a class="song" href="videos.html?lb=${id}"><div><b>${s}</b><span>${k}</span></div><span class="pill">Play</span></a>`).join('')}</div></div></section>
+<section class="sec" style="padding-top:0"><div class="wrap"><h2 data-split>Songs we sing</h2><p class="lede mt-1 mb-2" data-rv>The songs from our recorded sets, so you can learn them before Sunday. Tap a song and the set plays from where that song starts.</p>
+  <div class="songs" data-rv-stagger>${SONGS.map(([s,k,id,t]) => `<a class="song" href="https://www.youtube.com/watch?v=${id}&t=${t}s" data-lb="${id}" data-start="${t}" data-title="${s}"><div><b>${s}</b><span>${k} &middot; starts at ${mmss(t)}</span></div><span class="pill">${ICON.play} Play</span></a>`).join('')}</div></div></section>
 <section class="sec" style="padding-top:0"><div class="wrap"><div class="teamgrid" data-rv-stagger><div class="ph">${img('p-singer','A lead singer on a Sunday','50vw')}</div><div class="ph">${img('p-bass','Bass','25vw')}</div><div class="ph">${img('p-keys2','Keys','25vw')}</div><div class="ph">${img('p-drums','Drums','25vw')}</div><div class="ph">${img('p-mics','Vocalists at the mics','25vw')}</div></div></div></section>
 <section class="sec" style="padding-top:0"><div class="wrap"><h2 class="mb-2" data-split>Who is on the team</h2><div class="roles" data-rv-stagger><div class="role"><b>Vocals</b><span>Lead singers and the choir, in three languages</span></div><div class="role"><b>Band</b><span>Keys, guitars, bass and drums</span></div><div class="role"><b>Sound</b><span>Front of house, monitors and recording</span></div><div class="role"><b>Media</b><span>Lyrics, cameras and the videos you watch here</span></div></div></div></section>
 ${closeBlock()}` };
