@@ -578,13 +578,13 @@ async function libraryPage(modal){
 const DASH = {
   ccfc:     { eyebrow:'Christ Connect Family Church Zambia', intro:'Everything the church posts, publishes and keeps for its leaders.',
               stats: s => [['Members', s?.users], ['New this month', s?.new_users_30d], ['Feed posts', s?.posts], ['Blog posts', s?.blogs], ['Library items', s?.library]],
-              tabs: r => [can.master(r) ? ['assistant','Connect Admin'] : null, can.post(r) ? ['posts','Church feed'] : null, can.admin(r) ? ['settings','Site text'] : null, (can.blog(r) || can.admin(r)) ? ['blogs','Blog'] : null, can.library(r) ? ['library','Upper Room library'] : null, can.admin(r) ? ['users','Members and roles'] : null, can.admin(r) ? ['audit','Role changes'] : null, ['roles','Role guide']] },
+              tabs: r => [can.master(r) ? ['assistant','Ozer Prime'] : null, can.post(r) ? ['posts','Church feed'] : null, can.admin(r) ? ['settings','Site text'] : null, (can.blog(r) || can.admin(r)) ? ['blogs','Blog'] : null, can.library(r) ? ['library','Upper Room library'] : null, can.admin(r) ? ['users','Members and roles'] : null, can.admin(r) ? ['audit','Role changes'] : null, ['roles','Role guide']] },
   koinonia: { eyebrow:'Koinonia Experience', intro:'Conference updates, videos and photos, and everyone who has registered for the next edition.',
               stats: s => [["Registered for Koi 26'", s?.regs_next], ['All registrations', s?.registrations], ['Updates posted', s?.posts], ['Reactions', s?.reactions], ['Comments', s?.comments]],
-              tabs: r => [can.master(r) ? ['assistant','Connect Admin'] : null, can.staff(r) ? ['regs','Registrations'] : null, can.admin(r) ? ['settings','Site text'] : null, can.post(r) ? ['posts','Updates and media'] : null, can.admin(r) ? ['users','Members and roles'] : null, can.admin(r) ? ['audit','Role changes'] : null, ['roles','Role guide']] },
+              tabs: r => [can.master(r) ? ['assistant','Ozer Prime'] : null, can.staff(r) ? ['regs','Registrations'] : null, can.admin(r) ? ['settings','Site text'] : null, can.post(r) ? ['posts','Updates and media'] : null, can.admin(r) ? ['users','Members and roles'] : null, can.admin(r) ? ['audit','Role changes'] : null, ['roles','Role guide']] },
   worship:  { eyebrow:'Worship Connect', intro:'The team\'s videos and music, who is on the team, and the people asking to join.',
               stats: s => [['New applications', s?.apps_new], ['All applications', s?.applications], ['Team members', s?.team], ['Videos and posts', s?.posts], ['Reactions', s?.reactions]],
-              tabs: r => [can.master(r) ? ['assistant','Connect Admin'] : null, can.moderate(r) ? ['apps','Applications'] : null, can.admin(r) ? ['settings','Site text'] : null, can.post(r) ? ['posts','Videos and music'] : null, can.post(r) ? ['team','The team'] : null, can.admin(r) ? ['users','Members and roles'] : null, can.admin(r) ? ['audit','Role changes'] : null, ['roles','Role guide']] },
+              tabs: r => [can.master(r) ? ['assistant','Ozer Prime'] : null, can.moderate(r) ? ['apps','Applications'] : null, can.admin(r) ? ['settings','Site text'] : null, can.post(r) ? ['posts','Videos and music'] : null, can.post(r) ? ['team','The team'] : null, can.admin(r) ? ['users','Members and roles'] : null, can.admin(r) ? ['audit','Role changes'] : null, ['roles','Role guide']] },
 };
 const APP_STATUS = { new:'New', contacted:'Contacted', audition:'Invited to rehearsal', accepted:'Accepted', declined:'Not now' };
 async function dashboardPage(modal){
@@ -622,31 +622,44 @@ async function dashboardPage(modal){
       $$('.del', l).forEach(b => b.addEventListener('click', async () => { if (!confirm('Delete this post?')) return; const { error } = await sb.from('posts').delete().eq('id', b.closest('.drow').dataset.id); if (error) toast(friendly(error), false); else list(); })); }
     list();
   }
-  /* Connect Admin: the master admin's assistant. Reads live data, proposes a plan, writes only after Apply. */
+  /* Ozer Prime: the master admin's AI assistant. Ozer's Bible and content skills plus admin powers. Reads live data, proposes a plan, writes only after Apply. */
+  const primeMark = (n => () => { const id = 'ozp-' + (++n); return `<svg class="oz-mark oz-mark--prime" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><defs><linearGradient id="${id}" x1="8" y1="6" x2="40" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFF7DC"/><stop offset=".5" stop-color="#EBC872"/><stop offset="1" stop-color="#B98A3E"/></linearGradient></defs><circle cx="24" cy="24" r="17.5" fill="none" stroke="url(#${id})" stroke-width="2"/><circle cx="24" cy="24" r="22" fill="none" stroke="url(#${id})" stroke-width="1" stroke-dasharray="2 3.2" opacity=".85"/><path d="M17 9.5l2.2 2.4L24 7.6l4.8 4.3L31 9.5" fill="none" stroke="url(#${id})" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M24 11.5c.9 7.7 3.9 11.2 12 12.5-8.1 1.3-11.1 4.8-12 12.5-.9-7.7-3.9-11.2-12-12.5 8.1-1.3 11.1-4.8 12-12.5z" fill="url(#${id})"/></svg>`; })(0);
   async function assistantTab(){
     const EP = (window.CCFC_CONFIG || {}).adminEndpoint;
-    panel.innerHTML = `<div class="agent"><div class="agent__intro"><span class="agent__badge">${ICO.spark || ''}Connect Admin</span><p>Tell me what to change on ${esc(SITE.short)}, or on any of the three sites. I look first, then show you a plan. Nothing changes until you press Apply.</p>
-      <div class="agent__examples">${['Change the Koi 26\' dates to 18 to 20 December 2026', 'Pin the latest announcement on the church feed', 'Put up an announcement: no service this Sunday, we are at Koinonia', 'Add a video post of the Koi 25\' praise medley'].map(x => `<button type="button">${esc(x)}</button>`).join('')}</div></div>
-      <div class="agent__log" aria-live="polite"></div>
-      <form class="agent__form"><textarea name="q" rows="2" placeholder="What would you like to change?" aria-label="Instruction"></textarea><button class="btn" type="submit">Send ${ICO.arrow}</button></form>
-      <p class="agent__fine">${EP ? 'Powered by Claude. Every applied change is logged under your name.' : 'The assistant endpoint is not configured yet (js/config.js adminEndpoint).'}</p></div>`;
-    const log = $('.agent__log', panel), form = $('.agent__form', panel), ta = $('textarea', form), history = []; let busy = false;
-    const add = (who, html) => { const el = document.createElement('div'); el.className = 'agent__msg is-' + who; el.innerHTML = `<div>${html}</div>`; log.appendChild(el); el.scrollIntoView({ block:'nearest', behavior:'smooth' }); return el; };
+    const rich = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').split(/\n{2,}/).map(b => { const ls = b.split('\n'); return ls.every(l => /^\s*([-*•]|\d+\.)\s+/.test(l)) ? `<ul>${ls.map(l => `<li>${l.replace(/^\s*([-*•]|\d+\.)\s+/, '')}</li>`).join('')}</ul>` : `<p>${ls.join('<br>')}</p>`; }).join('');
+    const GROUPS = [
+      ['Change the sites', ["Change the Koi 26' dates to 18 to 20 December 2026", 'Put up an announcement: no service this Sunday, we are at Koinonia', 'Pin the latest post on the church feed']],
+      ['Know what is happening', ["How are Koi 26' registrations going?", 'Which Worship Connect applications are still new?', 'Give me this week\'s numbers for all three sites']],
+      ['Write with scripture', ['Draft a Sunday devotional post on Psalm 23', 'Write a Koinonia announcement with Acts 2:42', 'Suggest five verses for a youth night on courage']],
+    ];
+    panel.innerHTML = `<section class="ozp"><div class="oz__sky" aria-hidden="true"><i class="oz__rays"></i><i class="oz__stars"></i></div>
+      <header class="ozp__head">${primeMark()}<div><span class="ozp__eyebrow">Master Administrator</span><h3>Ozer <em>Prime</em></h3><p>Everything Ozer knows, with the keys to all three sites. I look first, then show you a plan. Nothing changes until you press Apply.</p></div></header>
+      <div class="ozp__log" aria-live="polite"></div>
+      <div class="ozp__starts">${GROUPS.map(([h, xs]) => `<div><h4>${esc(h)}</h4>${xs.map(x => `<button type="button">${esc(x)}</button>`).join('')}</div>`).join('')}</div>
+      <form class="oz__form ozp__form"><textarea name="q" rows="1" placeholder="Ask Ozer Prime to change, check or write something..." aria-label="Instruction for Ozer Prime" maxlength="4000"></textarea><button class="oz__send" type="submit" aria-label="Send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button></form>
+      <p class="ozp__fine">${EP ? '<span class="ozp__engine"></span>Every applied change is logged under your name.' : 'The Ozer Prime endpoint is not configured (js/config.js adminEndpoint).'}</p></section>`;
+    const root = $('.ozp', panel), log = $('.ozp__log', panel), form = $('.ozp__form', panel), ta = $('textarea', form), history = []; let busy = false;
+    const scrollEnd = () => { log.scrollTop = log.scrollHeight; };
+    const add = (who, html) => { const el = document.createElement('div'); el.className = 'oz-msg is-' + who; el.innerHTML = who === 'user' ? `<div class="oz-msg__body">${html}</div>` : `<span class="oz-msg__mark">${primeMark()}</span><div class="oz-msg__body">${html}</div>`; log.appendChild(el); root.classList.add('has-history'); scrollEnd(); return el; };
+    const verse = a => `<div class="oz-card oz-card--verse"><span class="oz-card__k">${esc(a.reference)} <i>${esc(a.translation)}</i></span><blockquote>${esc(a.text)}</blockquote></div>`;
     const call = async body => { const { data: { session: s } } = await sb.auth.getSession(); const r = await fetch(EP, { method:'POST', headers:{ 'Content-Type':'application/json', apikey: CFG.supabaseKey, Authorization: 'Bearer ' + s.access_token }, body: JSON.stringify(Object.assign({ site }, body)) }); const j = await r.json().catch(() => ({})); if (!r.ok || j.error) throw new Error(j.error || ('HTTP ' + r.status)); return j; };
-    const plan = (steps, instruction) => { const el = add('plan', `<b>Plan</b><ol>${steps.map(x => `<li>${esc(x.summary)}</li>`).join('')}</ol><div class="row"><button class="btn apply" type="button">Apply ${steps.length} change${steps.length > 1 ? 's' : ''}</button><button class="pill discard" type="button">Discard</button></div>`);
-      $('.discard', el).addEventListener('click', () => { el.querySelector('.row').innerHTML = '<span class="sub">Discarded.</span>'; });
+    const plan = (steps, instruction) => { const el = add('bot', `<div class="ozp__plan"><span class="oz-card__k">Plan &middot; waiting for your approval</span><ol>${steps.map(x => `<li>${esc(x.summary)}</li>`).join('')}</ol><div class="oz-card__row"><button class="oz-chip oz-chip--gold apply" type="button">Apply ${steps.length} change${steps.length > 1 ? 's' : ''}</button><button class="oz-chip discard" type="button">Discard</button></div></div>`);
+      const row = $('.oz-card__row', el);
+      $('.discard', el).addEventListener('click', () => { row.innerHTML = '<span class="ozp__muted">Discarded. Nothing was changed.</span>'; });
       $('.apply', el).addEventListener('click', async () => { const btn = $('.apply', el); btn.disabled = true; btn.textContent = 'Applying...';
         try { const { results } = await call({ apply: steps.map(x => ({ tool: x.tool, args: x.args })), instruction });
-          el.querySelector('.row').innerHTML = `<ul class="agent__results">${results.map(x => `<li class="${x.ok ? 'is-ok' : 'is-err'}">${x.ok ? 'Done' : 'Failed'}: ${esc(x.summary || x.tool)}${x.ok ? '' : ' (' + esc(String(x.detail)) + ')'}</li>`).join('')}</ul>`;
+          row.innerHTML = `<ul class="ozp__results">${results.map(x => `<li class="${x.ok ? 'is-ok' : 'is-err'}">${x.ok ? 'Done' : 'Failed'}: ${esc(x.summary || x.tool)}${x.ok ? '' : ' (' + esc(String(x.detail)) + ')'}</li>`).join('')}</ul>`;
           history.push({ role:'user', content:'[The admin applied the plan. Results: ' + results.map(x => (x.ok ? 'ok' : 'failed') + ' ' + x.tool).join(', ') + ']' }); applySettings(); toast('Changes applied.'); }
         catch (e){ btn.disabled = false; btn.textContent = 'Apply'; toast(e.message, false); } }); };
-    const ask = async q => { if (busy || !EP) return; busy = true; add('user', esc(q)); history.push({ role:'user', content:q }); const t = add('bot', '<span class="agent__typing"><i></i><i></i><i></i></span>');
-      try { const ans = await call({ messages: history.slice(-12) }); t.remove(); add('bot', esc(ans.text).replace(/\n/g, '<br>')); history.push({ role:'assistant', content: ans.text }); if (ans.plan && ans.plan.length) plan(ans.plan, q); }
-      catch (e){ t.remove(); add('bot', esc(e.message)); } finally { busy = false; ta.focus(); } };
-    form.addEventListener('submit', e => { e.preventDefault(); const q = ta.value.trim(); if (!q) return; ta.value = ''; ask(q); });
+    const ask = async q => { if (busy || !EP) return; busy = true; root.classList.add('is-busy'); add('user', esc(q)); history.push({ role:'user', content:q }); const t = add('bot', '<span class="oz-think"><i></i><i></i><i></i></span><small class="ozp__muted">Ozer Prime is working</small>');
+      try { const ans = await call({ messages: history.slice(-14) }); t.remove(); add('bot', `<div class="oz-rich">${rich(ans.text)}</div>${(ans.actions || []).map(verse).join('')}`); history.push({ role:'assistant', content: ans.text }); if (ans.plan && ans.plan.length) plan(ans.plan, q); const eng = $('.ozp__engine', panel); if (eng && ans.engine) eng.textContent = `Running on ${ans.engine}. `; }
+      catch (e){ t.remove(); add('bot', `<p class="ozp__err">${esc(e.message)}</p>`); } finally { busy = false; root.classList.remove('is-busy'); ta.focus(); } };
+    const grow = () => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 180) + 'px'; };
+    ta.addEventListener('input', grow);
+    form.addEventListener('submit', e => { e.preventDefault(); const q = ta.value.trim(); if (!q) return; ta.value = ''; grow(); ask(q); });
     ta.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); form.requestSubmit(); } });
-    $$('.agent__examples button', panel).forEach(b => b.addEventListener('click', () => ask(b.textContent)));
-    add('bot', `Hello ${esc((profile.full_name || '').split(' ')[0] || 'there')}. What shall we change today?`);
+    $$('.ozp__starts button', panel).forEach(b => b.addEventListener('click', () => ask(b.textContent)));
+    add('bot', `<div class="oz-rich"><p>Peace to you, ${esc((profile.full_name || '').split(' ')[0] || 'friend')}. What shall we do across the sites today?</p></div>`); root.classList.remove('has-history');
   }
   /* Site text: every editable setting for this site, saved straight to the database and live within seconds */
   async function settingsTab(){

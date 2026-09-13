@@ -8,7 +8,7 @@ const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').
 const slug = file => (file === 'index.html' ? '' : file.replace(/\.html$/, ''));
 const urlOf = (origin, file) => origin + '/' + slug(file);
 
-function headTags({ origin, file, title, desc, noindex, ogImage, ogAlt, siteName, themeColor, locale = 'en_ZM', type = 'website', preloadImage }) {
+function headTags({ origin, file, title, desc, noindex, ogImage, ogAlt, siteName, themeColor, locale = 'en_ZM', type = 'website', preloadImage, iconV = '3' }) {
   const url = urlOf(origin, file);
   const img = /^https?:/.test(ogImage) ? ogImage : origin + '/' + String(ogImage).replace(/^\//, '');
   return [
@@ -17,7 +17,7 @@ function headTags({ origin, file, title, desc, noindex, ogImage, ogAlt, siteName
     `<link rel="canonical" href="${url}">`,
     `<meta name="robots" content="${noindex ? 'noindex, nofollow' : 'index, follow, max-image-preview:large'}">`,
     `<meta name="theme-color" content="${themeColor}">`,
-    `<link rel="icon" href="/favicon.ico" sizes="any"><link rel="icon" href="/assets/logo/favicon-32.png?v=3" sizes="32x32" type="image/png"><link rel="icon" href="/assets/logo/favicon-192.png?v=3" sizes="192x192" type="image/png"><link rel="apple-touch-icon" href="/assets/logo/apple-touch-icon.png?v=3"><link rel="manifest" href="/site.webmanifest">`,
+    `<link rel="icon" href="/favicon.ico?v=${iconV}" sizes="any"><link rel="icon" href="/assets/logo/favicon-32.png?v=${iconV}" sizes="32x32" type="image/png"><link rel="icon" href="/assets/logo/favicon-192.png?v=${iconV}" sizes="192x192" type="image/png"><link rel="apple-touch-icon" href="/assets/logo/apple-touch-icon.png?v=${iconV}"><link rel="manifest" href="/site.webmanifest">`,
     `<meta property="og:type" content="${type}"><meta property="og:site_name" content="${esc(siteName)}"><meta property="og:locale" content="${locale}">`,
     `<meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(desc)}"><meta property="og:url" content="${url}">`,
     `<meta property="og:image" content="${img}"><meta property="og:image:secure_url" content="${img}"><meta property="og:image:type" content="image/jpeg"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="${esc(ogAlt || title)}">`,
@@ -66,4 +66,14 @@ function lint(p, title, desc) {
   return w;
 }
 
-module.exports = { headTags, clean, sitemapXml, robotsTxt, manifestJson, lint, urlOf, slug, esc };
+/* Ozer, the AI assistant: its mark (a halo around a star of light) and the navbar / menu buttons that open it (js/chat.js binds [data-ozer]) */
+function ozerMark(id = 'ozm', prime = false) {
+  return `<svg class="oz-mark${prime ? ' oz-mark--prime' : ''}" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><defs><linearGradient id="${id}" x1="8" y1="6" x2="40" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFF7DC"/><stop offset=".5" stop-color="#EBC872"/><stop offset="1" stop-color="#B98A3E"/></linearGradient></defs>`
+    + `<circle cx="24" cy="24" r="17.5" fill="none" stroke="url(#${id})" stroke-width="2"/>`
+    + (prime ? `<circle cx="24" cy="24" r="22" fill="none" stroke="url(#${id})" stroke-width="1" stroke-dasharray="2 3.2" opacity=".85"/><path d="M17 9.5l2.2 2.4L24 7.6l4.8 4.3L31 9.5" fill="none" stroke="url(#${id})" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>` : '')
+    + `<path d="M24 11.5c.9 7.7 3.9 11.2 12 12.5-8.1 1.3-11.1 4.8-12 12.5-.9-7.7-3.9-11.2-12-12.5 8.1-1.3 11.1-4.8 12-12.5z" fill="url(#${id})"/></svg>`;
+}
+const ozerNav = () => `<button class="nav__ozer" type="button" data-ozer aria-label="Open Ozer, the AI Bible and church assistant">${ozerMark('ozm-nav')}<span>Ozer</span></button>`;
+const ozerMenu = () => `<button class="ozq" type="button" data-ozer>${ozerMark('ozm-menu')}<span><b>Ask Ozer</b><small>AI Bible and church assistant</small></span></button>`;
+
+module.exports = { ozerMark, ozerNav, ozerMenu, headTags, clean, sitemapXml, robotsTxt, manifestJson, lint, urlOf, slug, esc };
