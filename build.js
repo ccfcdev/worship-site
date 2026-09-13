@@ -4,7 +4,7 @@ const fs = require('fs'), path = require('path'), crypto = require('crypto');
 const SEO = require('./build-shared.js');
 const ORIGIN = 'https://worship.ccfczambia.org';
 const hash = f => crypto.createHash('md5').update(fs.readFileSync(path.join(__dirname, f))).digest('hex').slice(0, 8);
-const V = { chat: hash('js/chat.js'), css: hash('css/site.css'), js: hash('js/site.js'), fonts: hash('css/fonts.css'), core: hash('css/core.css'), corejs: hash('js/core.js') };
+const V = { chat: hash('js/mazar.js'), mzcss: hash('css/mazar.css'), css: hash('css/site.css'), js: hash('js/site.js'), fonts: hash('css/fonts.css'), core: hash('css/core.css'), corejs: hash('js/core.js') };
 const SETTINGS_URL = 'https://dcqydtkjzgilyjnjyisb.supabase.co/rest/v1/site_settings?select=key,value&site=eq.worship';
 function loadSettings(defaults){ try { const out = require('child_process').execSync(`curl -s --max-time 6 -H "apikey: sb_publishable_gPig-ePcoJIUnQ4fij6viw_ukAhlifp" "${SETTINGS_URL}"`, { encoding:'utf8' }); const rows = JSON.parse(out); const s = Object.assign({}, defaults); for (const r of rows) if (r.value && r.value.trim()) s[r.key] = r.value; console.log('settings: live'); return s; } catch (e){ console.log('settings: defaults (offline)'); return Object.assign({}, defaults); } }
 const S = loadSettings({ latest:'Koinonia 25 worship sets', rehearsal:'Ask us for the weekly slot' });
@@ -54,7 +54,7 @@ function layout(p){
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 ${SEO.headTags({ origin: ORIGIN, file: p.file, title: WSEO[p.file][0], desc: WSEO[p.file][1], noindex: p.noindex, ogImage: 'assets/og/' + (CARD[p.file] || 'default') + '.jpg', ogAlt: WSEO[p.file][0].split(' | ')[0] + ', Worship Connect, CCFC Zambia', siteName: 'Worship Connect', themeColor: '#0A0A0B', preloadImage: p.file === 'index.html' ? '/assets/img/hero-poster-v2.webp' : null })}
 <link rel="preload" href="assets/fonts/BricolageGrotesque-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/fonts.css?v=${V.fonts}"><link rel="stylesheet" href="css/site.css?v=${V.css}"><link rel="stylesheet" href="css/core.css?v=${V.core}">
+<link rel="stylesheet" href="css/fonts.css?v=${V.fonts}"><link rel="stylesheet" href="css/site.css?v=${V.css}"><link rel="stylesheet" href="css/core.css?v=${V.core}"><link rel="stylesheet" href="css/mazar.css?v=${V.mzcss}">
 <script type="application/ld+json">${JSON.stringify({'@context':'https://schema.org','@type':'MusicGroup',name:'Worship Connect',description:'Praise and worship team of Christ Connect Family Church Zambia',url:ORIGIN + '/',genre:'Gospel',foundingLocation:{'@type':'Place',name:'Lusaka, Zambia'},sameAs:[YT],memberOf:{'@type':'Church',name:'Christ Connect Family Church Zambia',url:'https://ccfczambia.org/'}})}</script>${p.jsonld ? `<script type="application/ld+json">${JSON.stringify(p.jsonld)}</script>` : ''}
 </head>
 <body>
@@ -62,13 +62,13 @@ ${SEO.headTags({ origin: ORIGIN, file: p.file, title: WSEO[p.file][0], desc: WSE
 <header class="nav"><div class="wrap">
   <a class="nav__brand" href="index.html" aria-label="Worship Connect, home"><img src="assets/logo/ccfc-mark-white.png?v=2" alt="Christ Connect Family Church"><b>WORSHIP<i>Connect</i></b></a>
   <ul class="nav__links">${links}</ul>
-  <div class="row">${SEO.ozerNav()}<span class="nav__account"></span><a class="btn btn--ghost nav__home" href="${MAIN}" title="Back to the main church website">${ICON.back}Church website</a><a class="btn nav__cta" href="join.html"><span class="nav__cta-long">Join the team</span><span class="nav__cta-short">Join</span> ${ICON.arrow}</a><button class="nav__burger" aria-label="Open menu" aria-expanded="false" aria-controls="menu"><i></i><span>Menu</span></button></div>
+  <div class="row">${SEO.mazarNav()}<span class="nav__account"></span><a class="btn btn--ghost nav__home" href="${MAIN}" title="Back to the main church website">${ICON.back}Church website</a><a class="btn nav__cta" href="join.html"><span class="nav__cta-long">Join the team</span><span class="nav__cta-short">Join</span> ${ICON.arrow}</a><button class="nav__burger" aria-label="Open menu" aria-expanded="false" aria-controls="menu"><i></i><span>Menu</span></button></div>
 </div></header>
 <div class="menu__veil"></div>
 <nav class="menu" aria-label="Site menu" id="menu">
   <div class="menu__top"><a class="nav__brand" href="index.html"><img src="assets/logo/ccfc-mark-white.png?v=2" alt=""><b>WORSHIP<i>Connect</i></b></a><button class="menu__close" aria-label="Close menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
   <div class="menu__scroll">
-    <div class="menu__quick"><a class="mq mq--a" href="join.html"><b>Join the team</b><small>Tell us your gift</small></a><a class="mq mq--b" href="videos.html"><b>Watch every set</b><small>Praise and worship</small></a></div>${SEO.ozerMenu()}
+    <div class="menu__quick"><a class="mq mq--a" href="join.html"><b>Join the team</b><small>Tell us your gift</small></a><a class="mq mq--b" href="videos.html"><b>Watch every set</b><small>Praise and worship</small></a></div>${SEO.mazarMenu()}
     <h4 class="menu__h">Pages</h4><ul class="menu__list">${MENU.map(([f,l,t],i) => `<li style="--i:${i}"><a href="${f}"${f===p.file?' aria-current="page"':''}><b>${l}</b><small>${t}</small><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span></a></li>`).join('')}</ul>
     <h4 class="menu__h">Our sites</h4><div class="menu__cards"><a class="mcard mcard--church" href="${MAIN}"><b>CCFC Zambia</b><small>Back to the church website</small><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span></a><a class="mcard mcard--koi" href="${KOI}"><b>KOINONIA<i>Experience</i></b><small>Koi 24' to Koi 26', videos, registration</small><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span></a></div>
   </div>
@@ -80,7 +80,8 @@ ${SEO.headTags({ origin: ORIGIN, file: p.file, title: WSEO[p.file][0], desc: WSE
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js" defer></script>
 <script>window.CCFC_SITE={key:'worship'};window.CCFC_CONFIG=Object.assign(window.CCFC_CONFIG||{supabaseUrl:'https://dcqydtkjzgilyjnjyisb.supabase.co',supabaseKey:'sb_publishable_gPig-ePcoJIUnQ4fij6viw_ukAhlifp'},{chatEndpoint:'https://dcqydtkjzgilyjnjyisb.supabase.co/functions/v1/ministry-chat'})</script>
 <script src="js/core.js?v=${V.corejs}" defer></script>
-<script src="js/chat.js?v=${V.chat}" defer></script>
+<script>window.MAZAR={mode:'widget'}</script>
+<script src="js/mazar.js?v=${V.chat}" defer></script>
 </body></html>`;
 }
 const vcard = v => `<div class="vcard"><a href="https://www.youtube.com/watch?v=${v.id}" class="vcard__main" data-lb="${v.id}" data-title="${v.t}" aria-label="Play: ${v.t}"><div class="ph">${img(v.img,'','(min-width:800px) 50vw, 100vw')}</div><span class="vcard__play" aria-hidden="true">${ICON.play}</span><div class="vcard__meta"><b>${v.t}</b><span>${v.where} &middot; ${v.when} &middot; ${v.dur}</span></div></a>
@@ -180,7 +181,7 @@ fs.writeFileSync(path.join(__dirname, 'robots.txt'), SEO.robotsTxt(ORIGIN));
 fs.writeFileSync(path.join(__dirname, 'site.webmanifest'), SEO.manifestJson({ name: 'Worship Connect', short: 'Worship Connect', themeColor: '#0A0A0B', background: '#0A0A0B' }));
 console.log('built', pages.length, 'pages', V);
 
-/* Knowledge base for Ozer, the AI assistant: the visible text of every page, rebuilt on each deploy (kb.json). */
+/* Knowledge base for Mazar, the AI Bible companion: the visible text of every page, rebuilt on each deploy (kb.json). */
 function writeKb(pages, site){
   const strip = html => { const main = (html.match(/<main[^>]*>([\s\S]*?)<\/main>/) || [,''])[1];
     return main.replace(/<(script|style|svg|video|iframe|form)[\s\S]*?<\/\1>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;|&middot;|&amp;|&quot;|&#39;/g, m => ({'&nbsp;':' ','&middot;':'.','&amp;':'&','&quot;':'"','&#39;':"'"}[m])).replace(/\s+/g, ' ').trim().slice(0, 6000); };

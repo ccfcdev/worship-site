@@ -66,14 +66,10 @@ function lint(p, title, desc) {
   return w;
 }
 
-/* Ozer, the AI assistant: its mark (a halo around a star of light) and the navbar / menu buttons that open it (js/chat.js binds [data-ozer]) */
-function ozerMark(id = 'ozm', prime = false) {
-  return `<svg class="oz-mark${prime ? ' oz-mark--prime' : ''}" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><defs><linearGradient id="${id}" x1="8" y1="6" x2="40" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFF7DC"/><stop offset=".5" stop-color="#EBC872"/><stop offset="1" stop-color="#B98A3E"/></linearGradient></defs>`
-    + `<circle cx="24" cy="24" r="17.5" fill="none" stroke="url(#${id})" stroke-width="2"/>`
-    + (prime ? `<circle cx="24" cy="24" r="22" fill="none" stroke="url(#${id})" stroke-width="1" stroke-dasharray="2 3.2" opacity=".85"/><path d="M17 9.5l2.2 2.4L24 7.6l4.8 4.3L31 9.5" fill="none" stroke="url(#${id})" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>` : '')
-    + `<path d="M24 11.5c.9 7.7 3.9 11.2 12 12.5-8.1 1.3-11.1 4.8-12 12.5-.9-7.7-3.9-11.2-12-12.5 8.1-1.3 11.1-4.8 12-12.5z" fill="url(#${id})"/></svg>`;
+/* Mazar, the AI Bible companion: its mark (a star of light in a broken halo) and the navbar / menu buttons that open it (js/mazar.js binds [data-mazar]) */
+function mazarMark(id = 'mzm') {
+  return `<svg class="mz-mark" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><defs><linearGradient id="${id}" x1="8" y1="6" x2="40" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="var(--mz-light,#FFF7DC)"/><stop offset=".55" stop-color="var(--mz-glow,#EBC872)"/><stop offset="1" stop-color="var(--mz-glow-2,#B98A3E)"/></linearGradient></defs><path d="M24 6.5a17.5 17.5 0 1 1-12.4 5.1" fill="none" stroke="url(#${id})" stroke-width="1.6" stroke-linecap="round"/><path d="M24 2v6M24 40v6" stroke="url(#${id})" stroke-width="1.2" stroke-linecap="round" opacity=".8"/><path d="M24 12c.8 8.4 3.6 11.2 12 12-8.4.8-11.2 3.6-12 12-.8-8.4-3.6-11.2-12-12 8.4-.8 11.2-3.6 12-12z" fill="url(#${id})"/></svg>`;
 }
-const ozerNav = () => `<button class="nav__ozer" type="button" data-ozer aria-label="Open Ozer, the AI Bible and church assistant">${ozerMark('ozm-nav')}<span>Ozer</span></button>`;
-const ozerMenu = () => `<button class="ozq" type="button" data-ozer>${ozerMark('ozm-menu')}<span><b>Ask Ozer</b><small>AI Bible and church assistant</small></span></button>`;
-
-module.exports = { ozerMark, ozerNav, ozerMenu, headTags, clean, sitemapXml, robotsTxt, manifestJson, lint, urlOf, slug, esc };
+const mazarNav = () => `<button class="nav__mazar" type="button" data-mazar aria-label="Open Mazar, the AI Bible companion">${mazarMark('mzm-nav')}<span>Mazar</span></button>`;
+const mazarMenu = () => `<button class="mzq" type="button" data-mazar>${mazarMark('mzm-menu')}<span><b>Ask Mazar</b><small>AI Bible companion, prayer and small tasks</small></span></button>`;
+module.exports = { mazarMark, mazarNav, mazarMenu, headTags, clean, sitemapXml, robotsTxt, manifestJson, lint, urlOf, slug, esc };
