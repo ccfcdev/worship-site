@@ -186,7 +186,7 @@ function accountUI(modal){
       btn.addEventListener('click', () => { menu.hidden = !menu.hidden; btn.setAttribute('aria-expanded', !menu.hidden); });
       document.addEventListener('click', e => { if (!slot.contains(e.target)){ menu.hidden = true; btn.setAttribute('aria-expanded', false); } });
     }
-    $$('.nav__signout', slot).forEach(b => b.addEventListener('click', async () => { await sb.auth.signOut(); location.href = '/'; }));
+    $$('.nav__signout', slot).forEach(b => b.addEventListener('click', async () => { await sb.auth.signOut({ scope: 'local' }); location.href = '/'; }));
   });
   $$('[data-auth]').forEach(b => { if (b._bound) return; b._bound = true; b.addEventListener('click', e => { e.preventDefault(); modal.open(b.dataset.auth || 'in'); }); });
   $$('[data-guest]').forEach(el => { el.hidden = !!session; }); $$('[data-member]').forEach(el => { el.hidden = !session; });
@@ -200,7 +200,8 @@ async function loadProfile(){ if (!session){ profile = null; return; }
     const ins = await sb.from('profiles').insert(row).select('*').maybeSingle();
     data = ins.data || (await sb.from('profiles').select('*').eq('id', u.id).maybeSingle()).data || row;
   }
-  profile = data; }
+  profile = data;
+  if (profile && profile.mazar_only){ sb.rpc('ccfc_join').then(({ error }) => { if (!error) profile.mazar_only = false; }); } }
 
 /* ================================================================ MEDIA */
 function shrink(file, max=1800, q=.82){ return new Promise(res => { const img = new Image(); img.onload = () => { const s = Math.min(1, max/Math.max(img.width, img.height));
@@ -258,7 +259,7 @@ function postCard(p, liked){
 }
 function wireComments(box, key, id, modal, onCount){
   const load = async () => {
-    const { data } = await sb.from('comments').select('id, body, created_at, author_id, profiles(full_name, avatar_url)').eq(key, id).order('created_at');
+    const { data } = await sb.from('comments').select('id, body, created_at, author_id, profiles:member_cards(full_name, avatar_url)').eq(key, id).order('created_at');
     box.innerHTML = (data||[]).map(c => `<div class="cmt" data-id="${c.id}">${avatar(c.profiles?.full_name, c.profiles?.avatar_url, 'ava--s')}<div><b>${esc(c.profiles?.full_name || 'Member')}</b> <span>${esc(when(c.created_at))}</span><p>${esc(c.body)}</p></div>${(profile && (profile.id === c.author_id || can.moderate(role()))) ? '<button class="cmt__del" aria-label="Delete comment">&times;</button>' : ''}</div>`).join('')
       + (session ? `<form class="cmt__form">${avatar(profile?.full_name, profile?.avatar_url, 'ava--s')}<textarea name="body" rows="1" maxlength="2000" placeholder="Write a comment" required></textarea><button class="btn" type="submit">Post</button></form>` : `<button class="cmt__signin link">Sign in to comment</button>`);
     $$('.cmt__del', box).forEach(b => b.addEventListener('click', async () => { await sb.from('comments').delete().eq('id', b.closest('.cmt').dataset.id); load(); }));
@@ -292,7 +293,7 @@ async function feedAnnouncements(root, site){
       <div class="ann__row"><div class="field"><label>Show until <small>(optional)</small></label><input name="ends_at" type="date" value="${dateVal(a.ends_at)}"></div><label class="ann__check"><input type="checkbox" name="pinned" ${a.pinned ? 'checked' : ''}> Pin to the top</label></div>
       <div class="row"><button class="btn" type="submit">${a.id ? 'Save changes' : 'Publish announcement'}</button><button class="btn btn--ghost ann__cancel" type="button">Cancel</button><span class="form__status" aria-live="polite"></span></div></form>`;
   async function load(){
-    const { data } = await sb.from('announcements').select('*, editor:updated_by(full_name)').eq('site', site).order('pinned', { ascending:false }).order('updated_at', { ascending:false }).limit(20);
+    const { data } = await sb.from('announcements').select('*, editor:member_cards!updated_by(full_name)').eq('site', site).order('pinned', { ascending:false }).order('updated_at', { ascending:false }).limit(20);
     items = (data || []).filter(a => canEdit || (a.active && (!a.ends_at || new Date(a.ends_at) > new Date()))); render();
   }
   function render(){
@@ -549,7 +550,7 @@ async function libraryPage(modal){
   chips.innerHTML = [['', 'All'], ...Object.entries(KINDS)].map(([k, v]) => `<button type="button" class="chip ${k ? '' : 'is-on'}" data-k="${k}">${v}</button>`).join('');
   $$('.chip', chips).forEach(b => b.addEventListener('click', () => { kind = b.dataset.k; $$('.chip', chips).forEach(x => x.classList.toggle('is-on', x === b)); render(); }));
   async function load(){ list.innerHTML = `<div class="lshelf"><div class="lgrid">${'<div class="lcard lcard--skel"><div class="lcov"></div><b></b><span></span></div>'.repeat(8)}</div></div>`;
-    const { data } = await sb.from('library_items').select('*, profiles(full_name)').order('created_at', { ascending:false }); items = data || []; render(); }
+    const { data } = await sb.from('library_items').select('*, profiles:member_cards(full_name)').order('created_at', { ascending:false }); items = data || []; render(); }
   function card(i){ const e = extOf(i.file_name), t = TYPE(e);
     return `<article class="lcard" data-id="${i.id}"><button type="button" class="lcov lcov--${t}" aria-label="Preview ${esc(i.title)}">${i.cover_path ? `<img src="${esc(pub(i.cover_path))}" alt="" loading="lazy">` : art(t, e)}<span class="lcov__kind">${esc(KINDS[i.kind] || i.kind)}</span><span class="lcov__open" aria-hidden="true">Preview</span></button>
       <b>${esc(i.title)}</b><span class="lcard__meta">${esc(e.toUpperCase())} &middot; ${fmtBytes(i.size_bytes)}${i.profiles?.full_name ? ' &middot; ' + esc(i.profiles.full_name) : ''}</span>
@@ -731,17 +732,17 @@ async function dashboardPage(modal){
     render();
   }
   async function blogsTab(){
-    const { data } = await sb.from('blogs').select('id, title, slug, published, published_at, created_at, author:author_id(full_name)').order('created_at', { ascending:false }).limit(100);
+    const { data } = await sb.from('blogs').select('id, title, slug, published, published_at, created_at, author:member_cards!author_id(full_name)').order('created_at', { ascending:false }).limit(100);
     panel.innerHTML = `<div class="row mb-2"><a class="btn" href="/blog?new=1">Write a post</a></div><div class="dash__list">${(data||[]).map(b => `<div class="drow" data-id="${b.id}"><div><b>${esc(b.title)}</b><span>${b.published ? 'Published ' + esc(when(b.published_at)) : 'Draft'} &middot; ${esc(b.author?.full_name||'')}</span></div><div class="row"><a class="pill" href="/blog?post=${esc(b.slug)}">Open</a>${can.admin(r) ? '<button class="pill pill--danger del">Delete</button>' : ''}</div></div>`).join('') || '<p class="sub">No blog posts yet.</p>'}</div>`;
     $$('.del', panel).forEach(b => b.addEventListener('click', async () => { if (!confirm('Delete this blog post?')) return; const { error } = await sb.from('blogs').delete().eq('id', b.closest('.drow').dataset.id); if (error) toast(friendly(error), false); else blogsTab(); }));
   }
   async function usersTab(){
-    panel.innerHTML = `<div class="dash__toolbar"><input class="dash__search" placeholder="Search by name or email" aria-label="Search users"><select class="rolesel dash__rolefilter"><option value="">All roles</option>${Object.entries(ROLES).map(([k,v]) => `<option value="${k}">${v.label}</option>`).join('')}</select></div><div class="dash__list"></div>`;
+    panel.innerHTML = `<div class="dash__toolbar"><input class="dash__search" placeholder="Search by name or email" aria-label="Search users"><select class="rolesel dash__rolefilter"><option value="">All roles</option>${Object.entries(ROLES).map(([k,v]) => `<option value="${k}">${v.label}</option>`).join('')}<option value="mazar">Mazar-only accounts</option></select></div><div class="dash__list"></div>`;
     const list = $('.dash__list', panel), search = $('.dash__search', panel), rf = $('.dash__rolefilter', panel);
-    const { data } = await sb.from('profiles').select('id, email, full_name, avatar_url, role, created_at').order('created_at', { ascending:false });
+    const { data } = await sb.from('profiles').select('id, email, full_name, avatar_url, role, created_at, mazar_only').order('created_at', { ascending:false });
     const assignable = r === 'master_admin' ? Object.keys(ROLES) : ['leader','media','blogger','member'];
     const render = () => { const qq = search.value.toLowerCase();
-      list.innerHTML = (data||[]).filter(u => (!rf.value || u.role === rf.value) && (!qq || (u.full_name+u.email).toLowerCase().includes(qq))).map(u => { const locked = r !== 'master_admin' && ADMINS.includes(u.role);
+      list.innerHTML = (data||[]).filter(u => (rf.value === 'mazar' ? u.mazar_only : !u.mazar_only && (!rf.value || u.role === rf.value)) && (!qq || (u.full_name+u.email).toLowerCase().includes(qq))).map(u => { const locked = r !== 'master_admin' && ADMINS.includes(u.role);
         return `<div class="drow" data-id="${u.id}">${avatar(u.full_name||u.email, u.avatar_url)}<div><b>${esc(u.full_name || '(no name)')}</b><span>${esc(u.email)} &middot; joined ${esc(when(u.created_at))}</span></div><div class="row">${locked ? `<span class="pill pill--orange">${esc(ROLES[u.role].label)}</span><small>Only the Master Administrator can change Admin accounts</small>` : `<select class="rolesel" aria-label="Role for ${esc(u.full_name||u.email)}">${assignable.map(k => `<option value="${k}" ${k===u.role?'selected':''}>${ROLES[k].label}</option>`).join('')}</select>`}</div></div>`; }).join('') || '<p class="sub">No users match.</p>';
       $$('.rolesel', list).forEach(s => s.addEventListener('change', async () => { const u = data.find(x => x.id === s.closest('.drow').dataset.id); const { error } = await sb.rpc('set_role', { target:u.id, new_role:s.value }); if (error){ toast(error.message,false); s.value = u.role; } else { u.role = s.value; toast(`${u.full_name || u.email} is now ${ROLES[s.value].label}.`); } })); };
     search.addEventListener('input', render); rf.addEventListener('change', render); render();
@@ -792,6 +793,12 @@ async function accountPage(modal){
         </form>
         <small class="acct__note">${providers.every(p => p !== 'email') ? 'Setting a password also lets you sign in with your email, alongside ' + providers.map(p => p[0].toUpperCase() + p.slice(1)).join(' and ') + '.' : ''}</small>
       </section>
+      <section class="acct__card acct__apps">
+        <h2>Connected apps</h2>
+        <div class="acct__app"><span class="acct__app-ico" aria-hidden="true"><svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="17" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M24 12c.8 8.4 3.6 11.2 12 12-8.4.8-11.2 3.6-12 12-.8-8.4-3.6-11.2-12-12 8.4-.8 11.2-3.6 12-12z" fill="currentColor"/></svg></span><div><b>Mazar</b><span class="acct__app-status">Checking...</span></div></div>
+        <div class="acct__app-list"></div>
+        <small class="acct__note">Mazar is the church's AI Bible companion app. Connecting shows your church name and role there. Your Mazar conversations stay private to you.</small>
+      </section>
       <section class="acct__card acct__meta">
         <h2>Your account</h2>
         <dl class="drow__dl"><dt>Role</dt><dd>${esc(ROLES[role()||'member'].label)}: ${esc(ROLES[role()||'member'].desc)}</dd><dt>Signs in with</dt><dd>${esc(providers.map(p => p === 'email' ? 'Email and password' : p[0].toUpperCase() + p.slice(1)).join(', '))}</dd><dt>Member since</dt><dd>${esc(fullDate(profile.created_at))}</dd><dt>Works on</dt><dd>ccfczambia.org, koinonia.ccfczambia.org, worship.ccfczambia.org</dd></dl>
@@ -799,6 +806,15 @@ async function accountPage(modal){
       </section>
     </div>`;
     const setStatus = (f, msg, ok) => { const st = $('.form__status', f); st.textContent = msg; st.className = 'form__status ' + (ok ? 'is-ok' : 'is-err'); };
+    if (new URLSearchParams(location.search).get('connect') === 'mazar' && !$('.acct__connect', root)){ const note = document.createElement('div'); note.className = 'acct__connect'; note.innerHTML = `<b>You're signed in.</b> Go back to Mazar to finish connecting. ${window.opener ? 'This window closes by itself.' : '<a class="link" href="https://mazar.ccfczambia.org/?account=connect">Return to Mazar</a>'}`; app.prepend(note); }
+    const loadApps = async () => { const box = $('.acct__apps', app); if (!box) return; const st = $('.acct__app-status', box), list = $('.acct__app-list', box);
+      const { data, error } = await sb.from('mazar_accounts').select('user_id, display_name, ccfc_linked_at').eq('ccfc_user_id', profile.id);
+      if (error){ st.textContent = 'Not available right now.'; return; }
+      if (!data || !data.length){ st.innerHTML = 'Not connected. <a class="link" href="https://mazar.ccfczambia.org/?account=connect" target="_blank" rel="noopener">Connect in Mazar</a>'; list.innerHTML = ''; return; }
+      st.textContent = 'Connected';
+      list.innerHTML = data.map(x => `<div class="drow"><div><b>${esc(x.user_id === profile.id ? 'This account' : (x.display_name || 'A Mazar account'))}</b><span>${x.ccfc_linked_at ? 'Connected ' + esc(when(x.ccfc_linked_at)) : ''}</span></div><div class="row"><a class="pill" href="https://mazar.ccfczambia.org" target="_blank" rel="noopener">Open Mazar</a><button class="pill pill--danger" data-unlink="${esc(x.user_id)}">Disconnect</button></div></div>`).join('');
+      $$('[data-unlink]', list).forEach(b => b.addEventListener('click', async () => { if (!confirm('Disconnect this Mazar account from your church account?')) return; const { error: e2 } = await sb.rpc('ccfc_disconnect_mazar', { p_mazar: b.dataset.unlink }); if (e2) toast(friendly(e2), false); else { toast('Disconnected from Mazar.'); loadApps(); } })); };
+    loadApps();
     const file = $('.acct__camera input', app); const pick = () => file.click();
     $('.acct__pick', app).addEventListener('click', pick); $('.acct__camera', app).addEventListener('click', e => { e.preventDefault(); pick(); });
     file.addEventListener('change', async () => { const fl = file.files[0]; if (!fl) return; if (!fl.type.startsWith('image')){ toast('Please choose an image.', false); return; }
@@ -821,7 +837,7 @@ async function accountPage(modal){
     $('.acct__pass', app).addEventListener('submit', async e => { e.preventDefault(); const f = e.target; const p1 = f.password.value, p2 = f.password2.value;
       if (p1.length < 8){ setStatus(f, 'Use at least 8 characters.', false); return; } if (p1 !== p2){ setStatus(f, 'The two passwords do not match.', false); return; }
       const { error } = await sb.auth.updateUser({ password: p1 }); if (error){ setStatus(f, friendly(error), false); return; } f.reset(); setStatus(f, 'Password changed.', true); });
-    $('.nav__signout', app).addEventListener('click', async () => { await sb.auth.signOut(); location.href = '/'; });
+    $('.nav__signout', app).addEventListener('click', async () => { await sb.auth.signOut({ scope: 'local' }); location.href = '/'; });
   };
   render();
 }

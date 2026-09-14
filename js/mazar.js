@@ -33,7 +33,7 @@ const PER_SITE = {
   mazar:    { name: 'Mazar', greet: "Hi, I'm **Mazar**.\n\nBring me anything: a passage you want to understand, a question you've been sitting on, a doubt, a document or photo to study, or just a hard day. Where do you want to start?", nudge: '', placeholder: 'Ask Mazar anything about the Bible...', suggest: ['Study Romans 8 with me', 'What does the Bible say about fear?', 'Build me a 14 day plan on prayer', 'Quiz me on the Gospel of John', 'Explain the Trinity simply', 'Pray with me for my family'] },
 }[SITE_KEY] || {};
 const abs = h => (!h || /^https?:/.test(h)) ? h : MAIN + h;
-const ls = { get(k, d){ try { const v = JSON.parse(localStorage.getItem(k) || 'null'); return v ?? d; } catch (_) { return d; } }, set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) {} }, del(k){ try { localStorage.removeItem(k); } catch (_) {} } };
+const ls = { get(k, d){ try { const v = JSON.parse(localStorage.getItem(k) || 'null'); return v ?? d; } catch (_) { return d; } }, set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) {} if (ls.onset) try { ls.onset(k, v); } catch (_) {} }, onset: null, del(k){ try { localStorage.removeItem(k); } catch (_) {} } };
 
 /* ---------- storage ---------- */
 const MEM_KEY = 'mazar:v1', OLD_KEYS = ['ozer:v2', 'ccfc-chat:v1'], MEM_TTL = 7 * 24 * 3600 * 1000;
@@ -73,7 +73,7 @@ async function remote(history){
   let used = null, attachments = [];
   for (let i = history.length - 1; i >= 0; i--){ const d = history[i].att && ATTS.get(history[i]); if (d){ used = history[i]; attachments = d.map(({ kind, name, data }) => ({ kind, name, data })); break; } }
   const messages = history.map(m => ({ role: m.role, content: m.content, ...(m === used ? { att: true } : {}) }));
-  const r = await fetch(CFG.chatEndpoint, { method:'POST', headers:{ 'Content-Type':'application/json', ...(CFG.supabaseKey ? { apikey: CFG.supabaseKey, Authorization: 'Bearer ' + CFG.supabaseKey } : {}) }, body: JSON.stringify({ messages, page: HERE, mode: MODE === 'studio' ? 'studio' : 'site', attachments }) });
+  const r = await fetch(CFG.chatEndpoint, { method:'POST', headers:{ 'Content-Type':'application/json', ...(CFG.supabaseKey ? { apikey: CFG.supabaseKey, Authorization: 'Bearer ' + CFG.supabaseKey } : {}) }, body: JSON.stringify({ messages, page: HERE, mode: MODE === 'studio' ? 'studio' : 'site', attachments, ...(window.__mazarWho ? { who: window.__mazarWho } : {}) }) });
   if (!r.ok) throw new Error('chat endpoint ' + r.status); const ans = await r.json();
   if (!ans || typeof ans.text !== 'string') throw new Error('bad answer');
   ans.text = ans.text.replace(/\s*[\u2014\u2013]\s*/g, ', ');
@@ -398,6 +398,10 @@ const I = {
   prev: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
   next: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>',
   lang: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h9M8.5 3v2M11 5c-.6 3.5-2.8 6.6-6 8.5M6 8c1.2 2.6 3.4 4.6 6 5.5M13 21l4-10 4 10M14.5 17h5"/></svg>',
+  user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
+  church: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v5M9.5 4.5h5M5 21V11l7-4 7 4v10M3 21h18M10 21v-5h4v5"/></svg>',
+  shield: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>',
+  db: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.5" rx="8" ry="3"/><path d="M4 5.5v13c0 1.7 3.6 3 8 3s8-1.3 8-3v-13M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>',
   rail: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9.5 4v16"/></svg>',
   clip: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 11.2l-8.4 8.4a5.3 5.3 0 0 1-7.5-7.5l8.9-8.9a3.6 3.6 0 0 1 5.1 5.1l-8.9 8.9a1.8 1.8 0 0 1-2.5-2.5l8.2-8.2"/></svg>',
   file: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>',
@@ -443,6 +447,224 @@ const rich = t => { const links = []; const keep = h => { links.push(h); return 
   return e.split(/\n{2,}/).map(block => { const lines = block.split('\n'); if (lines.length && lines.every(l => /^\s*([-*•]|\d+\.)\s+/.test(l))) return `<ul>${lines.map(l => `<li>${l.replace(/^\s*([-*•]|\d+\.)\s+/, '')}</li>`).join('')}</ul>`; if (/^#{1,3}\s/.test(lines[0])) { const h = lines.shift().replace(/^#+\s*/, ''); return `<h4>${h}</h4>` + (lines.length ? `<p>${lines.join('<br>')}</p>` : ''); } return `<p>${lines.join('<br>')}</p>`; }).join(''); };
 const FIELD_LABEL = { first:'First name', middle:'Middle name', surname:'Surname', gender:'Gender', age:'Age', address:'Town', country:'Country', phone:'Phone', email:'Email', participation:'Taking part', detail:'Detail', days:'Days', dietary:'Dietary', expectation:'Expectation', name:'Name', gift:'Gift', experience:'Experience', church:'Church', message:'Message', contact:'Contact', topic:'Topic', via:'Reply by' };
 
+/* ================================================================ Mazar accounts (mazar.ccfczambia.org) ================================================================
+   Mazar is its own app with its own login session (localStorage "mazar-auth" on mazar.ccfczambia.org), separate from the
+   church sites' shared cookie session, on the same CCFC sign-in system. People either continue with their CCFC account
+   (the mazar-account function checks the church session and issues a fresh, independent Mazar session for it) or keep a
+   separate Mazar account with Google, Facebook or email. Signed-in conversations and reading plans sync to the account. */
+const ACCT_FN = () => (CFG.supabaseUrl || '') + '/functions/v1/mazar-account';
+const CCFC_ACCOUNT = 'https://ccfczambia.org/account';
+const onChurchDomain = () => /(^|\.)ccfczambia\.org$/.test(location.hostname);
+function ccfcCookieSession(){
+  if (!onChurchDomain()) return null;
+  const read = n => { const m = document.cookie.match(new RegExp('(?:^|; )' + n.replace(/[.]/g, '[.]') + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : null; };
+  const n = +(read('ccfc-auth.n') || 0); let raw = '';
+  if (n){ for (let i = 0; i < n; i++){ const c = read('ccfc-auth.' + i); if (c == null) return null; raw += c; } } else raw = read('ccfc-auth') || '';
+  if (!raw) return null; try { const s = JSON.parse(raw); return s && s.access_token ? s : null; } catch (_) { return null; }
+}
+const freshCcfc = s => !!(s && s.access_token && (+s.expires_at || 0) * 1000 > Date.now() + 60000);
+const GOOGLE_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.3-1.6 3.8-5.5 3.8-3.3 0-6-2.7-6-6.1s2.7-6.1 6-6.1c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.8 3.2 14.6 2.2 12 2.2 6.6 2.2 2.2 6.6 2.2 12s4.4 9.8 9.8 9.8c5.7 0 9.4-4 9.4-9.6 0-.6-.1-1.1-.2-1.6H12z"/><path fill="#34A853" d="M3.3 7.4l3.2 2.4C7.4 7.9 9.5 6.3 12 6.3c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.8 3.2 14.6 2.2 12 2.2 8.2 2.2 4.9 4.3 3.3 7.4z" opacity=".001"/><path fill="#4285F4" d="M21.4 12.2c0-.6-.1-1.1-.2-1.6H12v3.9h5.5c-.3 1.3-1.1 2.4-2.3 3.1l3.6 2.8c2.1-1.9 2.6-4.9 2.6-8.2z"/><path fill="#FBBC05" d="M6 14.1c-.2-.6-.4-1.3-.4-2.1s.1-1.5.4-2.1L2.8 7.4C2.2 8.8 1.8 10.4 1.8 12s.4 3.2 1 4.6L6 14.1z"/><path fill="#34A853" d="M12 21.8c2.6 0 4.8-.9 6.4-2.4l-3.6-2.8c-.9.6-2.1 1.1-3.8 1.1-2.5 0-4.6-1.7-5.3-4L2.5 16.4c1.6 3.2 5.1 5.4 9.5 5.4z"/></svg>';
+const FB_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#1877F2" d="M24 12a12 12 0 1 0-13.9 11.9v-8.4H7.1V12h3V9.4c0-3 1.8-4.7 4.5-4.7 1.3 0 2.7.2 2.7.2v2.9h-1.5c-1.5 0-2 .9-2 1.9V12h3.4l-.5 3.5h-2.9v8.4A12 12 0 0 0 24 12z"/><path fill="#fff" d="M16.7 15.5l.5-3.5h-3.4V9.7c0-1 .5-1.9 2-1.9h1.5V4.9s-1.4-.2-2.7-.2c-2.7 0-4.5 1.6-4.5 4.7V12h-3v3.5h3v8.4a12 12 0 0 0 3.7 0v-8.4h2.9z"/></svg>';
+const ROLE_LABEL = { master_admin: 'Master Administrator', admin: 'Administrator', leader: 'Leader', media: 'Media team', blogger: 'Blogger', member: 'Member' };
+
+function accounts(w, api){
+  const btns = () => $$('.mz__acct, .mz__me', w);
+  if (!window.supabase || !CFG.supabaseUrl || !CFG.supabaseKey){ btns().forEach(b => { b.hidden = true; }); return; }
+  const sb = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'mazar-auth' } });
+  const A = { session: null, row: null, ccfc: null };
+  const qp = new URLSearchParams(location.search);
+  let wantCenter = qp.has('account') || qp.has('reset'), centerTab = qp.get('account') === 'connect' ? 'ccfc' : 'profile', mode = 'in';
+  if (qp.has('account') || qp.has('reset')){ qp.delete('account'); qp.delete('reset'); history.replaceState(null, '', location.pathname + (qp.toString() ? '?' + qp : '') + location.hash); }
+
+  const meta = () => (A.session && A.session.user && A.session.user.user_metadata) || {};
+  const nameOf = () => (A.row && A.row.display_name) || meta().full_name || meta().name || ((A.session && A.session.user.email) || '').split('@')[0] || '';
+  const photoOf = () => (A.row && A.row.avatar_url) || meta().avatar_url || meta().picture || '';
+  const initials = s => (String(s || '').trim().split(/\s+/).filter(Boolean).map(x => x[0]).slice(0, 2).join('') || '?').toUpperCase();
+  const av = (name, url, cls = '') => url && /^https:\/\//.test(url) ? `<span class="mza-av ${cls}"><img src="${esc(url)}" alt="" referrerpolicy="no-referrer"></span>` : `<span class="mza-av ${cls}">${esc(initials(name))}</span>`;
+  const friendly = e => { const s = String((e && (e.message || e.error_description)) || e || ''); if (/invalid login/i.test(s)) return "That email and password don't match. Try again or reset your password."; if (/already registered|already been registered/i.test(s)) return 'That email already has an account. Sign in instead, or continue with your CCFC account.'; if (/not confirmed/i.test(s)) return 'Please confirm your email first. The link is in your inbox.'; if (/provider is not enabled|unsupported provider/i.test(s)) return "That sign-in option isn't switched on yet. Use Google or email for now."; if (/password.*(6|8|short|weak)/i.test(s)) return 'Please choose a stronger password (at least 8 characters).'; if (/rate limit|too many/i.test(s)) return 'Too many tries. Please wait a minute and try again.'; if (/reauth/i.test(s)) return 'For your security, sign out and back in, then change your password.'; return s || 'Something went wrong. Please try again.'; };
+  const fn = async (action, extra = {}) => { const h = { 'Content-Type': 'application/json', apikey: CFG.supabaseKey }; if (A.session) h.Authorization = 'Bearer ' + A.session.access_token; const r = await fetch(ACCT_FN(), { method: 'POST', headers: h, body: JSON.stringify({ action, ...extra }) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'The account service is not available right now.'); return j; };
+
+  /* ---- the window ---- */
+  const m = document.createElement('div'); m.className = 'mza'; m.hidden = true; m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-label', 'Mazar account');
+  m.innerHTML = `<div class="mza__veil" data-close></div><div class="mza__box"><button class="mz__btn mza__x" type="button" aria-label="Close" data-close>${I.close}</button><div class="mza__body"></div></div>`;
+  w.appendChild(m); const body = $('.mza__body', m);
+  let lastFocus = null;
+  const openM = view => { lastFocus = document.activeElement; m.hidden = false; void m.offsetWidth; m.classList.add('is-in'); if (view === 'center' && A.session) renderCenter(); else renderLogin(); api.figs.forEach(f => f.joy()); setTimeout(() => { const f = $('input, button:not([data-close])', body); if (f && innerWidth > 640) f.focus({ preventScroll: true }); }, 80); };
+  const closeM = () => { m.classList.remove('is-in'); setTimeout(() => { m.hidden = true; }, RM ? 0 : 260); if (lastFocus && lastFocus.focus) lastFocus.focus({ preventScroll: true }); };
+  m.addEventListener('click', e => { if (e.target.closest('[data-close]')) closeM(); });
+  addEventListener('keydown', e => { if (e.key === 'Escape' && !m.hidden) closeM(); });
+  btns().forEach(b => b.addEventListener('click', () => openM(A.session ? 'center' : 'login')));
+
+  /* ---- CCFC account on this device ---- */
+  async function getCcfc(msgEl){
+    const s = ccfcCookieSession(); if (freshCcfc(s)) return s;
+    if (!onChurchDomain()) throw new Error('Connecting a CCFC account works on mazar.ccfczambia.org.');
+    const pop = window.open(CCFC_ACCOUNT + '?connect=mazar', 'ccfc-connect', 'width=520,height=760');
+    if (!pop) throw new Error('Your browser blocked the CCFC sign-in window. Allow pop-ups for Mazar, or sign in at ccfczambia.org first and try again.');
+    if (msgEl){ msgEl.className = 'mza__msg'; msgEl.textContent = 'Sign in to your CCFC account in the window that opened. Mazar will carry on by itself.'; }
+    return await new Promise((res, rej) => { const t0 = Date.now(); const iv = setInterval(() => { const x = ccfcCookieSession(); if (freshCcfc(x)){ clearInterval(iv); try { pop.close(); } catch (_) {} res(x); } else if ((pop.closed && Date.now() - t0 > 1500) || Date.now() - t0 > 600000){ clearInterval(iv); rej(new Error('The CCFC sign-in window was closed before you signed in.')); } }, 1000); });
+  }
+  async function ccfcContinue(btn, msgEl){
+    btn.disabled = true;
+    try {
+      const s = await getCcfc(msgEl); if (msgEl){ msgEl.className = 'mza__msg'; msgEl.textContent = 'Signing you in with your CCFC account...'; }
+      const { token_hash } = await fn('ccfc-session', { ccfc_token: s.access_token });
+      let r = await sb.auth.verifyOtp({ token_hash, type: 'magiclink' }); if (r.error) r = await sb.auth.verifyOtp({ token_hash, type: 'email' }); if (r.error) throw r.error;
+      A.session = r.data.session; await fn('link', { ccfc_token: s.access_token }); centerTab = 'profile'; await refresh(true);
+    } catch (e){ if (msgEl){ msgEl.className = 'mza__msg is-err'; msgEl.textContent = friendly(e); } }
+    finally { btn.disabled = false; }
+  }
+  async function ccfcConnect(btn, msgEl){
+    btn.disabled = true;
+    try { const s = await getCcfc(msgEl); const { linked } = await fn('link', { ccfc_token: s.access_token }); await refresh(true); flash(`Connected to ${linked.full_name || 'your CCFC account'}.`); }
+    catch (e){ if (msgEl){ msgEl.className = 'mza__msg is-err'; msgEl.textContent = friendly(e); } }
+    finally { btn.disabled = false; }
+  }
+
+  /* ---- sign-in window ---- */
+  function renderLogin(note, isErr){
+    const c = ccfcCookieSession(), cu = c && c.user, cm = (cu && cu.user_metadata) || {}, cname = cu ? (cm.full_name || cm.name || cu.email || '') : '';
+    body.innerHTML = `
+      <div class="mza__hero">${markSvg()}<h2>Welcome to Mazar</h2><p>Sign in to keep your conversations, reading plans and studies with you on every device.</p></div>
+      <button type="button" class="mza__ccfc">${cu ? av(cname, cm.avatar_url || cm.picture) : `<span class="mza-av mza-av--ccfc">${I.church}</span>`}<span class="mza__ccfc-t"><b>${cu ? 'Continue as ' + esc(cname || 'your CCFC account') : 'Continue with your CCFC account'}</b><small>${cu ? 'Your CCFC church account on this device' : 'The account you use on ccfczambia.org'}</small></span>${I.arrow}</button>
+      <div class="mza__or"><span>or use a separate Mazar account</span></div>
+      <div class="mza__oauth"><button type="button" class="mza__prov" data-p="google">${GOOGLE_ICON}<span>Continue with Google</span></button><button type="button" class="mza__prov" data-p="facebook">${FB_ICON}<span>Continue with Facebook</span></button></div>
+      <form class="mza__form" novalidate>
+        <div class="mza__seg" role="tablist" aria-label="Sign in or create an account"><button type="button" role="tab" data-m="in" aria-selected="${mode === 'in'}">Sign in</button><button type="button" role="tab" data-m="up" aria-selected="${mode === 'up'}">Create account</button></div>
+        ${mode === 'up' ? '<label class="mza__f"><span>Your name</span><input name="name" autocomplete="name" maxlength="80" required></label>' : ''}
+        <label class="mza__f"><span>Email</span><input name="email" type="email" autocomplete="email" inputmode="email" required></label>
+        <label class="mza__f"><span>Password</span><input name="password" type="password" autocomplete="${mode === 'up' ? 'new-password' : 'current-password'}" minlength="8" required${mode === 'up' ? ' placeholder="At least 8 characters"' : ''}></label>
+        <button class="mza__submit" type="submit">${mode === 'up' ? 'Create my Mazar account' : 'Sign in'}</button>
+        ${mode === 'in' ? '<button type="button" class="mza__link mza__forgot">Forgot your password?</button>' : ''}
+        <p class="mza__msg${isErr ? ' is-err' : note ? ' is-ok' : ''}" role="status" aria-live="polite">${note ? esc(note) : ''}</p>
+      </form>
+      <p class="mza__fine">Mazar uses CCFC Zambia's secure sign-in. A separate Mazar account stays private to Mazar and is not added to the church's member list unless you connect it. <a href="https://ccfczambia.org/privacy" target="_blank" rel="noopener">Privacy</a></p>`;
+    const msg = $('.mza__msg', body), form = $('.mza__form', body);
+    const say = (t, err) => { msg.className = 'mza__msg ' + (err ? 'is-err' : 'is-ok'); msg.textContent = t; };
+    $('.mza__ccfc', body).addEventListener('click', e => ccfcContinue(e.currentTarget, msg));
+    $$('.mza__prov', body).forEach(b => b.addEventListener('click', async () => { b.disabled = true; const { error } = await sb.auth.signInWithOAuth({ provider: b.dataset.p, options: { redirectTo: location.origin + '/?account=1' } }); if (error){ b.disabled = false; say(friendly(error), true); } }));
+    $$('.mza__seg [data-m]', body).forEach(b => b.addEventListener('click', () => { if (mode === b.dataset.m) return; mode = b.dataset.m; renderLogin(); $('input', $('.mza__form', body)).focus(); }));
+    form.addEventListener('submit', async e => { e.preventDefault(); const email = form.email.value.trim(), password = form.password.value, name = form.name ? form.name.value.trim() : '';
+      if (mode === 'up' && !name){ say('Please add your name.', true); return; } if (!/^\S+@\S+\.\S+$/.test(email)){ say('Please enter a valid email address.', true); return; } if (password.length < 8){ say('Use at least 8 characters for your password.', true); return; }
+      const sub = $('.mza__submit', form); sub.disabled = true; say(mode === 'up' ? 'Creating your account...' : 'Signing you in...');
+      try {
+        if (mode === 'up'){ const { data, error } = await sb.auth.signUp({ email, password, options: { data: { full_name: name }, emailRedirectTo: location.origin + '/?account=1' } }); if (error) throw error; if (!data.session){ say('Almost there. Check your inbox and tap the link to confirm your email.'); sub.disabled = false; return; } }
+        else { const { error } = await sb.auth.signInWithPassword({ email, password }); if (error) throw error; }
+      } catch (err){ say(friendly(err), true); sub.disabled = false; } });
+    const forgot = $('.mza__forgot', body); if (forgot) forgot.addEventListener('click', async () => { const email = form.email.value.trim(); if (!/^\S+@\S+\.\S+$/.test(email)){ say('Type your email above first, then tap Forgot your password.', true); form.email.focus(); return; } const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + '/?reset=1' }); say(error ? friendly(error) : 'We sent a reset link to your email.', !!error); });
+  }
+
+  /* ---- accounts centre ---- */
+  const flash = t => { const n = $('.mzc__flash', body); if (n){ n.textContent = t; n.hidden = false; clearTimeout(flash.t); flash.t = setTimeout(() => { n.hidden = true; }, 4000); } };
+  function renderCenter(note){
+    if (!A.session){ renderLogin(); return; }
+    const u = A.session.user, name = nameOf(), providers = (u.app_metadata && (u.app_metadata.providers || [u.app_metadata.provider])) || ['email'];
+    const prov = p => ({ email: 'Email and password', google: 'Google', facebook: 'Facebook' }[p] || p);
+    const kind = A.row && A.row.origin === 'ccfc' ? 'CCFC account' : 'Mazar account';
+    const tabs = [['profile', 'Profile', I.user], ['ccfc', 'CCFC account', I.church], ['security', 'Sign-in', I.shield], ['data', 'Your data', I.db]];
+    const local = api.list().filter(c => c.log && c.log.some(x => x.who === 'user')).length;
+    const panes = {
+      profile: `<form class="mzc__card mzc__profile" novalidate><h3>Profile</h3>
+          <div class="mzc__photo">${av(name, photoOf(), 'mza-av--lg')}<div class="mzc__photo-opts">${A.ccfc && A.ccfc.avatar_url ? '<button type="button" class="mza__chip" data-photo="ccfc">Use my CCFC photo</button>' : ''}${meta().avatar_url || meta().picture ? '<button type="button" class="mza__chip" data-photo="provider">Use my ' + esc(prov(providers.find(p => p !== 'email') || 'account')) + ' photo</button>' : ''}${photoOf() ? '<button type="button" class="mza__chip" data-photo="none">Remove photo</button>' : ''}</div></div>
+          <label class="mza__f"><span>Your name in Mazar</span><input name="name" maxlength="80" value="${esc(name)}" autocomplete="name"></label>
+          <label class="mza__f"><span>Email</span><input value="${esc(u.email || '')}" disabled></label>
+          <div class="mzc__row"><button class="mza__submit" type="submit">Save</button></div></form>`,
+      ccfc: A.ccfc
+        ? `<div class="mzc__card"><h3>Connected CCFC account</h3>
+            <div class="mzc__person">${av(A.ccfc.full_name, A.ccfc.avatar_url)}<div><b>${esc(A.ccfc.full_name || 'CCFC account')}</b><span>${esc(ROLE_LABEL[A.ccfc.role] || 'Member')} &middot; Christ Connect Family Church Zambia</span>${A.row && A.row.ccfc_linked_at ? `<small>Connected ${esc(new Date(A.row.ccfc_linked_at).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' }))}</small>` : ''}</div></div>
+            <ul class="mzc__list"><li>${I.check}Your church name and role show in Mazar</li><li>${I.check}You can sign in to Mazar with your CCFC account</li><li>${I.check}Your Mazar conversations stay private to you; the church team cannot see them</li></ul>
+            <div class="mzc__row"><a class="mza__chip" href="${CCFC_ACCOUNT}" target="_blank" rel="noopener">${I.ext}Open my CCFC account</a><button type="button" class="mza__chip mza__chip--danger mzc__unlink">Disconnect</button></div><p class="mza__msg" role="status" aria-live="polite"></p></div>`
+        : `<div class="mzc__card"><h3>Connect your CCFC account</h3>
+            <p class="mzc__lead">${A.row && A.row.origin === 'mazar' ? 'Your Mazar account is separate from the church. You can keep it that way, or connect the account you use on ccfczambia.org.' : 'Link Mazar to the account you use on ccfczambia.org.'}</p>
+            <ul class="mzc__list"><li>${I.check}Your church name and role show in Mazar</li><li>${I.check}Sign in to Mazar with your CCFC account</li><li>${I.check}Your Mazar conversations stay private to you</li></ul>
+            <div class="mzc__row"><button type="button" class="mza__submit mzc__link">${I.church}Connect my CCFC account</button></div><p class="mza__msg" role="status" aria-live="polite"></p></div>`,
+      security: `<div class="mzc__card"><h3>How you sign in</h3><ul class="mzc__list">${providers.map(p => `<li>${p === 'google' ? GOOGLE_ICON : p === 'facebook' ? FB_ICON : I.shield}${esc(prov(p))}</li>`).join('')}${A.ccfc && A.row && A.row.ccfc_user_id === u.id ? `<li>${I.church}Your CCFC account</li>` : ''}</ul></div>
+          <form class="mzc__card mzc__pass" novalidate><h3>${providers.includes('email') ? 'Change password' : 'Add a password'}</h3>${providers.includes('email') ? '' : '<p class="mzc__lead">A password lets you also sign in with your email address.</p>'}
+            <label class="mza__f"><span>New password</span><input name="p1" type="password" autocomplete="new-password" minlength="8" placeholder="At least 8 characters"></label>
+            <label class="mza__f"><span>Repeat it</span><input name="p2" type="password" autocomplete="new-password"></label>
+            <div class="mzc__row"><button class="mza__submit" type="submit">Save password</button></div><p class="mza__msg" role="status" aria-live="polite"></p></form>
+          <div class="mzc__card"><h3>Sign out</h3><p class="mzc__lead">Signing out of Mazar does not sign you out of the church websites.</p><div class="mzc__row"><button type="button" class="mza__chip mzc__out">Sign out</button><button type="button" class="mza__chip mzc__out" data-clear>Sign out and clear this device</button></div></div>`,
+      data: `<div class="mzc__card"><h3>Sync</h3><label class="mzc__toggle"><input type="checkbox" class="mzc__sync" ${A.row && A.row.sync ? 'checked' : ''}><span><b>Save my conversations and reading plans to my account</b><small>${local} conversation${local === 1 ? '' : 's'} on this device. Only you can see them.</small></span></label></div>
+          <div class="mzc__card"><h3>Your Mazar data</h3><div class="mzc__row"><button type="button" class="mza__chip mzc__export">${I.down}Download my data</button><button type="button" class="mza__chip mzc__wipe">${I.trash}Delete all conversations</button></div><p class="mza__msg" role="status" aria-live="polite"></p></div>
+          <div class="mzc__card mzc__danger"><h3>Delete account</h3><p class="mzc__lead">${A.row && A.row.origin === 'mazar' && !A.ccfc ? 'Deletes your Mazar account and everything in it. This cannot be undone.' : 'Removes Mazar and your Mazar data from your account. Your CCFC church account stays as it is.'}</p><div class="mzc__row"><button type="button" class="mza__chip mza__chip--danger mzc__delete">${A.row && A.row.origin === 'mazar' && !A.ccfc ? 'Delete my Mazar account' : 'Remove Mazar from my account'}</button></div></div>`,
+    };
+    body.innerHTML = `<div class="mzc">
+      <header class="mzc__head">${av(name, photoOf(), 'mza-av--lg')}<div class="mzc__who"><h2>${esc(name || 'Your account')}</h2><p>${esc(u.email || '')}</p><div class="mzc__badges"><span class="mzc__badge">${kind}</span>${A.ccfc ? `<span class="mzc__badge mzc__badge--ok">${I.check}Connected to CCFC</span>` : ''}${A.row && A.row.sync ? `<span class="mzc__badge">${I.check}Synced</span>` : ''}</div></div></header>
+      <p class="mzc__flash mza__msg is-ok" role="status" ${note ? '' : 'hidden'}>${note ? esc(note) : ''}</p>
+      <nav class="mzc__tabs" role="tablist" aria-label="Account sections">${tabs.map(([k, l, ic]) => `<button type="button" role="tab" data-ct="${k}" aria-selected="${centerTab === k}">${ic}<span>${l}</span></button>`).join('')}</nav>
+      <div class="mzc__pane" role="tabpanel">${panes[centerTab] || panes.profile}</div></div>`;
+    $$('[data-ct]', body).forEach(b => b.addEventListener('click', () => { centerTab = b.dataset.ct; renderCenter(); }));
+    const say = (el, t, err) => { if (!el) return; el.className = 'mza__msg ' + (err ? 'is-err' : 'is-ok'); el.textContent = t; };
+    const pf = $('.mzc__profile', body);
+    if (pf){
+      pf.addEventListener('submit', async e => { e.preventDefault(); const display_name = pf.name.value.trim().slice(0, 80); if (!display_name) return; const { error } = await sb.from('mazar_accounts').update({ display_name }).eq('user_id', u.id); if (error){ flash(friendly(error)); return; } A.row = { ...(A.row || {}), display_name }; paint(); flash('Saved.'); });
+      $$('[data-photo]', pf).forEach(b => b.addEventListener('click', async () => { const k = b.dataset.photo; const avatar_url = k === 'ccfc' ? A.ccfc.avatar_url : k === 'provider' ? (meta().avatar_url || meta().picture) : null; const { error } = await sb.from('mazar_accounts').update({ avatar_url: avatar_url && /^https:\/\//.test(avatar_url) ? avatar_url : null }).eq('user_id', u.id); if (error){ flash(friendly(error)); return; } A.row = { ...(A.row || {}), avatar_url }; paint(); flash('Photo updated.'); }));
+    }
+    const link = $('.mzc__link', body); if (link) link.addEventListener('click', () => ccfcConnect(link, $('.mza__msg', link.closest('.mzc__card'))));
+    const unlink = $('.mzc__unlink', body); if (unlink) unlink.addEventListener('click', async () => { if (!confirm('Disconnect your CCFC account from Mazar? You can connect it again any time.')) return; try { await fn('unlink'); await refresh(true); flash('Disconnected.'); } catch (e){ say($('.mza__msg', unlink.closest('.mzc__card')), friendly(e), true); } });
+    const pass = $('.mzc__pass', body); if (pass) pass.addEventListener('submit', async e => { e.preventDefault(); const out = $('.mza__msg', pass); if (pass.p1.value.length < 8){ say(out, 'Use at least 8 characters.', true); return; } if (pass.p1.value !== pass.p2.value){ say(out, 'The two passwords do not match.', true); return; } const { error } = await sb.auth.updateUser({ password: pass.p1.value }); if (error){ say(out, friendly(error), true); return; } pass.reset(); say(out, 'Password saved.'); });
+    $$('.mzc__out', body).forEach(b => b.addEventListener('click', async () => { const clear = b.hasAttribute('data-clear'); await sb.auth.signOut({ scope: 'local' }); if (clear){ ls.del(PLANS_KEY); api.replace([]); } closeM(); }));
+    const sync = $('.mzc__sync', body); if (sync) sync.addEventListener('change', async () => { const { error } = await sb.from('mazar_accounts').update({ sync: sync.checked }).eq('user_id', u.id); if (error){ sync.checked = !sync.checked; flash(friendly(error)); return; } A.row = { ...(A.row || {}), sync: sync.checked }; if (sync.checked) await syncPull(); paint(); flash(sync.checked ? 'Your conversations will be saved to your account.' : 'Sync is off. New conversations stay on this device.'); });
+    const exp = $('.mzc__export', body); if (exp) exp.addEventListener('click', async () => { const { data } = await sb.from('mazar_conversations').select('id, title, data, updated_at').order('updated_at', { ascending: false }); const blob = new Blob([JSON.stringify({ exported: new Date().toISOString(), account: { name: nameOf(), email: u.email, type: kind, connected_to_ccfc: !!A.ccfc }, conversations_saved: data || [], conversations_on_this_device: api.list(), reading_plans: ls.get(PLANS_KEY, []) }, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'mazar-data.json'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); });
+    const wipe = $('.mzc__wipe', body); if (wipe) wipe.addEventListener('click', async () => { if (!confirm('Delete all your Mazar conversations, on this device and in your account?')) return; const { error } = await sb.from('mazar_conversations').delete().eq('user_id', u.id); if (error){ say($('.mza__msg', wipe.closest('.mzc__card')), friendly(error), true); return; } synced.clear(); api.replace([]); say($('.mza__msg', wipe.closest('.mzc__card')), 'All conversations deleted.'); });
+    const del = $('.mzc__delete', body); if (del) del.addEventListener('click', async () => { if (!confirm(del.textContent + '? This cannot be undone.')) return; del.disabled = true; try { const r = await fn('delete'); await sb.auth.signOut({ scope: 'local' }); ls.del(PLANS_KEY); api.replace([]); closeM(); alert(r.deleted === 'account' ? 'Your Mazar account has been deleted.' : 'Mazar has been removed from your account. Your CCFC account is unchanged.'); } catch (e){ del.disabled = false; flash(friendly(e)); } });
+  }
+
+  /* ---- state ---- */
+  function paint(){
+    const signed = !!A.session, name = nameOf();
+    $$('.mz__acct', w).forEach(b => { b.innerHTML = signed ? `${av(name, photoOf())}<span class="mz__acct-t"><b>${esc(name || 'Your account')}</b><small>${A.ccfc ? 'Connected to CCFC' : A.row && A.row.sync ? 'Saved to your account' : 'Mazar account'}</small></span>${I.menu}` : `<span class="mza-av">${I.user}</span><span class="mz__acct-t"><b>Sign in</b><small>Keep your conversations on every device</small></span>`; b.setAttribute('aria-label', signed ? 'Your Mazar account' : 'Sign in to Mazar'); });
+    $$('.mz__me', w).forEach(b => { b.innerHTML = signed ? av(name, photoOf(), 'mza-av--sm') : I.user; b.setAttribute('aria-label', signed ? 'Your Mazar account' : 'Sign in to Mazar'); b.title = b.getAttribute('aria-label'); });
+    window.__mazarWho = signed && name ? { name: name.split(' ')[0] } : null;
+    if (!m.hidden) (signed ? renderCenter : renderLogin)();
+  }
+  let loading = null;
+  async function load(){
+    if (!A.session){ A.row = A.ccfc = null; paint(); return; }
+    const { data: row, error } = await sb.rpc('mazar_ensure_account'); if (error) console.warn('mazar account', error.message);
+    A.row = row || null; A.ccfc = null;
+    if (A.row && A.row.ccfc_user_id){ const { data } = await sb.rpc('mazar_ccfc_profile'); A.ccfc = (data && data[0]) || null; }
+    paint(); if (A.row && A.row.sync) await syncPull();
+  }
+  const refresh = force => { if (force) loading = null; return (loading = loading || load().finally(() => { loading = null; })); };
+  sb.auth.onAuthStateChange((ev, session) => {
+    A.session = session; if (ev === 'TOKEN_REFRESHED') return;
+    setTimeout(async () => {
+      if (!session){ A.row = A.ccfc = null; synced.clear(); paint(); return; }
+      if (ev === 'PASSWORD_RECOVERY'){ centerTab = 'security'; openM('center'); renderCenter('Choose a new password below.'); }
+      if (ev === 'SIGNED_IN' || ev === 'INITIAL_SESSION' || ev === 'USER_UPDATED'){ await refresh(); if (ev === 'SIGNED_IN' && !m.hidden && m.querySelector('.mza__hero')) renderCenter(`Welcome${nameOf() ? ', ' + nameOf().split(' ')[0] : ''}. You're signed in.`); if (wantCenter){ wantCenter = false; openM('center'); } }
+    }, 0);
+  });
+  paint();
+  if (location.hostname === 'localhost') w._acctDebug = { A, openM, paint, renderCenter, setTab: t => { centerTab = t; } };   /* local previews only: layout checks without a real account */
+
+  /* ---- sync: conversations and reading plans ---- */
+  const synced = new Map(); let pushT = null, suppress = false, lastPlans = '';
+  async function syncPull(){
+    if (!A.session) return;
+    const { data, error } = await sb.from('mazar_conversations').select('id, title, data, updated_at').order('updated_at', { ascending: false }).limit(80);
+    if (error){ console.warn('mazar sync', error.message); return; }
+    const byId = new Map(api.list().map(c => [c.id, c])); let changed = false;
+    for (const r of data || []){ const t = +new Date(r.updated_at); synced.set(r.id, t); const cur = byId.get(r.id); if (!cur || (cur.t || 0) < t - 1000){ byId.set(r.id, { id: r.id, title: r.title || 'Conversation', t, log: (r.data && r.data.log) || [], history: (r.data && r.data.history) || [], tab: 'ask' }); changed = true; } }
+    if (changed) api.replace([...byId.values()].sort((a, b) => (b.t || 0) - (a.t || 0)));
+    const rp = A.row && A.row.data && A.row.data.plans, lp = ls.get(PLANS_KEY, []) || [];
+    if (Array.isArray(rp)){ const map = new Map(); [...rp, ...lp].forEach(p => { const k = String(p.id); const e = map.get(k); if (!e || (p.done || []).length > (e.done || []).length) map.set(k, p); }); const merged = [...map.values()].slice(0, 8); lastPlans = JSON.stringify(rp); suppress = true; ls.set(PLANS_KEY, merged); suppress = false; }
+    queuePush(true);
+  }
+  const queuePush = now => { clearTimeout(pushT); pushT = setTimeout(push, now ? 60 : 1500); };
+  async function push(){
+    if (!A.session || !A.row || !A.row.sync) return;
+    const uid = A.session.user.id;
+    const rows = api.list().filter(c => c.log && c.log.some(x => x.who === 'user') && synced.get(c.id) !== c.t).slice(0, 40)
+      .map(c => ({ user_id: uid, id: String(c.id).slice(0, 40), title: String(c.title || '').slice(0, 120), data: { log: c.log.slice(-60).map(({ who, text, go, actions, files }) => ({ who, text, go, actions, files: files && files.map(({ kind, name }) => ({ kind, name })) })), history: (c.history || []).slice(-24).map(({ role, content }) => ({ role, content })) }, updated_at: new Date(c.t || Date.now()).toISOString() }));
+    if (rows.length){ const { error } = await sb.from('mazar_conversations').upsert(rows, { onConflict: 'user_id,id' }); if (error) console.warn('mazar sync', error.message); else rows.forEach(r => synced.set(r.id, +new Date(r.updated_at))); }
+    const plans = ls.get(PLANS_KEY, []) || [], pj = JSON.stringify(plans);
+    if (pj !== lastPlans){ const data = { ...((A.row && A.row.data) || {}), plans }; const { error } = await sb.from('mazar_accounts').update({ data }).eq('user_id', uid); if (!error){ lastPlans = pj; A.row.data = data; } }
+  }
+  ls.onset = k => { if (!suppress && (k === CONVOS_KEY || k === PLANS_KEY) && A.session && A.row && A.row.sync) queuePush(); };
+  w._mzDel = id => { if (A.session && A.row && A.row.sync) sb.from('mazar_conversations').delete().eq('id', id).then(() => synced.delete(id)); };
+}
+
 /* ================================================================ app ================================================================ */
 function app(){
   const STUDIO = MODE === 'studio', PAGE = MODE === 'page', FLOAT = MODE === 'widget';
@@ -458,12 +680,12 @@ function app(){
     ${STUDIO ? `<aside class="mz__side"><div class="mz__side-top"><a class="mz__brand" href="/">${markSvg()}<b>Mazar</b><small>by CCFC Zambia</small></a><button class="mz__btn mz__side-x" type="button" aria-label="Close menu">${I.close}</button></div>
       <button class="mz__newchat" type="button">${I.plus}<span>New conversation</span></button>
       <nav class="mz__convos" aria-label="Conversations"></nav>
-      <div class="mz__side-bottom"><a class="mz__side-link" href="https://ccfczambia.org" target="_blank" rel="noopener">${I.ext}<span>Christ Connect Family Church</span></a><a class="mz__side-link" href="https://ccfczambia.org/library" target="_blank" rel="noopener">${I.book}<span>Upper Room library</span></a></div></aside>` : ''}
+      <div class="mz__side-bottom"><button class="mz__acct" type="button" aria-label="Sign in to Mazar"></button><a class="mz__side-link" href="https://ccfczambia.org" target="_blank" rel="noopener">${I.ext}<span>Christ Connect Family Church</span></a><a class="mz__side-link" href="https://ccfczambia.org/library" target="_blank" rel="noopener">${I.book}<span>Upper Room library</span></a></div></aside>` : ''}
     <div class="mz__main">
       <header class="mz__head">
         ${STUDIO ? `<button class="mz__btn mz__menu" type="button" aria-label="Open menu">${I.menu}</button>` : ''}<button class="mz__btn mz__rail" type="button" aria-label="Collapse sidebar" title="Collapse sidebar" aria-expanded="true">${I.rail}</button>
         <span class="mz__id">${markSvg()}<span><b>Mazar${STUDIO ? '' : ''}</b><small><i class="mz__live"></i>${STUDIO ? 'AI Bible companion' : 'AI companion &middot; ' + esc(PER_SITE.name)}</small></span></span>
-        <span class="mz__tools">${STUDIO ? '' : `<a class="mz__btn mz__open" href="${STUDIO_URL}" target="_blank" rel="noopener" aria-label="Open the full Mazar platform" title="Open the full Mazar platform">${I.ext}</a>`}<button class="mz__btn mz__new" type="button" aria-label="New conversation" title="New conversation">${I.plus}</button>${FLOAT ? `<button class="mz__btn mz__size" type="button" aria-label="Expand" title="Expand">${I.expand}</button><button class="mz__btn mz__close" type="button" aria-label="Close">${I.close}</button>` : ''}</span>
+        <span class="mz__tools">${STUDIO ? `<button class="mz__btn mz__me" type="button" aria-label="Sign in to Mazar" title="Sign in to Mazar">${I.user}</button>` : `<a class="mz__btn mz__open" href="${STUDIO_URL}" target="_blank" rel="noopener" aria-label="Open the full Mazar platform" title="Open the full Mazar platform">${I.ext}</a>`}<button class="mz__btn mz__new" type="button" aria-label="New conversation" title="New conversation">${I.plus}</button>${FLOAT ? `<button class="mz__btn mz__size" type="button" aria-label="Expand" title="Expand">${I.expand}</button><button class="mz__btn mz__close" type="button" aria-label="Close">${I.close}</button>` : ''}</span>
       </header>
       <nav class="mz__tabs" role="tablist" aria-label="Mazar">${TABS.map(([k,l,ic]) => `<button role="tab" type="button" data-tab="${k}" aria-selected="false">${ic}<span>${l}</span></button>`).join('')}<i class="mz__tabline" aria-hidden="true"></i></nav>
       <div class="mz__views"><div class="mz__bgfig" aria-hidden="true"><canvas></canvas></div>
@@ -508,7 +730,8 @@ function app(){
 
   /* ---- conversations ---- */
   let convos = STUDIO ? loadPlansSafe(CONVOS_KEY) : null;
-  function loadPlansSafe(k){ const v = ls.get(k, []); return Array.isArray(v) ? v : []; }
+  /* saved conversations are repaired on load, so one damaged entry can never stop Mazar from starting */
+  function loadPlansSafe(k){ const v = ls.get(k, []); return (Array.isArray(v) ? v : []).filter(c => c && typeof c === 'object' && c.id).map(c => ({ ...c, title: String(c.title || 'Conversation'), t: +c.t || Date.now(), log: Array.isArray(c.log) ? c.log.filter(m => m && typeof m.text === 'string') : [], history: Array.isArray(c.history) ? c.history.filter(m => m && typeof m.content === 'string') : [] })); }
   const saved = STUDIO ? (convos[0] || null) : mem.load();
   const state = STUDIO ? (saved || newConvo()) : (saved || { log: [], history: [], open: false });
   if (STUDIO && !saved) convos.unshift(state);
@@ -518,8 +741,8 @@ function app(){
 
   const renderConvos = () => { const nav = $('.mz__convos', w); if (!nav) return; const groups = [['Today', 0], ['Yesterday', 1], ['Earlier', 99]]; const day = t => Math.floor((Date.now() - new Date(t).setHours(0,0,0,0)) / 864e5);
     nav.innerHTML = groups.map(([label, d]) => { const rows = convos.filter(c => (d === 99 ? day(c.t) > 1 : day(c.t) === d)); return rows.length ? `<h5>${label}</h5>` + rows.map(c => `<div class="mz__convo ${c.id === state.id ? 'is-on' : ''}" data-id="${c.id}"><button type="button" class="mz__convo-open">${esc(c.title)}</button><button type="button" class="mz__convo-del" aria-label="Delete conversation">${I.trash}</button></div>`).join('') : ''; }).join('') || '<p class="mz__side-empty">Your conversations will appear here.</p>'; };
-  const switchConvo = id => { const c = convos.find(x => x.id === id); if (!c) return; Object.keys(state).forEach(k => delete state[k]); Object.assign(state, c); convos[convos.indexOf(c)] = state; log.querySelectorAll('.mz-msg').forEach(n => n.remove()); w.classList.toggle('has-history', state.log.some(m => m.who === 'user')); requestAnimationFrame(fitStage); state.log.forEach(m => add(m.who, m.text, m.go, m.actions, true, m.files)); if (!state.log.length) add('bot', PER_SITE.greet); setTab('ask'); renderConvos(); closeSide(); };
-  if (STUDIO){ $('.mz__convos', w).addEventListener('click', e => { const row = e.target.closest('.mz__convo'); if (!row) return; if (e.target.closest('.mz__convo-del')){ if (!confirm('Delete this conversation?')) return; convos = convos.filter(c => c.id !== row.dataset.id); if (row.dataset.id === state.id){ const n = newConvo(); convos.unshift(n); switchConvo(n.id); } ls.set(CONVOS_KEY, convos); renderConvos(); return; } switchConvo(row.dataset.id); });
+  const switchConvo = id => { const found = convos.find(x => x.id === id); if (!found) return; if (found === state){ setTab('ask'); renderConvos(); closeSide(); return; } const c = { ...found }; Object.keys(state).forEach(k => delete state[k]); Object.assign(state, c); convos[convos.indexOf(found)] = state; log.querySelectorAll('.mz-msg').forEach(n => n.remove()); w.classList.toggle('has-history', state.log.some(m => m.who === 'user')); requestAnimationFrame(fitStage); state.log.forEach(m => add(m.who, m.text, m.go, m.actions, true, m.files)); if (!state.log.length) add('bot', PER_SITE.greet); setTab('ask'); renderConvos(); closeSide(); };
+  if (STUDIO){ $('.mz__convos', w).addEventListener('click', e => { const row = e.target.closest('.mz__convo'); if (!row) return; if (e.target.closest('.mz__convo-del')){ if (!confirm('Delete this conversation?')) return; convos = convos.filter(c => c.id !== row.dataset.id); if (w._mzDel) w._mzDel(row.dataset.id); if (row.dataset.id === state.id){ const n = newConvo(); convos.unshift(n); switchConvo(n.id); } ls.set(CONVOS_KEY, convos); renderConvos(); return; } switchConvo(row.dataset.id); });
     const startNew = () => { if (!state.log.some(m => m.who === 'user')){ setTab('ask', true); closeSide(); return; } const n = newConvo(); convos.unshift(n); switchConvo(n.id); input.focus(); };
     $('.mz__newchat', w).addEventListener('click', startNew);
     const openSide = () => w.classList.add('is-side'); const closeSide = () => w.classList.remove('is-side');
@@ -567,7 +790,7 @@ function app(){
   const setExpanded = on => { if (!FLOAT) return; state.big = on; persist(); w.classList.toggle('is-big', on); const b = $('.mz__size', w); b.innerHTML = on ? I.shrink : I.expand; b.setAttribute('aria-label', on ? 'Make smaller' : 'Expand'); b.title = on ? 'Make smaller' : 'Expand'; document.documentElement.classList.toggle('mz-lock', on && innerWidth > 640); setTimeout(() => { setTab(state.tab || 'ask'); fig.resize(); }, 30); };
   const open = (on, quiet) => { if (!FLOAT) return; clearTimeout(open.closing); fab.setAttribute('aria-expanded', on); w.classList.toggle('is-open', on); hideNudge(); state.open = on; persist();
     if (on){ panel.hidden = false; void panel.offsetWidth; panel.classList.add('is-in'); setTab(state.tab || 'ask', !quiet); if (!log.querySelector('.mz-msg')) add('bot', PER_SITE.greet); fig.resize(); }
-    else { panel.classList.remove('is-in'); document.documentElement.classList.remove('mz-lock'); open.closing = setTimeout(() => { panel.hidden = true; }, RM ? 0 : 360); if (!quiet) fab.focus({ preventScroll: true }); } };
+    else { panel.classList.remove('is-in'); document.documentElement.classList.remove('mz-lock'); if (w.classList.contains('is-big')){ w.classList.remove('is-big'); state.big = false; persist(); const sb = $('.mz__size', w); sb.innerHTML = I.expand; sb.setAttribute('aria-label', 'Expand'); sb.title = 'Expand'; } open.closing = setTimeout(() => { panel.hidden = true; }, RM ? 0 : 360); if (!quiet) fab.focus({ preventScroll: true }); } };
   if (FLOAT){
     fab.addEventListener('click', () => open(panel.hidden || !panel.classList.contains('is-in')));
     $('.mz__close', w).addEventListener('click', () => open(false));
@@ -575,17 +798,18 @@ function app(){
     $('.mz__nudge-x', w).addEventListener('click', e => { e.stopPropagation(); hideNudge(); }); nudge.addEventListener('click', () => open(true));
     addEventListener('keydown', e => { if (e.key === 'Escape' && !panel.hidden) open(false); });
     w.addEventListener('click', e => { if (e.target === w && w.classList.contains('is-big')) open(false); });
-    document.addEventListener('click', e => { if (!panel.hidden && !w.classList.contains('is-big') && !w.contains(e.target) && !e.target.closest('[data-mazar],[data-ozer]') && innerWidth > 640) open(false); });
+    document.addEventListener('click', e => { const path = e.composedPath ? e.composedPath() : [e.target]; if (!panel.hidden && !w.classList.contains('is-big') && !path.includes(w) && e.target.isConnected && !e.target.closest('[data-mazar],[data-ozer]') && innerWidth > 640) open(false); });
   }
   document.addEventListener('click', e => { const t = e.target.closest('[data-mazar],[data-ozer]'); if (!t) return; e.preventDefault(); const closer = $('.drawer.is-open .drawer__close, .menu.is-open .menu__close, .is-menu-open .menu__close'); if (closer) closer.click(); if (FLOAT){ if (innerWidth > 900) setExpanded(true); open(true); } const tab = t.dataset.mazar || t.dataset.ozer; if (tab) setTab(tab, true); else if (!FLOAT){ input.focus(); w.scrollIntoView({ behavior: 'smooth', block: 'start' }); } });
 
   /* ---- ask ---- */
-  const ask = async q => { if (w.classList.contains('is-busy')) return; setTab('ask');
+  const queue = [];
+  const ask = async q => { if (w.classList.contains('is-busy')){ if (q && queue[queue.length - 1] !== q && queue.length < 3){ queue.push(q); figs.forEach(f => f.pulse()); } return; } setTab('ask');
     const sent = STUDIO ? atts.splice(0) : []; if (STUDIO) renderAtts();
     const entry = { role:'user', content: q || 'Please look at what I attached.' }; if (sent.length){ entry.att = true; ATTS.set(entry, sent); }
     history().push(entry); add('user', q, null, null, false, sent.map(a => ({ kind: a.kind, name: a.name, thumb: a.thumb }))); w.classList.add('has-history'); fitStage(); fig.resize(); const t = thinking(); w.classList.add('is-busy'); mood('think');
     let ans, failed = false; try { ans = CFG.chatEndpoint ? await remote(history().slice(-10)) : local(q); } catch (e){ ans = local(q); failed = !!CFG.chatEndpoint; }
-    t.remove(); w.classList.remove('is-busy'); if (failed){ mood('error'); setTimeout(() => mood('idle'), 900); } history().push({ role:'assistant', content: ans.text }); add('bot', ans.text, ans.go, (ans.actions || []).slice(0, 6)); };
+    t.remove(); w.classList.remove('is-busy'); if (failed){ mood('error'); setTimeout(() => mood('idle'), 900); } history().push({ role:'assistant', content: ans.text }); add('bot', ans.text, ans.go, (ans.actions || []).slice(0, 6)); if (queue.length) setTimeout(() => ask(queue.shift()), 700); };
   const grow = () => { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 160) + 'px'; };
   input.addEventListener('input', () => { grow(); mood(input.value ? 'listen' : 'idle'); });
   input.addEventListener('focus', () => mood('listen')); input.addEventListener('blur', () => { if (!w.classList.contains('is-busy')) mood('idle'); });
@@ -624,7 +848,7 @@ function app(){
   }
   $$('.mz__sugg button', w).forEach(b => b.addEventListener('click', () => ask(b.textContent)));
   $$('.mz__view--tasks .mz__task', w).forEach(b => b.addEventListener('click', () => ask(b.dataset.prompt)));
-  if (STUDIO){ const sref = $('.mz__ref--study input', w); const refOr = () => sref.value.trim() || ($('.mz__scroll', w).dataset.ref) || '';
+  if (STUDIO){ const sref = $('.mz__ref--study input', w); const refOr = () => sref.value.trim() || ($('.mz__scroll', w).dataset.ref) || (w._rd ? refOf(w._rd.book, w._rd.chapter) : '') || 'John 3';
     $$('.mz__view--study .mz__task', w).forEach(b => b.addEventListener('click', () => { const r = refOr(); if (!r && b.dataset.prompt.includes('{ref}') && !b.dataset.prompt.startsWith('Explain what')){ sref.focus(); sref.placeholder = 'Type a passage or book first'; sref.classList.add('is-shake'); setTimeout(() => sref.classList.remove('is-shake'), 600); return; } ask(b.dataset.prompt.replace(/\{ref\}/g, r)); }));
     $('.mz__ref--study', w).addEventListener('submit', e => { e.preventDefault(); const r = sref.value.trim(); if (r) ask(`Give me a full study guide on ${r}: historical context, what it says, what it means, how it applies to my life, cross references and three discussion questions.`); });
     $$('.mz__doctrine [data-ask]', w).forEach(b => b.addEventListener('click', () => ask(b.dataset.ask))); }
@@ -785,6 +1009,13 @@ function app(){
     const q = qp.get('q'); if (q) setTimeout(() => ask(q), 400);
   }
   addEventListener('resize', () => { if (FLOAT && panel.hidden) return; setTab(state.tab || 'ask'); }, { passive: true });
+  if (STUDIO) accounts(w, { figs,
+    list: () => convos,
+    replace(list){ const cur = state.id, fresh = list.find(c => c.id === cur); convos = list.slice(0, 40);
+      if (!convos.length){ const n = newConvo(); convos.unshift(n); switchConvo(n.id); }
+      else if (fresh && fresh !== state && (fresh.t || 0) > (state.t || 0)){ switchConvo(cur); }
+      else { const i = convos.findIndex(c => c.id === cur); if (i >= 0) convos[i] = state; else convos.unshift(state); }
+      ls.set(CONVOS_KEY, convos); renderConvos(); } });
   window.Mazar = { open: tab => { if (FLOAT) open(true); if (tab) setTab(tab); }, ask, figure: fig };
 }
 window.MazarFigure = Figure;
