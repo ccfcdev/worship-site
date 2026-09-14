@@ -14,7 +14,7 @@ const CFG = window.CCFC_CONFIG || {};
 const ROLES = {
   master_admin: { label:'Master Administrator', short:'Master Admin', desc:'Controls everything on all three sites and assigns every role, including Admins.' },
   admin:        { label:'Admin',   short:'Admin',   desc:'Everything the Master Administrator can do, except assigning or changing Admin accounts.' },
-  leader:       { label:'Leader',  short:'Leader',  desc:'Posts announcements, moderates comments, reviews applications and adds material to the Upper Room library.' },
+  leader:       { label:'Leader',  short:'Leader',  desc:'Posts announcements, moderates comments, reviews Worship Connect applications and Koinonia registrations, and adds material to the Upper Room library.' },
   media:        { label:'Media',   short:'Media',   desc:'Posts photos, videos and content to the CCFC, Koinonia and Worship Connect feeds.' },
   blogger:      { label:'Blogger', short:'Blogger', desc:'Writes, publishes and updates blog posts, and adds material to the Upper Room library.' },
   member:       { label:'Member',  short:'Member',  desc:'Follows the feed and the blog, comments and reacts.' },
@@ -582,7 +582,7 @@ const DASH = {
               tabs: r => [can.master(r) ? ['assistant','Mazar Prime'] : null, can.post(r) ? ['posts','Church feed'] : null, can.admin(r) ? ['settings','Site text'] : null, (can.blog(r) || can.admin(r)) ? ['blogs','Blog'] : null, can.library(r) ? ['library','Upper Room library'] : null, can.admin(r) ? ['users','Members and roles'] : null, can.admin(r) ? ['audit','Role changes'] : null, ['roles','Role guide']] },
   koinonia: { eyebrow:'Koinonia Experience', intro:'Conference updates, videos and photos, and everyone who has registered for the next edition.',
               stats: s => [["Registered for Koi 26'", s?.regs_next], ['All registrations', s?.registrations], ['Updates posted', s?.posts], ['Reactions', s?.reactions], ['Comments', s?.comments]],
-              tabs: r => [can.master(r) ? ['assistant','Mazar Prime'] : null, can.staff(r) ? ['regs','Registrations'] : null, can.admin(r) ? ['settings','Site text'] : null, can.post(r) ? ['posts','Updates and media'] : null, can.admin(r) ? ['users','Members and roles'] : null, can.admin(r) ? ['audit','Role changes'] : null, ['roles','Role guide']] },
+              tabs: r => [can.master(r) ? ['assistant','Mazar Prime'] : null, can.moderate(r) ? ['regs','Registrations'] : null, can.admin(r) ? ['settings','Site text'] : null, can.post(r) ? ['posts','Updates and media'] : null, can.admin(r) ? ['users','Members and roles'] : null, can.admin(r) ? ['audit','Role changes'] : null, ['roles','Role guide']] },
   worship:  { eyebrow:'Worship Connect', intro:'The team\'s videos and music, who is on the team, and the people asking to join.',
               stats: s => [['New applications', s?.apps_new], ['All applications', s?.applications], ['Team members', s?.team], ['Videos and posts', s?.posts], ['Reactions', s?.reactions]],
               tabs: r => [can.master(r) ? ['assistant','Mazar Prime'] : null, can.moderate(r) ? ['apps','Applications'] : null, can.admin(r) ? ['settings','Site text'] : null, can.post(r) ? ['posts','Videos and music'] : null, can.post(r) ? ['team','The team'] : null, can.admin(r) ? ['users','Members and roles'] : null, can.admin(r) ? ['audit','Role changes'] : null, ['roles','Role guide']] },
