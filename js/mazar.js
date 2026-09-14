@@ -439,12 +439,65 @@ const DOCTRINE = [
   ['Family is how we live', 'The church is a household. We share meals, carry one another\'s burdens and raise our children together.', 'Acts 2:42-47, Galatians 6:2'],
   ['Every disciple multiplies', 'Discipleship is not a class you finish. It is a life that reproduces, which is why missions and church planting are part of who we are.', 'Matthew 28:19-20, 2 Timothy 2:2'],
 ];
-const rich = t => { const links = []; const keep = h => { links.push(h); return `\u0001${links.length - 1}\u0001`; };
-  const e = esc(t).replace(/\[([^\]\n]{1,160})\]\((https?:\/\/[^\s)]+)\)/g, (_, l, u) => keep(`<a href="${u}" target="_blank" rel="noopener">${l}</a>`))
-    .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
-    .replace(/https?:\/\/[^\s<\u0001]+/g, m => { const u = m.replace(/[.,;:!?)]+$/, ''); return keep(`<a href="${u}" target="_blank" rel="noopener">${u.replace(/^https?:\/\//, '').slice(0, 48)}</a>`) + m.slice(u.length); })
-    .replace(/\u0001(\d+)\u0001/g, (_, i) => links[+i]);
-  return e.split(/\n{2,}/).map(block => { const lines = block.split('\n'); if (lines.length && lines.every(l => /^\s*([-*•]|\d+\.)\s+/.test(l))) return `<ul>${lines.map(l => `<li>${l.replace(/^\s*([-*•]|\d+\.)\s+/, '')}</li>`).join('')}</ul>`; if (/^#{1,3}\s/.test(lines[0])) { const h = lines.shift().replace(/^#+\s*/, ''); return `<h4>${h}</h4>` + (lines.length ? `<p>${lines.join('<br>')}</p>` : ''); } return `<p>${lines.join('<br>')}</p>`; }).join(''); };
+/* ---------- replies: a small, safe markdown renderer (window.MazarRich). All text is escaped with esc() before any rule
+   runs, only tags built here are emitted and links must be http(s). Blocks: fenced code (with Copy), # headings (ranked into
+   h3 to h6), > quotes, nested - and 1. lists, pipe tables, --- rules, paragraphs (a single newline is a line break).
+   Inline: `code`, **bold**, *italic*, ~~strike~~, ==highlight==, [label](https://...) and bare links. ---------- */
+const MD = { fence: /^ {0,3}(`{3,}|~{3,})[ \t]*([^`\s]*)[^`]*$/, hr: /^ {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$/, head: /^ {0,3}(#{1,6})[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$/, quote: /^ {0,3}> ?/, item: /^( *)([-*+•]|\d{1,9}[.)])(?:([ \t]+)(.*))?$/, sep: /^ *\|? *:?-+:? *(?:\| *:?-+:? *)*\|? *$/ };
+const mdEmph = s => s.replace(/(^|[^~])~~([^\s~](?:.{0,400}?[^\s~])?)~~(?!~)/g, '$1<del>$2</del>').replace(/(^|[^\w=])==([^\s=](?:.{0,400}?[^\s=])?)==(?![\w=])/g, '$1<mark>$2</mark>')
+  .replace(/\*\*\*([^\s*](?:.{0,400}?[^\s*])?)\*\*\*/g, '<strong><em>$1</em></strong>').replace(/\*\*([^\s*](?:.{0,400}?[^\s*])?)\*\*/g, '<strong>$1</strong>').replace(/(^|[^\w_])__([^\s_](?:.{0,400}?[^\s_])?)__(?![\w_])/g, '$1<strong>$2</strong>')
+  .replace(/(^|[^\w*])\*([^\s*](?:[^*\n]{0,400}?[^\s*])?)\*(?![\w*])/g, '$1<em>$2</em>').replace(/(^|[^\w_])_([^\s_](?:[^_\n]{0,400}?[^\s_])?)_(?![\w_])/g, '$1<em>$2</em>');
+const mdInline = s => { const K = [], keep = h => '\u0001' + (K.push(h) - 1) + '\u0001', a = (u, label) => keep(`<a href="${u}" target="_blank" rel="noopener">${label}</a>`);
+  let e = esc(s.replace(/(`+)(?!`)([\s\S]*?[^`])\1(?!`)/g, (_, f, c) => keep(`<code>${esc(/^ .*[^ ].* $/.test(c) ? c.slice(1, -1) : c)}</code>`)).replace(/\\([\\`*_{}[\]()#+\-.!|~=>])/g, (_, c) => keep(esc(c))))
+    .replace(/\[([^\]\n]{1,300})\]\((https?:\/\/(?:[^\s()\u0001]|\([^\s()\u0001]*\))+)(?:[ \t]+&quot;.*?&quot;)?\)/g, (_, l, u) => a(u, mdEmph(l)))
+    .replace(/\bhttps?:\/\/(?:(?!&(?:lt|gt|quot|#39);)[^\s\u0001])+/g, m => { let u = m.replace(/[.,;:!?*_~=]+$/, ''); while (/\)$/.test(u) && (u.match(/\(/g) || []).length < (u.match(/\)/g) || []).length) u = u.slice(0, -1).replace(/[.,;:!?*_~=]+$/, '');
+      const d = u.replace(/^https?:\/\//, '').replace(/\/$/, ''); return a(u, d.length > 48 ? d.slice(0, 46).replace(/&[#\w]*$/, '') + '…' : d) + m.slice(u.length); });
+  e = mdEmph(e); for (let n = 0; n < 5 && e.includes('\u0001'); n++) e = e.replace(/\u0001(\d+)\u0001/g, (_, i) => K[+i]); return e; };
+const mdCells = l => l.replace(/\\\|/g, '\u0002').trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim().replace(/\u0002/g, '\\|'));
+const mdBlocks = (L, H, dp = 0) => { const n = L.length, ind = l => l.match(/^ */)[0].length; let out = '', i = 0, m;
+  const table = j => j + 1 < n && L[j].includes('|') && L[j + 1].includes('-') && MD.sep.test(L[j + 1]) && !MD.item.test(L[j]) && mdCells(L[j]).length === mdCells(L[j + 1]).length;
+  const start = j => MD.fence.test(L[j]) || MD.hr.test(L[j]) || MD.head.test(L[j]) || MD.quote.test(L[j]) || MD.item.test(L[j]) || table(j);
+  while (i < n){ const l = L[i];
+    if (!l.trim()){ i++; continue; }
+    if ((m = l.match(MD.fence))){ const f = m[1], body = []; for (i++; i < n; i++){ const t = L[i].trim(); if (ind(L[i]) < 4 && t.length >= f.length && t === f[0].repeat(t.length)) break; body.push(L[i]); } i++;
+      out += `<div class="mz-code"><div class="mz-code__bar"><span>${esc(m[2].slice(0, 24))}</span><button type="button" class="mz-copy" aria-label="Copy code">Copy</button></div><pre><code>${esc(body.join('\n'))}</code></pre></div>`; continue; }
+    if (MD.hr.test(l)){ out += '<hr>'; i++; continue; }
+    if ((m = l.match(MD.head))){ i++; if (m[2].trim()){ H.push(m[1].length); out += `<h\u0003${m[1].length}>${mdInline(m[2])}</h\u0003${m[1].length}>`; } continue; }
+    if (dp < 12 && MD.quote.test(l)){ const q = []; while (i < n && MD.quote.test(L[i])) q.push(L[i++].replace(MD.quote, '')); out += `<blockquote>${mdBlocks(q, H, dp + 1)}</blockquote>`; continue; }
+    if (table(i)){ const hd = mdCells(L[i]), k = hd.length, al = mdCells(L[i + 1]).map(c => /^:-+:$/.test(c) ? 'c' : /-:$/.test(c) ? 'r' : ''), rows = [];
+      for (i += 2; i < n && L[i].trim() && L[i].includes('|') && !MD.fence.test(L[i]) && !MD.head.test(L[i]) && !MD.quote.test(L[i]); i++){ const r = mdCells(L[i]); rows.push(Array.from({ length: k }, (_, j) => r[j] || '')); }
+      const cls = hd.map((h, j) => { const col = rows.map(r => r[j]), c = [al[j] === 'c' ? 'is-c' : al[j] === 'r' || (!al[j] && col.some(Boolean) && col.every(x => !x || /^[-+]?(?:[A-Z]{1,3}\s?)?\d[\d.,]*\s?%?$/.test(x.replace(/[*`]/g, '')))) ? 'is-r' : '', [h, ...col].some(x => x.replace(/\]\([^)]*\)|[*_`[]/g, '').length > 30) ? 'is-w' : ''].filter(Boolean).join(' '); return c ? ` class="${c}"` : ''; });
+      out += `<div class="mz-table"><table><thead><tr>${hd.map((h, j) => `<th${cls[j]}>${mdInline(h)}</th>`).join('')}</tr></thead>${rows.length ? `<tbody>${rows.map(r => `<tr>${r.map((c, j) => `<td${cls[j]}>${mdInline(c)}</td>`).join('')}</tr>`).join('')}</tbody>` : ''}</table></div>`; continue; }
+    if (dp < 12 && (m = l.match(MD.item))){ const base = m[1].length, ord = /\d/.test(m[2]), first = parseInt(m[2], 10), items = [];
+      const sib = j => { const s = !MD.hr.test(L[j]) && L[j].match(MD.item); return s && s[1].length < base + 2 && /\d/.test(s[2]) === ord; };
+      while (i < n && sib(i)){ const s = L[i].match(MD.item), col = s[1].length + s[2].length + (s[3] ? Math.min(s[3].replace(/\t/g, '    ').length, 4) : 1), body = [s[4] || '']; i++;
+        while (i < n){ const x = L[i];
+          if (!x.trim()){ let j = i; while (j < n && !L[j].trim()) j++; if (j < n && ind(L[j]) >= base + 2){ body.push(...L.slice(i, j)); i = j; continue; } if (j < n && sib(j)) i = j; break; }
+          if (ind(x) >= base + 2 || (body[body.length - 1].trim() && !start(i))){ body.push(x); i++; continue; }
+          break; }
+        const rest = body.slice(1), d = Math.min(col, ...rest.filter(x => x.trim()).map(ind)); let h = mdBlocks([body[0], ...rest.map(x => x.slice(Math.min(d, ind(x))))], H, dp + 1);
+        if (h.startsWith('<p>') && h.split('<p>').length === 2) h = h.replace(/^<p>([\s\S]*?)<\/p>/, '$1'); items.push(`<li>${h}</li>`); }
+      out += ord ? `<ol${first !== 1 ? ` start="${first}"` : ''}>${items.join('')}</ol>` : `<ul>${items.join('')}</ul>`; continue; }
+    const p = [l.trim()]; for (i++; i < n && L[i].trim() && !start(i); i++) p.push(L[i].trim()); out += `<p>${mdInline(p.join('\n')).replace(/\n/g, '<br>')}</p>`; }
+  return out; };
+const rich = t => { try { const H = [], html = mdBlocks(String(t ?? '').replace(/[\u0001-\u0003]/g, '').replace(/\r\n?/g, '\n').replace(/^[ \t]+/gm, w => w.replace(/\t/g, '    ')).split('\n'), H), lv = [...new Set(H)].sort();
+  return html.replace(/\u0003(\d)/g, (_, d) => 3 + Math.min(3, lv.indexOf(+d))); } catch (_) { return `<p>${esc(t).replace(/\n/g, '<br>')}</p>`; } };
+/* type a rendered reply out word by word: text nodes refill in document order (markup is never split), code blocks, tables
+   and rules appear whole, and each element stays hidden until its first words arrive */
+const TYPE_ATOM = 'pre,table,hr,.mz-code,.mz-table';
+const typeOut = (root, tick, done) => { const full = root.innerHTML, units = [];
+  const inAtom = x => { for (let p = x.parentElement; p && p !== root; p = p.parentElement) if (p.matches(TYPE_ATOM)) return true; return false; };
+  const walk = x => x.childNodes.forEach(c => { if (c.nodeType === 3){ if (c.data) units.push({ n: c, parts: c.data.split(/(\s+)/).filter(Boolean) }); } else if (c.nodeType === 1){ if (c.matches(TYPE_ATOM) || !c.firstChild) units.push({ n: c, w: c.nodeName === 'BR' ? 0 : 4 }); else walk(c); } });
+  walk(root); const all = $$('*', root).filter(x => !inAtom(x)); units.forEach(u => { if (u.parts) u.n.data = ''; }); all.forEach(x => x.classList.add('mz-tw'));
+  const show = x => { for (let p = x; p && p !== root; p = p.parentNode) if (p.nodeType === 1 && p.classList.contains('mz-tw')){ p.classList.remove('mz-tw'); if (!p.classList.length) p.removeAttribute('class'); } };
+  const step = Math.max(2, Math.ceil(units.reduce((s, u) => s + (u.parts ? u.parts.length : u.w), 0) / 55)); let i = 0, k = 0;
+  const run = () => { let left = step; while (left > 0 && i < units.length){ const u = units[i]; show(u.n); if (u.parts){ u.n.data += u.parts.shift(); left--; if (!u.parts.length) i++; } else { left -= u.w; i++; } }
+    if (tick) tick(++k); if (i < units.length) return void setTimeout(run, 18); all.forEach(show); if (root.innerHTML !== full) root.innerHTML = full; if (done) done(); };
+  run(); };
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.mz-copy'), box = b && b.closest('.mz-code'), code = box && $('code', box); if (!code) return;
+  const txt = code.textContent, said = ok => { b.textContent = ok ? 'Copied' : 'Not copied'; b.classList.toggle('is-done', ok); clearTimeout(b._t); b._t = setTimeout(() => { b.textContent = 'Copy'; b.classList.remove('is-done'); }, 1600); };
+  const legacy = () => { const ta = document.createElement('textarea'); ta.value = txt; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0'; document.body.appendChild(ta); ta.select(); let ok = false; try { ok = document.execCommand('copy'); } catch (_) {} ta.remove(); return ok; };
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(txt).then(() => said(true), () => said(legacy())); else said(legacy()); });
 const FIELD_LABEL = { first:'First name', middle:'Middle name', surname:'Surname', gender:'Gender', age:'Age', address:'Town', country:'Country', phone:'Phone', email:'Email', participation:'Taking part', detail:'Detail', days:'Days', dietary:'Dietary', expectation:'Expectation', name:'Name', gift:'Gift', experience:'Experience', church:'Church', message:'Message', contact:'Contact', topic:'Topic', via:'Reply by' };
 
 /* ================================================================ Mazar accounts (mazar.ccfczambia.org) ================================================================
@@ -784,9 +837,8 @@ function app(){
     const fl = files && files.length ? `<div class="mz-msg__files">${files.map(f => f.thumb ? `<img src="${esc(f.thumb)}" alt="${esc(f.name)}" title="${esc(f.name)}">` : `<span class="mz-att mz-att--sent">${I.file}<b>${esc(f.name)}</b></span>`).join('')}</div>` : '';
     el.innerHTML = who === 'bot' ? `<span class="mz-msg__mark">${markSvg()}</span><div class="mz-msg__body"><div class="mz-rich">${rich(text)}</div>${(actions || []).map(cardHtml).join('')}${go ? `<a class="mz-go" href="${esc(go[0])}" data-mz-go>${esc(go[1])} ${I.arrow}</a>` : ''}</div>` : `<div class="mz-msg__col">${fl}${text ? `<div class="mz-msg__body">${esc(text)}</div>` : ''}</div>`;
     log.appendChild(el);
-    if (who === 'bot' && !restored && !RM){ const nodes = $$('.mz-rich p, .mz-rich li, .mz-rich h4', el); const extras = $$('.mz-card, .mz-go', el); extras.forEach(x => x.classList.add('is-wait')); nodes.forEach(n => { n._full = n.innerHTML; n._parts = n.innerHTML.split(/(\s+)/); n.innerHTML = ''; }); const total = nodes.reduce((s, n) => s + n._parts.length, 0), step = Math.max(2, Math.ceil(total / 55));
-      mood('speak'); let k = 0;
-      const tick = () => { let left = step; for (const n of nodes){ while (n._parts.length && left){ n.innerHTML += n._parts.shift(); left--; } if (!left) break; } if (++k % 3 === 0) figs.forEach(f => f.pulse()); log.scrollTop = log.scrollHeight; if (nodes.some(n => n._parts.length)) setTimeout(tick, 18); else { nodes.forEach(n => { n.innerHTML = n._full; }); extras.forEach((x, i) => setTimeout(() => x.classList.remove('is-wait'), 120 * i)); if (extras.length) figs.forEach(f => f.joy()); setTimeout(() => mood('idle'), 600); } }; tick(); }
+    if (who === 'bot' && !restored && !RM){ const extras = $$('.mz-card, .mz-go', el); extras.forEach(x => x.classList.add('is-wait')); mood('speak');
+      typeOut($('.mz-rich', el), k => { if (k % 3 === 0) figs.forEach(f => f.pulse()); log.scrollTop = log.scrollHeight; }, () => { extras.forEach((x, i) => setTimeout(() => x.classList.remove('is-wait'), 120 * i)); if (extras.length) figs.forEach(f => f.joy()); setTimeout(() => mood('idle'), 600); }); }
     log.scrollTo({ top: log.scrollHeight, behavior: RM || restored ? 'auto' : 'smooth' }); return el; };
   const thinking = () => { const el = document.createElement('div'); el.className = 'mz-msg is-bot is-thinking'; el.innerHTML = `<span class="mz-msg__mark">${markSvg()}</span><div class="mz-msg__body"><span class="mz-think"><i></i><i></i><i></i></span><small>Mazar is thinking</small></div>`; log.appendChild(el); log.scrollTop = log.scrollHeight; return el; };
 
@@ -1023,7 +1075,7 @@ function app(){
       ls.set(CONVOS_KEY, convos); renderConvos(); } });
   window.Mazar = { open: tab => { if (FLOAT) open(true); if (tab) setTab(tab); }, ask, figure: fig };
 }
-window.MazarFigure = Figure; window.MazarSky = Sky;
+window.MazarFigure = Figure; window.MazarSky = Sky; window.MazarRich = rich; window.MazarType = typeOut;
 function boot(){ if (OPT.mode === 'none') return; app(); applyFill(); }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();

@@ -198,9 +198,22 @@ async function loadProfile(){ if (!session){ profile = null; return; }
     const u = session.user, m = u.user_metadata || {};
     const row = { id:u.id, email:u.email || m.email || '', full_name: m.full_name || m.name || (u.email||'').split('@')[0] || '', avatar_url: m.avatar_url || m.picture || null, role:'member' };
     const ins = await sb.from('profiles').insert(row).select('*').maybeSingle();
+    if (ins.error && await accountGone(ins.error)) return;
     data = ins.data || (await sb.from('profiles').select('*').eq('id', u.id).maybeSingle()).data || row;
   }
   profile = data; }
+/* an admin deleted this account while the browser still held its sign-in (the profile insert fails on the foreign key,
+   or the sign-in server no longer knows the user): sign out on this device once and say so, never recreate the profile */
+const GONE = 'ccfc:account-removed'; let goneHere = false;
+async function accountGone(err){
+  let gone = err.code === '23503' || /foreign key/i.test(err.message || '');
+  if (!gone){ const res = await sb.auth.getUser().catch(() => null), e = res && res.error; gone = !!e && (e.code === 'user_not_found' || /user\b.*(does not exist|not found)/i.test(e.message || '')); }
+  if (!gone) return false;
+  profile = null; session = null; goneHere = true; clearPrime(); try { sessionStorage.setItem(GONE, '1'); } catch (_) {}
+  await Promise.race([sb.auth.signOut({ scope: 'local' }).catch(() => {}), new Promise(res => setTimeout(res, 2000))]);
+  return true; }
+const goneNote = () => { let hit = goneHere; goneHere = false; try { hit = hit || !!sessionStorage.getItem(GONE); sessionStorage.removeItem(GONE); } catch (_) {}
+  if (hit && !session) toast('Your account was removed. Create a new account to come back.', false); };
 
 /* ================================================================ MEDIA */
 function shrink(file, max=1800, q=.82){ return new Promise(res => { const img = new Image(); img.onload = () => { const s = Math.min(1, max/Math.max(img.width, img.height));
@@ -644,7 +657,7 @@ async function dashboardPage(modal){
       [PI.pulse, 'Know what is happening', 'Live numbers from the database', ["How are Koi 26' registrations going?", 'Which Worship Connect applications are still new?', "Give me this week's numbers for all three sites"]],
       [PI.book, 'Write with scripture', 'Drafts with exact verses', ['Draft a Sunday devotional post on Psalm 23', 'Write a Koinonia announcement with Acts 2:42', 'Suggest five verses for a youth night on courage']],
     ];
-    const rich = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').split(/\n{2,}/).map(b => { const ls = b.split('\n'); if (ls.every(l => /^\s*([-*•]|\d+\.)\s+/.test(l))) return `<ul>${ls.map(l => `<li>${l.replace(/^\s*([-*•]|\d+\.)\s+/, '')}</li>`).join('')}</ul>`; if (/^#{1,3}\s/.test(ls[0])){ const h = ls.shift().replace(/^#+\s*/, ''); return `<h4>${h}</h4>` + (ls.length ? `<p>${ls.join('<br>')}</p>` : ''); } return `<p>${ls.join('<br>')}</p>`; }).join('');
+    const rich = t => window.MazarRich ? window.MazarRich(t) : esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').split(/\n{2,}/).map(b => { const ls = b.split('\n'); if (ls.every(l => /^\s*([-*•]|\d+\.)\s+/.test(l))) return `<ul>${ls.map(l => `<li>${l.replace(/^\s*([-*•]|\d+\.)\s+/, '')}</li>`).join('')}</ul>`; if (/^#{1,3}\s/.test(ls[0])){ const h = ls.shift().replace(/^#+\s*/, ''); return `<h4>${h}</h4>` + (ls.length ? `<p>${ls.join('<br>')}</p>` : ''); } return `<p>${ls.join('<br>')}</p>`; }).join('');
     const name = String(profile.full_name || '').trim(), first = name && name.split(/\s+/).length <= 3 ? name.split(/\s+/)[0] : '';   /* an organisation account gets no first name */
     const hr = new Date().getHours(), hello = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening';
 
@@ -846,14 +859,34 @@ async function dashboardPage(modal){
     const list = $('.dash__list', panel), search = $('.dash__search', panel), rf = $('.dash__rolefilter', panel);
     const { data } = await sb.from('profiles').select('id, email, full_name, avatar_url, role, created_at').order('created_at', { ascending:false });
     const assignable = r === 'master_admin' ? Object.keys(ROLES) : ['leader','media','blogger','member'];
+    const canDelete = u => !!CFG.usersEndpoint && can.admin(r) && u.id !== profile.id && (r === 'master_admin' || !ADMINS.includes(u.role)); let busy = false;
     const render = () => { const qq = search.value.toLowerCase();
       list.innerHTML = (data||[]).filter(u => (!rf.value || u.role === rf.value) && (!qq || (u.full_name+u.email).toLowerCase().includes(qq))).map(u => { const locked = r !== 'master_admin' && ADMINS.includes(u.role);
-        return `<div class="drow" data-id="${u.id}">${avatar(u.full_name||u.email, u.avatar_url)}<div><b>${esc(u.full_name || '(no name)')}</b><span>${esc(u.email)} &middot; joined ${esc(when(u.created_at))}</span></div><div class="row">${locked ? `<span class="pill pill--orange">${esc(ROLES[u.role].label)}</span><small>Only the Master Administrator can change Admin accounts</small>` : `<select class="rolesel" aria-label="Role for ${esc(u.full_name||u.email)}">${assignable.map(k => `<option value="${k}" ${k===u.role?'selected':''}>${ROLES[k].label}</option>`).join('')}</select>`}</div></div>`; }).join('') || '<p class="sub">No users match.</p>';
-      $$('.rolesel', list).forEach(s => s.addEventListener('change', async () => { const u = data.find(x => x.id === s.closest('.drow').dataset.id); const { error } = await sb.rpc('set_role', { target:u.id, new_role:s.value }); if (error){ toast(error.message,false); s.value = u.role; } else { u.role = s.value; toast(`${u.full_name || u.email} is now ${ROLES[s.value].label}.`); } })); };
+        return `<div class="drow" data-id="${u.id}">${avatar(u.full_name||u.email, u.avatar_url)}<div><b>${esc(u.full_name || '(no name)')}</b><span>${esc(u.email)} &middot; joined ${esc(when(u.created_at))}</span></div><div class="row">${locked ? `<span class="pill pill--orange">${esc(ROLES[u.role].label)}</span><small>Only the Master Administrator can change Admin accounts</small>` : `<select class="rolesel" aria-label="Role for ${esc(u.full_name||u.email)}">${assignable.map(k => `<option value="${k}" ${k===u.role?'selected':''}>${ROLES[k].label}</option>`).join('')}</select>`}${canDelete(u) ? `<button class="pill pill--danger del" aria-label="Delete the account of ${esc(u.full_name||u.email)}">Delete</button>` : ''}</div></div>`; }).join('') || '<p class="sub">No users match.</p>';
+      $$('.rolesel', list).forEach(s => s.addEventListener('change', async () => { const u = data.find(x => x.id === s.closest('.drow').dataset.id); const { error } = await sb.rpc('set_role', { target:u.id, new_role:s.value }); if (error){ toast(error.message,false); s.value = u.role; } else { u.role = s.value; toast(`${u.full_name || u.email} is now ${ROLES[s.value].label}.`); } }));
+      $$('.del', list).forEach(b => b.addEventListener('click', () => removeAccount(data.find(x => x.id === b.closest('.drow').dataset.id), b))); };
+    /* deleting an account (admin-users function): the function has the final say, the button only hides the obvious no's */
+    const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+    const andList = xs => xs.length > 1 ? xs.slice(0, -1).join(', ') + ' and ' + xs[xs.length - 1] : (xs[0] || '');
+    const usersFn = async body => { const { data: { session: s } } = await sb.auth.getSession(); if (!s) throw new Error('Your sign-in has expired. Please sign in again.'); const res = await fetch(CFG.usersEndpoint, { method:'POST', headers:{ 'Content-Type':'application/json', apikey: CFG.supabaseKey, Authorization: 'Bearer ' + s.access_token }, body: JSON.stringify(Object.assign({ site }, body)) }).catch(() => null); const j = res ? await res.json().catch(() => ({})) : {}; if (!res || !res.ok || j.error){ const e = new Error(res && res.status === 429 ? 'You have deleted several accounts in the last few minutes. Please wait a little and try again.' : (j.error || 'The account service could not be reached. Please try again.')); e.status = res ? res.status : 0; throw e; } return j; };
+    async function removeAccount(u, b){ if (!u || busy) return; busy = true; const lock = on => $$('.del, .rolesel', list).forEach(x => { x.disabled = on; }); lock(true); b.textContent = 'Checking...';
+      try { const c = await usersFn({ action:'check', user_id:u.id }); if (!c.allowed){ toast(c.reason || 'This account cannot be deleted.', false); return; }
+        const name = (c.target && c.target.name) || u.full_name || '', email = (c.target && c.target.email) || u.email || '', m = c.moves || {};
+        const parts = [m.posts ? plural(m.posts, 'post', 'posts') : '', m.blogs ? plural(m.blogs, 'blog', 'blogs') : '', m.library ? plural(m.library, 'library file', 'library files') : ''].filter(Boolean);
+        const moves = parts.length ? ` Their ${andList(parts)} ${parts.length === 1 && /^1 /.test(parts[0]) ? 'moves' : 'move'} to you.` : '';
+        if (!confirm(`Delete ${name ? `${name} (${email})` : email}?${moves} Their registrations and applications stay with the church without their account link. Their profile, comments and likes are removed. To come back they will need to create a new account. This cannot be undone.`)) return;
+        b.textContent = 'Deleting...'; await usersFn({ action:'delete', user_id:u.id });
+        data.splice(data.indexOf(u), 1); busy = false; render(); toast(`${name || email}'s account was deleted.`);
+      } catch (e){ toast(e.message, false); if (e.status === 502) usersTab(); }   /* 502: not deleted, but already a Member with their content moved, so reload the list */
+      finally { busy = false; if (b.isConnected){ lock(false); b.textContent = 'Delete'; } } }
     search.addEventListener('input', render); rf.addEventListener('change', render); render();
   }
-  async function auditTab(){ const { data } = await sb.from('role_audit').select('created_at, old_role, new_role, actor:actor_id(full_name), target:target_id(full_name, email)').order('created_at', { ascending:false }).limit(100);
-    panel.innerHTML = `<div class="dash__list">${(data||[]).map(a => `<div class="drow"><div><b>${esc(a.target?.full_name || a.target?.email || 'user')}</b><span>${esc(ROLES[a.old_role]?.label||'')} to ${esc(ROLES[a.new_role]?.label||'')} by ${esc(a.actor?.full_name || 'system')} &middot; ${esc(when(a.created_at))}</span></div></div>`).join('') || '<p class="sub">No role changes yet.</p>'}</div>`; }
+  async function auditTab(){ const [{ data }, { data: dels }] = await Promise.all([sb.from('role_audit').select('created_at, old_role, new_role, actor:actor_id(full_name), target:target_id(full_name, email)').order('created_at', { ascending:false }).limit(100),
+      sb.from('admin_actions').select('created_at, args, ok, actor:actor_id(full_name)').eq('tool', 'delete_account').order('created_at', { ascending:false }).limit(100)]);
+    const rows = [...(data||[]).map(a => ({ at: a.created_at, html: `<div class="drow"><div><b>${esc(a.target ? (a.target.full_name || a.target.email || 'user') : 'Deleted account')}</b><span>${esc(ROLES[a.old_role]?.label||'')} to ${esc(ROLES[a.new_role]?.label||'')} by ${esc(a.actor?.full_name || 'system')} &middot; ${esc(when(a.created_at))}</span></div></div>` })),
+      ...(dels||[]).map(a => { const g = a.args || {}, who = g.name ? `${g.name}${g.email ? ` (${g.email})` : ''}` : (g.email || 'user');
+        return { at: a.created_at, html: `<div class="drow"><div><b>${esc(who)} <i class="pill pill--danger">${a.ok === false ? 'Not finished' : 'Deleted'}</i></b><span>${a.ok === false ? 'Account deletion tried' : 'Account deleted'} by ${esc(a.actor?.full_name || 'an admin')} &middot; ${esc(when(a.created_at))}</span></div></div>` }; })];
+    panel.innerHTML = `<div class="dash__list">${rows.sort((x, y) => new Date(y.at) - new Date(x.at)).slice(0, 100).map(x => x.html).join('') || '<p class="sub">No role changes yet.</p>'}</div>`; }
   function rolesTab(){ panel.innerHTML = `<div class="values">${Object.values(ROLES).map(x => `<div class="value"><h3>${esc(x.label)}</h3><p>${esc(x.desc)}</p></div>`).join('')}</div>`; }
   /* open the first tab last, once every helper above exists */
   const want = q.get('tab'); show(tabs.find(t => t[0] === want) ? want : tabs[0][0]);
@@ -1039,7 +1072,7 @@ async function applySettings(){ if (!ready) return; try {
 async function boot(){
   Consent.init();
   const modal = authModal();
-  if (ready){ const { data } = await sb.auth.getSession(); session = data.session; await loadProfile();
+  if (ready){ const { data } = await sb.auth.getSession(); session = data.session; await loadProfile(); goneNote();
     if (location.hash === '' && location.href.endsWith('#')) history.replaceState(null, '', location.pathname + location.search);
     /* Reload once when someone signs in or out so role-dependent pages re-render. Guarded so it can never loop. */
     let lastUid = session?.user?.id || null; const RL = 'ccfc:reloaded-for';
@@ -1049,8 +1082,8 @@ async function boot(){
       if (e !== 'SIGNED_IN' && e !== 'SIGNED_OUT') return;
       const uid = s?.user?.id || null; if (uid === lastUid) return;
       lastUid = uid; session = s; await loadProfile(); accountUI(modal);
-      const key = uid || 'signed-out'; if (mem(RL) === key) return; mem(RL, key);
-      if ($('#feed,#dashboard,#library,#blog,#account')){ if (location.hash) history.replaceState(null, '', location.pathname + location.search); location.reload(); }
+      const key = uid || 'signed-out'; if (mem(RL) === key) return goneNote(); mem(RL, key);
+      if ($('#feed,#dashboard,#library,#blog,#account')){ if (location.hash) history.replaceState(null, '', location.pathname + location.search); location.reload(); } else goneNote();
     });
     if (new URLSearchParams(location.search).get('reset')){ const p = prompt('Choose a new password (at least 8 characters)'); if (p && p.length >= 8){ const { error } = await sb.auth.updateUser({ password:p }); toast(error ? friendly(error) : 'Password updated.', !error); } } }
   accountUI(modal);
