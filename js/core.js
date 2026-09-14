@@ -471,11 +471,9 @@ function blogEditor(slot, b, onDone){
 }
 
 /* ---------- UPPER ROOM LIBRARY (leaders and above) ---------- */
-async function libraryPage(modal){
-  const root = $('#library'); if (!root) return; const gate = $('.lib__gate', root), app = $('.lib__app', root);
-  if (!ready){ gate.innerHTML = `<h2>Almost ready</h2><p class="sub">The library opens as soon as accounts are switched on.</p>`; return; }
-  gate.hidden = true; app.hidden = false;
-  const list = $('.lib__list', app), search = $('.lib__search', app), chips = $('.lib__chips', app), tools = $('.lib__tools', app);
+/* Upper Room tools shared by the public library page and the admin dashboard's library tab:
+   file types, covers, uploads with progress, preview and delete. getItems() feeds the series list; onChanged() reloads the caller. */
+function libraryKit(getItems, onChanged){
   const KINDS = { book:'Book', slides:'Slides', notes:'Notes', audio:'Audio', video:'Video', other:'Other' };
   const pub = path => sb.storage.from('library').getPublicUrl(path).data.publicUrl;
   const extOf = n => (String(n).split('.').pop() || '').toLowerCase();
@@ -502,18 +500,13 @@ async function libraryPage(modal){
     const x = new XMLHttpRequest(); x.open('POST', `${CFG.supabaseUrl}/storage/v1/object/library/${path}`); x.setRequestHeader('Authorization', 'Bearer ' + s.access_token); x.setRequestHeader('apikey', CFG.supabaseKey); x.setRequestHeader('x-upsert', 'false'); x.setRequestHeader('Content-Type', type || 'application/octet-stream');
     x.upload.onprogress = e => e.lengthComputable && onProgress && onProgress(e.loaded / e.total); x.onload = () => x.status < 300 ? ok() : no(new Error(JSON.parse(x.responseText || '{}').message || 'Upload failed (' + x.status + ')')); x.onerror = () => no(new Error('Network error while uploading')); x.send(blob); }); }
 
-  /* ---------- upload pop-up ---------- */
-  if (can.library(role())){
-    tools.insertAdjacentHTML('beforeend', `<button class="btn lib__add" type="button">${ICO.plus || '+'} Upload material</button>`);
-    $('.lib__add', tools).addEventListener('click', openUpload);
-  }
   function openUpload(){
     const dlg = document.createElement('div'); dlg.className = 'upl'; dlg.setAttribute('role', 'dialog'); dlg.setAttribute('aria-modal', 'true'); dlg.setAttribute('aria-labelledby', 'upl-h');
     dlg.innerHTML = `<div class="upl__card">
       <div class="upl__head"><div><h2 id="upl-h">Add to the Upper Room</h2><p>PDFs, slides, notes, audio or video. Up to 50 MB each.</p></div><button type="button" class="upl__x" aria-label="Close">&times;</button></div>
       <label class="upl__drop"><input type="file" multiple accept=".pdf,.ppt,.pptx,.key,.doc,.docx,.odt,.txt,.xls,.xlsx,.mp3,.m4a,.wav,.mp4,.mov,.webm,.jpg,.jpeg,.png"><span class="upl__dropico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg></span><b>Drop files here or <u>browse</u></b><small>You can add several at once</small></label>
       <div class="upl__files" aria-live="polite"></div>
-      <div class="upl__shared" hidden><div class="field"><label for="upl-series">Series or topic</label><input id="upl-series" list="upl-series-list" placeholder="Book of Acts, Foundations, Leadership..."><datalist id="upl-series-list">${[...new Set(items.map(i => i.series).filter(Boolean))].map(sr => `<option value="${esc(sr)}">`).join('')}</datalist></div>
+      <div class="upl__shared" hidden><div class="field"><label for="upl-series">Series or topic</label><input id="upl-series" list="upl-series-list" placeholder="Book of Acts, Foundations, Leadership..."><datalist id="upl-series-list">${[...new Set(getItems().map(i => i.series).filter(Boolean))].map(sr => `<option value="${esc(sr)}">`).join('')}</datalist></div>
         <div class="field"><label for="upl-desc">Description <small>(optional, shared by these files)</small></label><textarea id="upl-desc" rows="2" placeholder="What is this material for?"></textarea></div></div>
       <div class="upl__foot"><span class="upl__status" aria-live="polite"></span><button type="button" class="btn btn--ghost upl__cancel">Cancel</button><button type="button" class="btn upl__go" disabled>Upload</button></div>
     </div>`;
@@ -552,13 +545,39 @@ async function libraryPage(modal){
           q.state = 'done'; q.el.classList.remove('is-uploading'); q.el.classList.add('is-done'); bar.style.width = '100%'; done++;
         } catch (err){ q.state = 'ready'; q.el.classList.remove('is-uploading'); q.el.classList.add('is-error'); $('.upf__extra', q.el).textContent = friendly(err); failed++; }
       }
-      busy = false; statusEl.textContent = failed ? `${done} uploaded, ${failed} failed. Fix and try again.` : `${done} added to the library.`; refresh(); load();
+      busy = false; statusEl.textContent = failed ? `${done} uploaded, ${failed} failed. Fix and try again.` : `${done} added to the library.`; refresh(); onChanged();
       if (!failed) setTimeout(close, 1100); });
     setTimeout(() => drop.focus && $('.upl__x', dlg).focus(), 50);
   }
 
-  /* ---------- visual library ---------- */
+  function preview(i){ const url = pub(i.path), e = extOf(i.file_name), t = TYPE(e);
+    const body = t === 'pdf' ? `<iframe src="${esc(url)}#view=FitH" title="${esc(i.title)}"></iframe>` : t === 'image' ? `<img src="${esc(url)}" alt="${esc(i.title)}">` : t === 'video' ? `<video src="${esc(url)}" controls playsinline></video>` : t === 'audio' ? `<div class="lpv__audio">${art(t, e)}<audio src="${esc(url)}" controls></audio></div>` : `<div class="lpv__none">${i.cover_path ? `<img src="${esc(pub(i.cover_path))}" alt="">` : art(t, e)}<p>This ${esc(e.toUpperCase())} file opens in its own app. Download it to read.</p></div>`;
+    const d = document.createElement('div'); d.className = 'upl lpv'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true'); d.setAttribute('aria-label', i.title);
+    d.innerHTML = `<div class="upl__card lpv__card"><div class="upl__head"><div><span class="lpv__kind">${esc(KINDS[i.kind] || i.kind)}${i.series ? ' &middot; ' + esc(i.series) : ''}</span><h2>${esc(i.title)}</h2>${i.description ? `<p>${esc(i.description)}</p>` : ''}</div><div class="lpv__acts"><a class="btn" href="${esc(url)}" download="${esc(i.file_name)}" target="_blank" rel="noopener">Download <small>${fmtBytes(i.size_bytes)}</small></a><button type="button" class="upl__x" aria-label="Close">&times;</button></div></div><div class="lpv__body">${body}</div></div>`;
+    document.body.appendChild(d); document.documentElement.style.overflow = 'hidden'; requestAnimationFrame(() => d.classList.add('is-in')); setTimeout(() => d.classList.add('is-in'), 60); const x = $('.upl__x', d); x.focus();
+    const close = () => { d.classList.remove('is-in'); document.documentElement.style.overflow = ''; setTimeout(() => d.remove(), 250); };
+    x.addEventListener('click', close); d.addEventListener('click', ev => { if (ev.target === d) close(); }); d.addEventListener('keydown', ev => { if (ev.key === 'Escape') close(); });
+  }
+  async function remove(it){ if (!it || !confirm(`Delete "${it.title}" from the library?`)) return false;
+    await sb.storage.from('library').remove([it.path, it.cover_path].filter(Boolean)); const { error } = await sb.from('library_items').delete().eq('id', it.id);
+    if (error){ toast(friendly(error), false); return false; } toast('Deleted.'); return true; }
+  return { KINDS, pub, extOf, TYPE, art, openUpload, preview, remove };
+}
+
+async function libraryPage(modal){
+  const root = $('#library'); if (!root) return; const gate = $('.lib__gate', root), app = $('.lib__app', root);
+  if (!ready){ gate.innerHTML = `<h2>Almost ready</h2><p class="sub">The library opens as soon as accounts are switched on.</p>`; return; }
+  gate.hidden = true; app.hidden = false;
+  const list = $('.lib__list', app), search = $('.lib__search', app), chips = $('.lib__chips', app), tools = $('.lib__tools', app);
   let items = [], kind = '';
+  const { KINDS, pub, extOf, TYPE, art, openUpload, preview, remove } = libraryKit(() => items, () => load());
+
+  /* ---------- upload pop-up ---------- */
+  if (can.library(role())){
+    tools.insertAdjacentHTML('beforeend', `<button class="btn lib__add" type="button">${ICO.plus || '+'} Upload material</button>`);
+    $('.lib__add', tools).addEventListener('click', openUpload);
+  }
+  /* ---------- visual library ---------- */
   chips.innerHTML = [['', 'All'], ...Object.entries(KINDS)].map(([k, v]) => `<button type="button" class="chip ${k ? '' : 'is-on'}" data-k="${k}">${v}</button>`).join('');
   $$('.chip', chips).forEach(b => b.addEventListener('click', () => { kind = b.dataset.k; $$('.chip', chips).forEach(x => x.classList.toggle('is-on', x === b)); render(); }));
   async function load(){ list.innerHTML = `<div class="lshelf"><div class="lgrid">${'<div class="lcard lcard--skel"><div class="lcov"></div><b></b><span></span></div>'.repeat(8)}</div></div>`;
@@ -573,16 +592,7 @@ async function libraryPage(modal){
     const groups = {}; rows.forEach(i => (groups[i.series || 'General'] ||= []).push(i));
     list.innerHTML = Object.entries(groups).map(([sr, its]) => `<section class="lshelf"><h3 class="lshelf__h">${esc(sr)}<span>${its.length}</span></h3><div class="lgrid">${its.map(card).join('')}</div></section>`).join('');
     $$('.lcov', list).forEach(b => b.addEventListener('click', () => preview(items.find(x => x.id === b.closest('.lcard').dataset.id))));
-    $$('.lcard__del', list).forEach(b => b.addEventListener('click', async () => { const it = items.find(x => x.id === b.closest('.lcard').dataset.id); if (!confirm(`Delete "${it.title}" from the library?`)) return;
-      await sb.storage.from('library').remove([it.path, it.cover_path].filter(Boolean)); const { error } = await sb.from('library_items').delete().eq('id', it.id); if (error) toast(friendly(error), false); else { toast('Deleted.'); load(); } }));
-  }
-  function preview(i){ const url = pub(i.path), e = extOf(i.file_name), t = TYPE(e);
-    const body = t === 'pdf' ? `<iframe src="${esc(url)}#view=FitH" title="${esc(i.title)}"></iframe>` : t === 'image' ? `<img src="${esc(url)}" alt="${esc(i.title)}">` : t === 'video' ? `<video src="${esc(url)}" controls playsinline></video>` : t === 'audio' ? `<div class="lpv__audio">${art(t, e)}<audio src="${esc(url)}" controls></audio></div>` : `<div class="lpv__none">${i.cover_path ? `<img src="${esc(pub(i.cover_path))}" alt="">` : art(t, e)}<p>This ${esc(e.toUpperCase())} file opens in its own app. Download it to read.</p></div>`;
-    const d = document.createElement('div'); d.className = 'upl lpv'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true'); d.setAttribute('aria-label', i.title);
-    d.innerHTML = `<div class="upl__card lpv__card"><div class="upl__head"><div><span class="lpv__kind">${esc(KINDS[i.kind] || i.kind)}${i.series ? ' &middot; ' + esc(i.series) : ''}</span><h2>${esc(i.title)}</h2>${i.description ? `<p>${esc(i.description)}</p>` : ''}</div><div class="lpv__acts"><a class="btn" href="${esc(url)}" download="${esc(i.file_name)}" target="_blank" rel="noopener">Download <small>${fmtBytes(i.size_bytes)}</small></a><button type="button" class="upl__x" aria-label="Close">&times;</button></div></div><div class="lpv__body">${body}</div></div>`;
-    document.body.appendChild(d); document.documentElement.style.overflow = 'hidden'; requestAnimationFrame(() => d.classList.add('is-in')); setTimeout(() => d.classList.add('is-in'), 60); const x = $('.upl__x', d); x.focus();
-    const close = () => { d.classList.remove('is-in'); document.documentElement.style.overflow = ''; setTimeout(() => d.remove(), 250); };
-    x.addEventListener('click', close); d.addEventListener('click', ev => { if (ev.target === d) close(); }); d.addEventListener('keydown', ev => { if (ev.key === 'Escape') close(); });
+    $$('.lcard__del', list).forEach(b => b.addEventListener('click', async () => { if (await remove(items.find(x => x.id === b.closest('.lcard').dataset.id))) load(); }));
   }
   search.addEventListener('input', render); load();
 }
@@ -622,7 +632,7 @@ async function dashboardPage(modal){
   const tabs = D.tabs(r).filter(Boolean);
   bar.innerHTML = tabs.map(t => `<button class="dash__tab" data-t="${t[0]}">${t[1]}</button>`).join('');
   const show = t => { $$('.dash__tab', bar).forEach(x => x.classList.toggle('is-on', x.dataset.t === t)); history.replaceState(null, '', IS_ADMIN ? `/?site=${site}&tab=${t}` : `/dashboard?tab=${t}`); panel.innerHTML = '<div class="skel"></div>';
-    ({ assistant: assistantTab, settings: settingsTab, posts: postsTab, regs: regsTab, apps: appsTab, team: teamTab, blogs: blogsTab, library: () => { location.href = 'https://ccfczambia.org/library'; }, users: usersTab, audit: auditTab, roles: rolesTab })[t](); };
+    ({ assistant: assistantTab, settings: settingsTab, posts: postsTab, regs: regsTab, apps: appsTab, team: teamTab, blogs: blogsTab, library: libraryTab, users: usersTab, audit: auditTab, roles: rolesTab })[t](); };
   $$('.dash__tab', bar).forEach(b => b.addEventListener('click', () => show(b.dataset.t)));
   const csvOf = (name, cols, rows) => { const body = [cols.join(','), ...rows.map(x => cols.map(c => '"' + String(x[c] ?? '').replace(/"/g,'""') + '"').join(','))].join('\n'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([body], { type:'text/csv' })); a.download = name; a.click(); };
 
@@ -848,6 +858,33 @@ async function dashboardPage(modal){
       const move = async (id, dir) => { const i = members.findIndex(m => m.id === id), j = i + dir; if (j < 0 || j >= members.length) return; [members[i], members[j]] = [members[j], members[i]]; await Promise.all(members.map((m, k) => sb.from('team_members').update({ sort: k }).eq('id', m.id))); render(); };
       $$('.up', list).forEach(b => b.addEventListener('click', () => move(b.closest('.drow').dataset.id, -1))); $$('.down', list).forEach(b => b.addEventListener('click', () => move(b.closest('.drow').dataset.id, 1))); };
     render();
+  }
+  /* Upper Room library: everything on the shelves at a glance, with upload, preview and delete (the reading room is ccfczambia.org/library) */
+  async function libraryTab(){
+    let items = [], kind = '';
+    const kit = libraryKit(() => items, () => load());
+    panel.innerHTML = `<div class="dash__toolbar"><h3>Upper Room library</h3>${can.library(r) ? `<button class="btn dash__upload" type="button">${ICO.plus || '+'} Upload material</button>` : ''}<a class="btn btn--ghost" href="https://ccfczambia.org/library" target="_blank" rel="noopener">Open the Upper Room</a></div>
+      <div class="dash__kpis"></div>
+      <div class="dash__toolbar"><div class="feed__filters lib__kinds">${[['', 'All'], ...Object.entries(kit.KINDS)].map(([k, v]) => `<button class="chip ${k ? '' : 'is-on'}" data-k="${k}">${v}</button>`).join('')}</div><input class="dash__search" placeholder="Search title, series or file name" aria-label="Search the library"></div>
+      <div class="dash__list"></div>`;
+    const list = $('.dash__list', panel), search = $('.dash__search', panel), kpis = $('.dash__kpis', panel), up = $('.dash__upload', panel);
+    if (up) up.addEventListener('click', kit.openUpload);
+    $$('.lib__kinds .chip', panel).forEach(b => b.addEventListener('click', () => { kind = b.dataset.k; $$('.lib__kinds .chip', panel).forEach(x => x.classList.toggle('is-on', x === b)); render(); }));
+    async function load(){ list.innerHTML = '<div class="skel"></div>';
+      const { data, error } = await sb.from('library_items').select('*, profiles:member_cards(full_name)').order('created_at', { ascending:false });
+      if (error){ list.innerHTML = `<p class="sub">${esc(friendly(error))}</p>`; return; } items = data || []; render(); }
+    function render(){ const q = search.value.toLowerCase();
+      const rows = items.filter(i => (!kind || i.kind === kind) && (!q || (i.title + ' ' + i.series + ' ' + i.description + ' ' + i.file_name).toLowerCase().includes(q)));
+      const total = items.reduce((n, i) => n + (+i.size_bytes || 0), 0), series = new Set(items.map(i => i.series || 'General')).size;
+      kpis.innerHTML = `<div class="stat"><b>${items.length}</b><span>item${items.length === 1 ? '' : 's'} on the shelves</span></div><div class="stat"><b>${series}</b><span>series</span></div><div class="stat"><b>${fmtBytes(total)}</b><span>stored</span></div><div class="stat"><b>${items[0] ? esc(when(items[0].created_at)) : 'Nothing yet'}</b><span>last added</span></div>`;
+      list.innerHTML = rows.map(i => { const e = kit.extOf(i.file_name), t = kit.TYPE(e), canDel = can.admin(r) || i.uploader_id === profile.id;
+        return `<div class="drow lrow" data-id="${esc(i.id)}"><button type="button" class="drow__thumb lrow__thumb" aria-label="Preview ${esc(i.title)}">${i.cover_path ? `<img src="${esc(kit.pub(i.cover_path))}" alt="" loading="lazy">` : kit.art(t, e)}</button>
+          <div><b>${esc(i.title)} <i class="pill">${esc(kit.KINDS[i.kind] || i.kind)}</i></b><span>${esc(i.series || 'General')} &middot; ${esc(e.toUpperCase() || 'FILE')} &middot; ${fmtBytes(i.size_bytes)}${i.profiles?.full_name ? ' &middot; ' + esc(i.profiles.full_name) : ''} &middot; added ${esc(when(i.created_at))}</span></div>
+          <div class="row"><button type="button" class="pill lrow__view">Preview</button><a class="pill" href="${esc(kit.pub(i.path))}" target="_blank" rel="noopener">Open</a>${canDel ? '<button type="button" class="pill pill--danger del">Delete</button>' : ''}</div></div>`; }).join('')
+        || `<p class="sub">${items.length ? 'Nothing matches. Try another word or type.' : 'The Upper Room is empty. Upload the first book, notes or slides.'}</p>`;
+      $$('.lrow__thumb, .lrow__view', list).forEach(b => b.addEventListener('click', () => kit.preview(items.find(x => x.id === b.closest('.drow').dataset.id))));
+      $$('.del', list).forEach(b => b.addEventListener('click', async () => { b.disabled = true; if (await kit.remove(items.find(x => x.id === b.closest('.drow').dataset.id))) load(); else b.disabled = false; })); }
+    search.addEventListener('input', render); load();
   }
   async function blogsTab(){
     const { data } = await sb.from('blogs').select('id, title, slug, published, published_at, created_at, author:member_cards!author_id(full_name)').order('created_at', { ascending:false }).limit(100);

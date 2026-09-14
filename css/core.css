@@ -264,6 +264,9 @@
 .drow .pill[disabled]{opacity:.3;cursor:default}
 .drow__thumb{width:56px;height:56px;border-radius:10px;object-fit:cover;background:var(--k-ground)}
 .drow__thumb--k{display:grid;place-items:center;font-family:var(--font-display);font-weight:700;color:var(--k-head)}
+.lrow__thumb{position:relative;display:block;width:48px;height:64px;padding:0;border:0;overflow:hidden;cursor:pointer}
+.lrow__thumb img{width:100%;height:100%;object-fit:cover}
+.lrow__thumb .lcov__art i{font-size:.58rem;padding:.15rem .3rem}
 .drow--exp{display:block;padding:0}
 .drow--exp summary{display:grid;grid-template-columns:auto 1fr auto;gap:1rem;align-items:center;padding:.9rem 1.1rem;cursor:pointer;list-style:none}
 .drow--exp summary::-webkit-details-marker{display:none}
