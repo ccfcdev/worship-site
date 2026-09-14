@@ -186,7 +186,7 @@ function accountUI(modal){
       btn.addEventListener('click', () => { menu.hidden = !menu.hidden; btn.setAttribute('aria-expanded', !menu.hidden); });
       document.addEventListener('click', e => { if (!slot.contains(e.target)){ menu.hidden = true; btn.setAttribute('aria-expanded', false); } });
     }
-    $$('.nav__signout', slot).forEach(b => b.addEventListener('click', async () => { await sb.auth.signOut({ scope: 'local' }); location.href = '/'; }));
+    $$('.nav__signout', slot).forEach(b => b.addEventListener('click', async () => { clearPrime(); await sb.auth.signOut({ scope: 'local' }); location.href = '/'; }));
   });
   $$('[data-auth]').forEach(b => { if (b._bound) return; b._bound = true; b.addEventListener('click', e => { e.preventDefault(); modal.open(b.dataset.auth || 'in'); }); });
   $$('[data-guest]').forEach(el => { el.hidden = !!session; }); $$('[data-member]').forEach(el => { el.hidden = !session; });
@@ -200,8 +200,7 @@ async function loadProfile(){ if (!session){ profile = null; return; }
     const ins = await sb.from('profiles').insert(row).select('*').maybeSingle();
     data = ins.data || (await sb.from('profiles').select('*').eq('id', u.id).maybeSingle()).data || row;
   }
-  profile = data;
-  if (profile && profile.mazar_only){ sb.rpc('ccfc_join').then(({ error }) => { if (!error) profile.mazar_only = false; }); } }
+  profile = data; }
 
 /* ================================================================ MEDIA */
 function shrink(file, max=1800, q=.82){ return new Promise(res => { const img = new Image(); img.onload = () => { const s = Math.min(1, max/Math.max(img.width, img.height));
@@ -588,6 +587,11 @@ const DASH = {
               tabs: r => [can.master(r) ? ['assistant','Mazar Prime'] : null, can.moderate(r) ? ['apps','Applications'] : null, can.admin(r) ? ['settings','Site text'] : null, can.post(r) ? ['posts','Videos and music'] : null, can.post(r) ? ['team','The team'] : null, can.admin(r) ? ['users','Members and roles'] : null, can.admin(r) ? ['audit','Role changes'] : null, ['roles','Role guide']] },
 };
 const APP_STATUS = { new:'New', contacted:'Contacted', audition:'Invited to rehearsal', accepted:'Accepted', declined:'Not now' };
+/* Mazar Prime's mark, and where its conversations are kept on this device (cleared on sign out) */
+const PRIME_KEY = 'mazar-prime:v1:';
+let primeN = 0;
+function primeMark(){ const id = 'mzp-' + (++primeN); return `<svg class="mz-mark mz-mark--prime" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><defs><linearGradient id="${id}" x1="8" y1="6" x2="40" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFF7DC"/><stop offset=".55" stop-color="#EBC872"/><stop offset="1" stop-color="#B98A3E"/></linearGradient></defs><path d="M24 6.5a17.5 17.5 0 1 1-12.4 5.1" fill="none" stroke="url(#${id})" stroke-width="1.6" stroke-linecap="round"/><circle cx="24" cy="24" r="22" fill="none" stroke="url(#${id})" stroke-width="1" stroke-dasharray="2 3.2" opacity=".8"/><path d="M17 9.5l2.2 2.4L24 7.6l4.8 4.3L31 9.5" fill="none" stroke="url(#${id})" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M24 12c.8 8.4 3.6 11.2 12 12-8.4.8-11.2 3.6-12 12-.8-8.4-3.6-11.2-12-12 8.4-.8 11.2-3.6 12-12z" fill="url(#${id})"/></svg>`; }
+const clearPrime = () => { try { Object.keys(localStorage).filter(k => k.startsWith(PRIME_KEY)).forEach(k => localStorage.removeItem(k)); } catch (_) {} };
 async function dashboardPage(modal){
   const root = $('#dashboard'); if (!root) return; const gate = $('.dash__gate', root), app = $('.dash__app', root); const site = SITE_KEY, D = DASH[site];
   if (!ready){ gate.innerHTML = `<h2>Dashboard</h2><p class="sub">Accounts are not switched on yet. Once Supabase is connected, the team signs in here.</p>`; return; }
@@ -607,7 +611,6 @@ async function dashboardPage(modal){
   const show = t => { $$('.dash__tab', bar).forEach(x => x.classList.toggle('is-on', x.dataset.t === t)); history.replaceState(null, '', IS_ADMIN ? `/?site=${site}&tab=${t}` : `/dashboard?tab=${t}`); panel.innerHTML = '<div class="skel"></div>';
     ({ assistant: assistantTab, settings: settingsTab, posts: postsTab, regs: regsTab, apps: appsTab, team: teamTab, blogs: blogsTab, library: () => { location.href = 'https://ccfczambia.org/library'; }, users: usersTab, audit: auditTab, roles: rolesTab })[t](); };
   $$('.dash__tab', bar).forEach(b => b.addEventListener('click', () => show(b.dataset.t)));
-  const want = q.get('tab'); show(tabs.find(t => t[0] === want) ? want : tabs[0][0]);
   const csvOf = (name, cols, rows) => { const body = [cols.join(','), ...rows.map(x => cols.map(c => '"' + String(x[c] ?? '').replace(/"/g,'""') + '"').join(','))].join('\n'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([body], { type:'text/csv' })); a.download = name; a.click(); };
 
   async function postsTab(){
@@ -623,45 +626,147 @@ async function dashboardPage(modal){
       $$('.del', l).forEach(b => b.addEventListener('click', async () => { if (!confirm('Delete this post?')) return; const { error } = await sb.from('posts').delete().eq('id', b.closest('.drow').dataset.id); if (error) toast(friendly(error), false); else list(); })); }
     list();
   }
-  /* Mazar Prime: the master admin's AI assistant. Mazar's Bible and content skills plus admin powers. Reads live data, proposes a plan, writes only after Apply. */
-  const primeMark = (n => () => { const id = 'mzp-' + (++n); return `<svg class="mz-mark mz-mark--prime" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><defs><linearGradient id="${id}" x1="8" y1="6" x2="40" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFF7DC"/><stop offset=".55" stop-color="#EBC872"/><stop offset="1" stop-color="#B98A3E"/></linearGradient></defs><path d="M24 6.5a17.5 17.5 0 1 1-12.4 5.1" fill="none" stroke="url(#${id})" stroke-width="1.6" stroke-linecap="round"/><circle cx="24" cy="24" r="22" fill="none" stroke="url(#${id})" stroke-width="1" stroke-dasharray="2 3.2" opacity=".8"/><path d="M17 9.5l2.2 2.4L24 7.6l4.8 4.3L31 9.5" fill="none" stroke="url(#${id})" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M24 12c.8 8.4 3.6 11.2 12 12-8.4.8-11.2 3.6-12 12-.8-8.4-3.6-11.2-12-12 8.4-.8 11.2-3.6 12-12z" fill="url(#${id})"/></svg>`; })(0);
+  /* Mazar Prime: the master admin's AI assistant. Mazar's Bible and content skills plus admin powers. Reads live data, proposes a plan,
+     writes only after Apply (admin-agent: Claude plans changes, OpenAI answers questions). A workspace with saved conversations
+     (this device only, cleared on sign out), the living Mazar figure, and plan cards that wait for Apply. */
   async function assistantTab(){
-    const EP = (window.CCFC_CONFIG || {}).adminEndpoint;
-    const rich = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').split(/\n{2,}/).map(b => { const ls = b.split('\n'); return ls.every(l => /^\s*([-*•]|\d+\.)\s+/.test(l)) ? `<ul>${ls.map(l => `<li>${l.replace(/^\s*([-*•]|\d+\.)\s+/, '')}</li>`).join('')}</ul>` : `<p>${ls.join('<br>')}</p>`; }).join('');
+    const EP = CFG.adminEndpoint, KEY = PRIME_KEY + profile.id, RAIL = 'mazar-prime:rail';
+    const SITE_NAME = { ccfc: 'Church', koinonia: 'Koinonia', worship: 'Worship Connect' };
+    const TOOL = { set_setting: 'Site text', create_post: 'New post', update_post: 'Edit post', delete_post: 'Delete post', create_announcement: 'Announcement', update_announcement: 'Announcement', delete_announcement: 'Announcement', upsert_team_member: 'Team', remove_team_member: 'Team', set_application_status: 'Application' };
+    const svg = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+    const PI = {
+      plus: svg('<path d="M12 5v14M5 12h14"/>'), rail: svg('<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/>'), menu: svg('<path d="M4 7h16M4 12h16M4 17h10"/>'),
+      full: svg('<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>'), shrink: svg('<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>'), trash: svg('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>'),
+      send: svg('<path d="M12 19V5M6 11l6-6 6 6"/>'), edit: svg('<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/>'), pulse: svg('<path d="M3 12h4l3-7 4 14 3-7h4"/>'), book: svg('<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5M9 7h6"/>'),
+    };
     const GROUPS = [
-      ['Change the sites', ["Change the Koi 26' dates to 18 to 20 December 2026", 'Put up an announcement: no service this Sunday, we are at Koinonia', 'Pin the latest post on the church feed']],
-      ['Know what is happening', ["How are Koi 26' registrations going?", 'Which Worship Connect applications are still new?', 'Give me this week\'s numbers for all three sites']],
-      ['Write with scripture', ['Draft a Sunday devotional post on Psalm 23', 'Write a Koinonia announcement with Acts 2:42', 'Suggest five verses for a youth night on courage']],
+      [PI.edit, 'Change the sites', 'I plan it; you press Apply', ["Change the Koi 26' dates to 18 to 20 December 2026", 'Put up an announcement: no service this Sunday, we are at Koinonia', 'Pin the latest post on the church feed']],
+      [PI.pulse, 'Know what is happening', 'Live numbers from the database', ["How are Koi 26' registrations going?", 'Which Worship Connect applications are still new?', "Give me this week's numbers for all three sites"]],
+      [PI.book, 'Write with scripture', 'Drafts with exact verses', ['Draft a Sunday devotional post on Psalm 23', 'Write a Koinonia announcement with Acts 2:42', 'Suggest five verses for a youth night on courage']],
     ];
-    panel.innerHTML = `<section class="mzp" data-theme="mazar"><div class="mz__sky" aria-hidden="true"><i class="mz__stars"></i></div>
-      <header class="mzp__head">${primeMark()}<div><span class="mzp__eyebrow">Master Administrator</span><h3>Mazar <em>Prime</em></h3><p>Everything Mazar knows, with the keys to all three sites. I look first, then show you a plan. Nothing changes until you press Apply.</p></div></header>
-      <div class="mzp__log" aria-live="polite"><div class="mz__stage"><canvas></canvas></div></div>
-      <div class="mzp__starts">${GROUPS.map(([h, xs]) => `<div><h4>${esc(h)}</h4>${xs.map(x => `<button type="button">${esc(x)}</button>`).join('')}</div>`).join('')}</div>
-      <form class="mz__form mzp__form"><textarea name="q" rows="1" placeholder="Ask Mazar Prime to change, check or write something..." aria-label="Instruction for Mazar Prime" maxlength="4000"></textarea><button class="mz__send" type="submit" aria-label="Send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button></form>
-      <p class="mzp__fine">${EP ? '<span class="mzp__engine"></span>Every applied change is logged under your name.' : 'The Mazar Prime endpoint is not configured (js/config.js adminEndpoint).'}</p></section>`;
-    const root = $('.mzp', panel), log = $('.mzp__log', panel), form = $('.mzp__form', panel), ta = $('textarea', form), history = []; let busy = false;
-    const fig = window.MazarFigure ? new window.MazarFigure($('.mz__stage canvas', root), $('.mz__stage', root)) : null; const mood = s => fig && fig.set(s);
+    const rich = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').split(/\n{2,}/).map(b => { const ls = b.split('\n'); if (ls.every(l => /^\s*([-*•]|\d+\.)\s+/.test(l))) return `<ul>${ls.map(l => `<li>${l.replace(/^\s*([-*•]|\d+\.)\s+/, '')}</li>`).join('')}</ul>`; if (/^#{1,3}\s/.test(ls[0])){ const h = ls.shift().replace(/^#+\s*/, ''); return `<h4>${h}</h4>` + (ls.length ? `<p>${ls.join('<br>')}</p>` : ''); } return `<p>${ls.join('<br>')}</p>`; }).join('');
+    const name = String(profile.full_name || '').trim(), first = name && name.split(/\s+/).length <= 3 ? name.split(/\s+/)[0] : '';   /* an organisation account gets no first name */
+    const hr = new Date().getHours(), hello = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening';
+
+    /* ---- conversations (this device) ---- */
+    const load = () => { try { const v = JSON.parse(localStorage.getItem(KEY) || '[]'); return (Array.isArray(v) ? v : []).filter(c => c && c.id && Array.isArray(c.log)).map(c => ({ ...c, history: Array.isArray(c.history) ? c.history : [] })); } catch (_) { return []; } };
+    const save = () => { try { localStorage.setItem(KEY, JSON.stringify(convos.filter(c => c.log.length).slice(0, 30).map(c => ({ ...c, log: c.log.slice(-60), history: c.history.slice(-24) })))); } catch (_) {} };
+    const fresh = () => ({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), title: 'New conversation', t: Date.now(), site, log: [], history: [] });
+    let convos = load(), cur = fresh(); convos.unshift(cur);
+    const livePlans = new Set();   /* plans made in this visit can be applied; saved ones are shown as history only */
+
+    panel.innerHTML = `<section class="mzp" data-theme="mazar" aria-label="Mazar Prime">
+      <canvas class="mzp__sky" aria-hidden="true"></canvas>
+      <aside class="mzp__side" aria-label="Mazar Prime conversations">
+        <button class="mzp__new" type="button">${PI.plus}<span>New conversation</span></button>
+        <nav class="mzp__convos" aria-label="Conversations"></nav>
+        <div class="mzp__foot"><span class="mzp__k">Engines</span>
+          <div class="mzp__eng" data-e="Claude"><i></i><b>Claude</b><small>Plans changes to the sites</small></div>
+          <div class="mzp__eng" data-e="OpenAI"><i></i><b>OpenAI</b><small>Answers questions and drafts</small></div>
+          <p>Conversations stay on this device and are cleared when you sign out.</p></div>
+      </aside>
+      <div class="mzp__main">
+        <div class="mzp__fig" aria-hidden="true"><canvas></canvas></div>
+        <header class="mzp__bar">
+          <button class="mzp__btn mzp__rail" type="button" aria-label="Hide conversations" title="Hide conversations" aria-expanded="true">${PI.rail}</button>
+          <span class="mzp__id">${primeMark()}<span><b>Mazar <em>Prime</em></b><small><i class="mzp__live"></i><span class="mzp__status">Ready</span></small></span></span>
+          <span class="mzp__scope" title="Mazar Prime can work on all three sites. This dashboard is its starting point."><i></i>Working from <b>${esc(SITE_NAME[site] || site)}</b></span>
+          <span class="mzp__tools"><button class="mzp__btn mzp__newbtn" type="button" aria-label="New conversation" title="New conversation">${PI.plus}</button><button class="mzp__btn mzp__full" type="button" aria-label="Full screen" title="Full screen">${PI.full}</button></span>
+        </header>
+        <div class="mzp__log" aria-live="polite">
+          <div class="mzp__hello">
+            <div class="mzp__stage" aria-hidden="true"></div>
+            <span class="mzp__eyebrow">Master Administrator</span>
+            <h3>${hello}${first ? ', ' + esc(first) : ''}.</h3>
+            <p>Everything Mazar knows, with the keys to all three sites. I look first, then show you a plan. Nothing changes until you press Apply.</p>
+            <div class="mzp__starts">${GROUPS.map(([ic, h, s, xs]) => `<div class="mzp__group"><h4>${ic}${esc(h)}</h4><small>${esc(s)}</small>${xs.map(x => `<button type="button">${esc(x)}</button>`).join('')}</div>`).join('')}</div>
+          </div>
+        </div>
+        <form class="mz__form mzp__form"><textarea name="q" rows="1" placeholder="${EP ? (innerWidth <= 640 ? 'Ask Mazar Prime...' : 'Ask Mazar Prime to change, check or write something...') : 'Mazar Prime is not configured (js/config.js adminEndpoint)'}" aria-label="Instruction for Mazar Prime" maxlength="4000"></textarea><button class="mz__send" type="submit" aria-label="Send">${PI.send}</button></form>
+        <p class="mzp__fine"><span>Enter to send. Shift and Enter for a new line.</span><span>Every applied change is logged under your name.</span></p>
+      </div></section>`;
+
+    const root = $('.mzp', panel), main = $('.mzp__main', root), log = $('.mzp__log', root), hi = $('.mzp__hello', root), form = $('.mzp__form', root), ta = $('textarea', form), status = $('.mzp__status', root);
+    const figHost = $('.mzp__fig', root);
+    const fig = window.MazarFigure ? new window.MazarFigure($('canvas', figHost), figHost, { bg: true, pointer: main, cy: .5 }) : null;
+    if (window.MazarSky && fig) new window.MazarSky($('.mzp__sky', root), root, fig);
+    const mood = s => fig && fig.set(s);
     const scrollEnd = () => { log.scrollTop = log.scrollHeight; };
-    const add = (who, html) => { const el = document.createElement('div'); el.className = 'mz-msg is-' + who; el.innerHTML = who === 'user' ? `<div class="mz-msg__body">${html}</div>` : `<span class="mz-msg__mark">${primeMark()}</span><div class="mz-msg__body">${html}</div>`; log.appendChild(el); root.classList.add('has-history'); scrollEnd(); return el; };
-    const verse = a => `<div class="mz-card mz-card--verse"><span class="mz-card__k">${esc(a.reference)} <i>${esc(a.translation)}</i></span><blockquote>${esc(a.text)}</blockquote></div>`;
-    const call = async body => { const { data: { session: s } } = await sb.auth.getSession(); const r = await fetch(EP, { method:'POST', headers:{ 'Content-Type':'application/json', apikey: CFG.supabaseKey, Authorization: 'Bearer ' + s.access_token }, body: JSON.stringify(Object.assign({ site }, body)) }); const j = await r.json().catch(() => ({})); if (!r.ok || j.error) throw new Error(j.error || ('HTTP ' + r.status)); return j; };
-    const plan = (steps, instruction) => { const el = add('bot', `<div class="mzp__plan"><span class="mz-card__k">Plan &middot; waiting for your approval</span><ol>${steps.map(x => `<li>${esc(x.summary)}</li>`).join('')}</ol><div class="mz-card__row"><button class="mz-chip mz-chip--gold apply" type="button">Apply ${steps.length} change${steps.length > 1 ? 's' : ''}</button><button class="mz-chip discard" type="button">Discard</button></div></div>`);
-      const row = $('.mz-card__row', el);
-      $('.discard', el).addEventListener('click', () => { row.innerHTML = '<span class="mzp__muted">Discarded. Nothing was changed.</span>'; });
-      $('.apply', el).addEventListener('click', async () => { const btn = $('.apply', el); btn.disabled = true; btn.textContent = 'Applying...'; mood('think');
-        try { const { results } = await call({ apply: steps.map(x => ({ tool: x.tool, args: x.args })), instruction });
-          row.innerHTML = `<ul class="mzp__results">${results.map(x => `<li class="${x.ok ? 'is-ok' : 'is-err'}">${x.ok ? 'Done' : 'Failed'}: ${esc(x.summary || x.tool)}${x.ok ? '' : ' (' + esc(String(x.detail)) + ')'}</li>`).join('')}</ul>`;
-          history.push({ role:'user', content:'[The admin applied the plan. Results: ' + results.map(x => (x.ok ? 'ok' : 'failed') + ' ' + x.tool).join(', ') + ']' }); applySettings(); toast('Changes applied.'); if (fig) fig.joy(); mood('idle'); }
-        catch (e){ btn.disabled = false; btn.textContent = 'Apply'; toast(e.message, false); mood('error'); setTimeout(() => mood('idle'), 900); } }); };
-    const ask = async q => { if (busy || !EP) return; busy = true; root.classList.add('is-busy'); add('user', esc(q)); history.push({ role:'user', content:q }); mood('think'); const t = add('bot', '<span class="mz-think"><i></i><i></i><i></i></span><small class="mzp__muted">Mazar Prime is working</small>');
-      try { const ans = await call({ messages: history.slice(-14) }); t.remove(); mood('speak'); add('bot', `<div class="mz-rich">${rich(ans.text)}</div>${(ans.actions || []).map(verse).join('')}`); history.push({ role:'assistant', content: ans.text }); if (ans.plan && ans.plan.length) plan(ans.plan, q); const eng = $('.mzp__engine', panel); if (eng && ans.engine) eng.textContent = `Running on ${ans.engine}. `; setTimeout(() => mood('idle'), 900); }
-      catch (e){ t.remove(); add('bot', `<p class="mzp__err">${esc(e.message)}</p>`); mood('error'); setTimeout(() => mood('idle'), 900); } finally { busy = false; root.classList.remove('is-busy'); ta.focus(); } };
+    /* before the first message the figure sits in the space above the greeting (never behind the text); after it, it fills the background */
+    const stage = $('.mzp__stage', hi);
+    const fitFig = () => { if (root.classList.contains('has-history')){ figHost.style.height = ''; stage.style.height = '0px'; return; }
+      stage.style.height = '0px'; const top = log.offsetTop + parseFloat(getComputedStyle(log).paddingTop), free = hi.offsetTop - top, need = innerWidth <= 640 ? 170 : 210;
+      if (free < need) stage.style.height = (need - free) + 'px';
+      figHost.style.height = Math.round(hi.offsetTop + stage.offsetHeight + 12) + 'px'; };
+    new ResizeObserver(() => requestAnimationFrame(fitFig)).observe(log);
+    log.addEventListener('scroll', () => { figHost.style.transform = root.classList.contains('has-history') ? '' : `translateY(${-log.scrollTop}px)`; }, { passive: true });
+    const setHistory = on => { root.classList.toggle('has-history', on); if (on) figHost.style.transform = ''; requestAnimationFrame(fitFig); };
+
+    /* ---- messages ---- */
+    const verse = a => a && a.reference ? `<div class="mz-card mz-card--verse"><span class="mz-card__k">${esc(a.reference)} <i>${esc(a.translation || '')}</i></span><blockquote>${esc(a.text)}</blockquote></div>` : '';
+    const planHtml = (p, id) => { const n = p.steps.length, res = p.results || [];
+      const head = p.status === 'applied' ? `Applied <span>${res.filter(x => x.ok).length} of ${n} done</span>` : p.status === 'discarded' ? 'Discarded <span>Nothing was changed</span>' : livePlans.has(id) ? `Plan <span>${n} change${n > 1 ? 's' : ''}, waiting for your approval</span>` : 'Plan <span>Not applied</span>';
+      const steps = p.steps.map((x, i) => { const r = res[i]; return `<li class="${r ? (r.ok ? 'is-ok' : 'is-err') : ''}"><span class="mzp__tag">${esc(TOOL[x.tool] || 'Change')}</span><span class="mzp__sum">${esc(x.summary || x.tool)}</span>${r ? `<span class="mzp__res">${r.ok ? 'Done' : 'Failed: ' + esc(String(r.detail || ''))}</span>` : ''}</li>`; }).join('');
+      const foot = p.status === 'pending' ? (livePlans.has(id) ? `<button class="mz-chip mz-chip--gold" type="button" data-plan="apply">Apply ${n} change${n > 1 ? 's' : ''}</button><button class="mz-chip" type="button" data-plan="discard">Discard</button><small>Nothing changes until you apply</small>` : '<small>Plans are not kept between visits. Ask again for a fresh plan.</small>') : '';
+      return `<div class="mzp__plan is-${p.status}" data-id="${id}"><div class="mzp__plan-h">${head}</div><ol class="mzp__steps">${steps}</ol>${foot ? `<div class="mzp__plan-f">${foot}</div>` : ''}</div>`; };
+    const render = (m, i) => { const el = document.createElement('div'); el.className = 'mz-msg is-' + (m.who === 'user' ? 'user' : 'bot'); el.dataset.i = i;
+      if (m.who === 'user') el.innerHTML = `<div class="mz-msg__body">${esc(m.text)}</div>`;
+      else el.innerHTML = `<span class="mz-msg__mark">${primeMark()}</span><div class="mz-msg__body">${m.who === 'err' ? `<p class="mzp__err">${esc(m.text)}</p>` : `<div class="mz-rich">${rich(m.text)}</div>`}${(m.actions || []).map(verse).join('')}${m.plan ? planHtml(m.plan, cur.id + ':' + i) : ''}${m.engine ? `<div class="mzp__meta"><span>via ${esc(m.engine)}</span></div>` : ''}</div>`;
+      return el; };
+    const paintLog = () => { $$('.mz-msg', log).forEach(n => n.remove()); cur.log.forEach((m, i) => log.appendChild(render(m, i))); setHistory(cur.log.length > 0); if (cur.log.length) scrollEnd(); else log.scrollTop = 0; };
+    const repaint = i => { const old = $(`.mz-msg[data-i="${i}"]`, log); if (old) old.replaceWith(render(cur.log[i], i)); };
+    const push = (m, conv = cur) => { conv.log.push(m); conv.t = Date.now(); if (m.who === 'user' && conv.title === 'New conversation') conv.title = m.text.replace(/\s+/g, ' ').slice(0, 60); const i = conv.log.length - 1; if (conv === cur){ log.appendChild(render(m, i)); setHistory(true); scrollEnd(); } save(); paintSide(); return i; };
+    const engineOn = e => { $$('.mzp__eng', root).forEach(x => x.classList.toggle('is-on', !!e && e.startsWith(x.dataset.e))); };
+
+    /* ---- sidebar ---- */
+    const paintSide = () => { const nav = $('.mzp__convos', root); const day = t => Math.floor((new Date().setHours(0, 0, 0, 0) - new Date(t).setHours(0, 0, 0, 0)) / 864e5);
+      const list = convos.filter(c => c.log.length);
+      nav.innerHTML = list.length ? [['Today', d => d === 0], ['Yesterday', d => d === 1], ['Earlier', d => d > 1]].map(([h, f]) => { const rs = list.filter(c => f(day(c.t))); return rs.length ? `<h5>${h}</h5>` + rs.map(c => `<div class="mzp__convo ${c === cur ? 'is-on' : ''}" data-id="${esc(c.id)}"><button type="button" class="mzp__convo-open"><b>${esc(c.title)}</b><small>${esc(SITE_NAME[c.site] || '')} &middot; ${esc(when(new Date(c.t).toISOString()))}</small></button><button type="button" class="mzp__convo-del" aria-label="Delete conversation">${PI.trash}</button></div>`).join('') : ''; }).join('') : '<p class="mzp__side-empty">Your conversations with Mazar Prime will appear here.</p>'; };
+    const open = c => { cur = c; paintLog(); paintSide(); root.classList.remove('is-side'); if (innerWidth > 900) ta.focus({ preventScroll: true }); };
+    const startNew = () => { if (!cur.log.length){ open(cur); return; } convos = convos.filter(c => c.log.length); const c = fresh(); convos.unshift(c); open(c); };
+    $('.mzp__convos', root).addEventListener('click', e => { const row = e.target.closest('.mzp__convo'); if (!row) return; const c = convos.find(x => x.id === row.dataset.id); if (!c) return;
+      if (e.target.closest('.mzp__convo-del')){ if (!confirm('Delete this conversation?')) return; convos = convos.filter(x => x !== c); save(); if (c === cur){ const n = fresh(); convos.unshift(n); open(n); } else paintSide(); return; }
+      open(c); });
+    $('.mzp__new', root).addEventListener('click', startNew); $('.mzp__newbtn', root).addEventListener('click', startNew);
+    const railBtn = $('.mzp__rail', root);
+    const setRail = on => { root.classList.toggle('is-rail', on); const l = on ? 'Show conversations' : 'Hide conversations'; railBtn.setAttribute('aria-label', l); railBtn.title = l; railBtn.setAttribute('aria-expanded', String(!on)); try { localStorage.setItem(RAIL, on ? '1' : ''); } catch (_) {} };
+    railBtn.addEventListener('click', () => { if (innerWidth <= 900) root.classList.toggle('is-side'); else setRail(!root.classList.contains('is-rail')); });
+    try { if (localStorage.getItem(RAIL)) setRail(true); } catch (_) {}
+    main.addEventListener('click', e => { if (root.classList.contains('is-side') && !e.target.closest('.mzp__rail')) root.classList.remove('is-side'); });
+    const fullBtn = $('.mzp__full', root);
+    const setFull = on => { root.classList.toggle('is-full', on); document.body.classList.toggle('mzp-lock', on); fullBtn.innerHTML = on ? PI.shrink : PI.full; const l = on ? 'Exit full screen' : 'Full screen'; fullBtn.setAttribute('aria-label', l); fullBtn.title = l; };
+    fullBtn.addEventListener('click', () => setFull(!root.classList.contains('is-full')));
+    root.addEventListener('keydown', e => { if (e.key === 'Escape' && root.classList.contains('is-full')) setFull(false); });
+
+    /* ---- talking to Mazar Prime ---- */
+    let busy = false;
+    const setBusy = (on, text) => { busy = on; root.classList.toggle('is-busy', on); status.textContent = text; };
+    const call = async body => { const { data: { session: s } } = await sb.auth.getSession(); if (!s) throw new Error('Your sign-in has expired. Please sign in again.'); const r = await fetch(EP, { method:'POST', headers:{ 'Content-Type':'application/json', apikey: CFG.supabaseKey, Authorization: 'Bearer ' + s.access_token }, body: JSON.stringify(Object.assign({ site }, body)) }); const j = await r.json().catch(() => ({})); if (!r.ok || j.error) throw new Error(j.error || ('HTTP ' + r.status)); return j; };
+    const ask = async q => { if (busy || !EP || !q) return; const conv = cur; setBusy(true, 'Working...');
+      push({ who: 'user', text: q }); conv.history.push({ role: 'user', content: q }); mood('think');
+      const t = document.createElement('div'); t.className = 'mz-msg is-bot'; t.innerHTML = `<span class="mz-msg__mark">${primeMark()}</span><div class="mz-msg__body"><span class="mz-think"><i></i><i></i><i></i></span><small class="mzp__muted">Looking at the sites</small></div>`; log.appendChild(t); scrollEnd();
+      try { const ans = await call({ messages: conv.history.slice(-14) }); t.remove();
+        const m = { who: 'bot', text: ans.text || '', actions: ans.actions || [], engine: ans.engine || '' };
+        if (ans.plan && ans.plan.length){ m.plan = { steps: ans.plan.map(x => ({ tool: x.tool, args: x.args, summary: x.summary })), status: 'pending', instruction: q }; livePlans.add(conv.id + ':' + conv.log.length); }
+        mood('speak'); push(m, conv); conv.history.push({ role: 'assistant', content: m.text }); save(); engineOn(m.engine); setTimeout(() => mood('idle'), 900);
+        setBusy(false, m.engine ? 'Ready. Last answer by ' + m.engine.replace(/ \(.*\)$/, '') : 'Ready'); }
+      catch (e){ t.remove(); push({ who: 'err', text: e.message }, conv); mood('error'); setTimeout(() => mood('idle'), 900); setBusy(false, 'Ready'); }
+      finally { if (busy) setBusy(false, 'Ready'); if (innerWidth > 900) ta.focus({ preventScroll: true }); } };
+    log.addEventListener('click', async e => { const b = e.target.closest('[data-plan]'); if (!b || busy) return; const card = b.closest('.mzp__plan'), i = +card.closest('.mz-msg').dataset.i, m = cur.log[i]; if (!m || !m.plan || m.plan.status !== 'pending') return;
+      if (b.dataset.plan === 'discard'){ m.plan.status = 'discarded'; livePlans.delete(card.dataset.id); cur.history.push({ role: 'user', content: '[The admin discarded the plan. Nothing was changed.]' }); save(); repaint(i); return; }
+      $$('[data-plan]', card).forEach(x => { x.disabled = true; }); b.textContent = 'Applying...'; setBusy(true, 'Applying changes...'); mood('think');
+      try { const { results } = await call({ apply: m.plan.steps.map(x => ({ tool: x.tool, args: x.args })), instruction: m.plan.instruction });
+        m.plan.status = 'applied'; m.plan.results = (results || []).map(x => ({ ok: !!x.ok, detail: x.ok ? '' : String(x.detail || '') })); livePlans.delete(card.dataset.id);
+        cur.history.push({ role: 'user', content: '[The admin applied the plan. Results: ' + (results || []).map(x => (x.ok ? 'ok' : 'failed') + ' ' + x.tool).join(', ') + ']' }); save(); repaint(i); scrollEnd();
+        applySettings(); const bad = m.plan.results.filter(x => !x.ok).length; toast(bad ? `${bad} change${bad > 1 ? 's' : ''} failed. See the plan for details.` : 'Changes applied.', !bad); if (fig) fig.joy(); mood('idle'); setBusy(false, 'Ready'); }
+      catch (err){ $$('[data-plan]', card).forEach(x => { x.disabled = false; }); b.textContent = 'Apply'; toast(err.message, false); mood('error'); setTimeout(() => mood('idle'), 900); setBusy(false, 'Ready'); } });
+
     const grow = () => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 180) + 'px'; };
-    ta.addEventListener('input', () => { grow(); mood(ta.value ? 'listen' : 'idle'); });
-    form.addEventListener('submit', e => { e.preventDefault(); const q = ta.value.trim(); if (!q) return; ta.value = ''; grow(); ask(q); });
-    ta.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); form.requestSubmit(); } });
-    $$('.mzp__starts button', panel).forEach(b => b.addEventListener('click', () => ask(b.textContent)));
-    add('bot', `<div class="mz-rich"><p>Peace to you, ${esc((profile.full_name || '').split(' ')[0] || 'friend')}. What shall we do across the sites today?</p></div>`); root.classList.remove('has-history');
+    ta.addEventListener('input', () => { grow(); if (!busy) mood(ta.value ? 'listen' : 'idle'); });
+    form.addEventListener('submit', e => { e.preventDefault(); const q = ta.value.trim(); if (!q || busy) return; ta.value = ''; grow(); ask(q); });
+    ta.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing){ e.preventDefault(); form.requestSubmit(); } });
+    $$('.mzp__group button', hi).forEach(b => b.addEventListener('click', () => ask(b.textContent)));
+    paintSide(); paintLog();
   }
   /* Site text: every editable setting for this site, saved straight to the database and live within seconds */
   async function settingsTab(){
@@ -737,12 +842,12 @@ async function dashboardPage(modal){
     $$('.del', panel).forEach(b => b.addEventListener('click', async () => { if (!confirm('Delete this blog post?')) return; const { error } = await sb.from('blogs').delete().eq('id', b.closest('.drow').dataset.id); if (error) toast(friendly(error), false); else blogsTab(); }));
   }
   async function usersTab(){
-    panel.innerHTML = `<div class="dash__toolbar"><input class="dash__search" placeholder="Search by name or email" aria-label="Search users"><select class="rolesel dash__rolefilter"><option value="">All roles</option>${Object.entries(ROLES).map(([k,v]) => `<option value="${k}">${v.label}</option>`).join('')}<option value="mazar">Mazar-only accounts</option></select></div><div class="dash__list"></div>`;
+    panel.innerHTML = `<div class="dash__toolbar"><input class="dash__search" placeholder="Search by name or email" aria-label="Search users"><select class="rolesel dash__rolefilter"><option value="">All roles</option>${Object.entries(ROLES).map(([k,v]) => `<option value="${k}">${v.label}</option>`).join('')}</select></div><div class="dash__list"></div>`;
     const list = $('.dash__list', panel), search = $('.dash__search', panel), rf = $('.dash__rolefilter', panel);
-    const { data } = await sb.from('profiles').select('id, email, full_name, avatar_url, role, created_at, mazar_only').order('created_at', { ascending:false });
+    const { data } = await sb.from('profiles').select('id, email, full_name, avatar_url, role, created_at').order('created_at', { ascending:false });
     const assignable = r === 'master_admin' ? Object.keys(ROLES) : ['leader','media','blogger','member'];
     const render = () => { const qq = search.value.toLowerCase();
-      list.innerHTML = (data||[]).filter(u => (rf.value === 'mazar' ? u.mazar_only : !u.mazar_only && (!rf.value || u.role === rf.value)) && (!qq || (u.full_name+u.email).toLowerCase().includes(qq))).map(u => { const locked = r !== 'master_admin' && ADMINS.includes(u.role);
+      list.innerHTML = (data||[]).filter(u => (!rf.value || u.role === rf.value) && (!qq || (u.full_name+u.email).toLowerCase().includes(qq))).map(u => { const locked = r !== 'master_admin' && ADMINS.includes(u.role);
         return `<div class="drow" data-id="${u.id}">${avatar(u.full_name||u.email, u.avatar_url)}<div><b>${esc(u.full_name || '(no name)')}</b><span>${esc(u.email)} &middot; joined ${esc(when(u.created_at))}</span></div><div class="row">${locked ? `<span class="pill pill--orange">${esc(ROLES[u.role].label)}</span><small>Only the Master Administrator can change Admin accounts</small>` : `<select class="rolesel" aria-label="Role for ${esc(u.full_name||u.email)}">${assignable.map(k => `<option value="${k}" ${k===u.role?'selected':''}>${ROLES[k].label}</option>`).join('')}</select>`}</div></div>`; }).join('') || '<p class="sub">No users match.</p>';
       $$('.rolesel', list).forEach(s => s.addEventListener('change', async () => { const u = data.find(x => x.id === s.closest('.drow').dataset.id); const { error } = await sb.rpc('set_role', { target:u.id, new_role:s.value }); if (error){ toast(error.message,false); s.value = u.role; } else { u.role = s.value; toast(`${u.full_name || u.email} is now ${ROLES[s.value].label}.`); } })); };
     search.addEventListener('input', render); rf.addEventListener('change', render); render();
@@ -750,6 +855,8 @@ async function dashboardPage(modal){
   async function auditTab(){ const { data } = await sb.from('role_audit').select('created_at, old_role, new_role, actor:actor_id(full_name), target:target_id(full_name, email)').order('created_at', { ascending:false }).limit(100);
     panel.innerHTML = `<div class="dash__list">${(data||[]).map(a => `<div class="drow"><div><b>${esc(a.target?.full_name || a.target?.email || 'user')}</b><span>${esc(ROLES[a.old_role]?.label||'')} to ${esc(ROLES[a.new_role]?.label||'')} by ${esc(a.actor?.full_name || 'system')} &middot; ${esc(when(a.created_at))}</span></div></div>`).join('') || '<p class="sub">No role changes yet.</p>'}</div>`; }
   function rolesTab(){ panel.innerHTML = `<div class="values">${Object.values(ROLES).map(x => `<div class="value"><h3>${esc(x.label)}</h3><p>${esc(x.desc)}</p></div>`).join('')}</div>`; }
+  /* open the first tab last, once every helper above exists */
+  const want = q.get('tab'); show(tabs.find(t => t[0] === want) ? want : tabs[0][0]);
 }
 
 
@@ -797,7 +904,7 @@ async function accountPage(modal){
         <h2>Connected apps</h2>
         <div class="acct__app"><span class="acct__app-ico" aria-hidden="true"><svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="17" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M24 12c.8 8.4 3.6 11.2 12 12-8.4.8-11.2 3.6-12 12-.8-8.4-3.6-11.2-12-12 8.4-.8 11.2-3.6 12-12z" fill="currentColor"/></svg></span><div><b>Mazar</b><span class="acct__app-status">Checking...</span></div></div>
         <div class="acct__app-list"></div>
-        <small class="acct__note">Mazar is the church's AI Bible companion app. Connecting shows your church name and role there. Your Mazar conversations stay private to you.</small>
+        <small class="acct__note">Mazar is the church's AI Bible companion app, with its own accounts. Connecting shows your church name and role there and lets you sign in to Mazar with this account. Your Mazar conversations stay private to you.</small>
       </section>
       <section class="acct__card acct__meta">
         <h2>Your account</h2>
@@ -807,13 +914,16 @@ async function accountPage(modal){
     </div>`;
     const setStatus = (f, msg, ok) => { const st = $('.form__status', f); st.textContent = msg; st.className = 'form__status ' + (ok ? 'is-ok' : 'is-err'); };
     if (new URLSearchParams(location.search).get('connect') === 'mazar' && !$('.acct__connect', root)){ const note = document.createElement('div'); note.className = 'acct__connect'; note.innerHTML = `<b>You're signed in.</b> Go back to Mazar to finish connecting. ${window.opener ? 'This window closes by itself.' : '<a class="link" href="https://mazar.ccfczambia.org/?account=connect">Return to Mazar</a>'}`; app.prepend(note); }
+    /* Mazar keeps its accounts in its own database (CFG.mazarUrl); its mazar-account function checks this church sign-in and answers for it */
+    const mazarFn = async (action) => { const { data: { session: s } } = await sb.auth.getSession(); if (!s || !CFG.mazarUrl) throw new Error('Not available right now.');
+      const r = await fetch(CFG.mazarUrl + '/functions/v1/mazar-account', { method:'POST', headers:{ 'Content-Type':'application/json', apikey: CFG.mazarKey }, body: JSON.stringify({ action, ccfc_token: s.access_token }) });
+      const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'Not available right now.'); return j; };
     const loadApps = async () => { const box = $('.acct__apps', app); if (!box) return; const st = $('.acct__app-status', box), list = $('.acct__app-list', box);
-      const { data, error } = await sb.from('mazar_accounts').select('user_id, display_name, ccfc_linked_at').eq('ccfc_user_id', profile.id);
-      if (error){ st.textContent = 'Not available right now.'; return; }
-      if (!data || !data.length){ st.innerHTML = 'Not connected. <a class="link" href="https://mazar.ccfczambia.org/?account=connect" target="_blank" rel="noopener">Connect in Mazar</a>'; list.innerHTML = ''; return; }
+      let m; try { ({ mazar: m } = await mazarFn('ccfc-apps')); } catch (e){ st.textContent = 'Not available right now.'; return; }
+      if (!m){ st.innerHTML = 'Not connected. <a class="link" href="https://mazar.ccfczambia.org/?account=connect" target="_blank" rel="noopener">Connect in Mazar</a>'; list.innerHTML = ''; return; }
       st.textContent = 'Connected';
-      list.innerHTML = data.map(x => `<div class="drow"><div><b>${esc(x.user_id === profile.id ? 'This account' : (x.display_name || 'A Mazar account'))}</b><span>${x.ccfc_linked_at ? 'Connected ' + esc(when(x.ccfc_linked_at)) : ''}</span></div><div class="row"><a class="pill" href="https://mazar.ccfczambia.org" target="_blank" rel="noopener">Open Mazar</a><button class="pill pill--danger" data-unlink="${esc(x.user_id)}">Disconnect</button></div></div>`).join('');
-      $$('[data-unlink]', list).forEach(b => b.addEventListener('click', async () => { if (!confirm('Disconnect this Mazar account from your church account?')) return; const { error: e2 } = await sb.rpc('ccfc_disconnect_mazar', { p_mazar: b.dataset.unlink }); if (e2) toast(friendly(e2), false); else { toast('Disconnected from Mazar.'); loadApps(); } })); };
+      list.innerHTML = `<div class="drow"><div><b>${esc(m.name || 'Your Mazar account')}</b><span>${m.linked_at ? 'Connected ' + esc(when(m.linked_at)) : ''}</span></div><div class="row"><a class="pill" href="https://mazar.ccfczambia.org" target="_blank" rel="noopener">Open Mazar</a><button class="pill pill--danger" data-unlink>Disconnect</button></div></div>`;
+      $$('[data-unlink]', list).forEach(b => b.addEventListener('click', async () => { if (!confirm('Disconnect Mazar from your church account? Your Mazar account and conversations stay as they are.')) return; try { await mazarFn('ccfc-disconnect'); toast('Disconnected from Mazar.'); loadApps(); } catch (e){ toast(e.message, false); } })); };
     loadApps();
     const file = $('.acct__camera input', app); const pick = () => file.click();
     $('.acct__pick', app).addEventListener('click', pick); $('.acct__camera', app).addEventListener('click', e => { e.preventDefault(); pick(); });
@@ -837,7 +947,7 @@ async function accountPage(modal){
     $('.acct__pass', app).addEventListener('submit', async e => { e.preventDefault(); const f = e.target; const p1 = f.password.value, p2 = f.password2.value;
       if (p1.length < 8){ setStatus(f, 'Use at least 8 characters.', false); return; } if (p1 !== p2){ setStatus(f, 'The two passwords do not match.', false); return; }
       const { error } = await sb.auth.updateUser({ password: p1 }); if (error){ setStatus(f, friendly(error), false); return; } f.reset(); setStatus(f, 'Password changed.', true); });
-    $('.nav__signout', app).addEventListener('click', async () => { await sb.auth.signOut({ scope: 'local' }); location.href = '/'; });
+    $('.nav__signout', app).addEventListener('click', async () => { clearPrime(); await sb.auth.signOut({ scope: 'local' }); location.href = '/'; });
   };
   render();
 }

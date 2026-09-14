@@ -448,11 +448,12 @@ const rich = t => { const links = []; const keep = h => { links.push(h); return 
 const FIELD_LABEL = { first:'First name', middle:'Middle name', surname:'Surname', gender:'Gender', age:'Age', address:'Town', country:'Country', phone:'Phone', email:'Email', participation:'Taking part', detail:'Detail', days:'Days', dietary:'Dietary', expectation:'Expectation', name:'Name', gift:'Gift', experience:'Experience', church:'Church', message:'Message', contact:'Contact', topic:'Topic', via:'Reply by' };
 
 /* ================================================================ Mazar accounts (mazar.ccfczambia.org) ================================================================
-   Mazar is its own app with its own login session (localStorage "mazar-auth" on mazar.ccfczambia.org), separate from the
-   church sites' shared cookie session, on the same CCFC sign-in system. People either continue with their CCFC account
-   (the mazar-account function checks the church session and issues a fresh, independent Mazar session for it) or keep a
-   separate Mazar account with Google, Facebook or email. Signed-in conversations and reading plans sync to the account. */
-const ACCT_FN = () => (CFG.supabaseUrl || '') + '/functions/v1/mazar-account';
+   Mazar is its own app with its own sign-in and database (Supabase project "Mazar AI", CFG.mazarUrl; session in localStorage
+   "mazar-ai-auth"), separate from the church database, so a Mazar account never becomes a church member or gets a church role.
+   People sign in with Google, Facebook or email, or continue with their CCFC church account: the Mazar AI mazar-account
+   function checks the church sign-in with the church project and opens the Mazar account connected to it. Signed-in
+   conversations and reading plans sync to the Mazar account. */
+const ACCT_FN = () => (CFG.mazarUrl || '') + '/functions/v1/mazar-account';
 const CCFC_ACCOUNT = 'https://ccfczambia.org/account';
 const onChurchDomain = () => /(^|\.)ccfczambia\.org$/.test(location.hostname);
 function ccfcCookieSession(){
@@ -469,8 +470,9 @@ const ROLE_LABEL = { master_admin: 'Master Administrator', admin: 'Administrator
 
 function accounts(w, api){
   const btns = () => $$('.mz__acct, .mz__me', w);
-  if (!window.supabase || !CFG.supabaseUrl || !CFG.supabaseKey){ btns().forEach(b => { b.hidden = true; }); return; }
-  const sb = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'mazar-auth' } });
+  if (!window.supabase || !CFG.mazarUrl || !CFG.mazarKey){ btns().forEach(b => { b.hidden = true; }); return; }
+  ls.del('mazar-auth');   /* a session from before Mazar moved to its own database */
+  const sb = window.supabase.createClient(CFG.mazarUrl, CFG.mazarKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'mazar-ai-auth' } });
   const A = { session: null, row: null, ccfc: null };
   const qp = new URLSearchParams(location.search);
   let wantCenter = qp.has('account') || qp.has('reset'), centerTab = qp.get('account') === 'connect' ? 'ccfc' : 'profile', mode = 'in';
@@ -482,7 +484,7 @@ function accounts(w, api){
   const initials = s => (String(s || '').trim().split(/\s+/).filter(Boolean).map(x => x[0]).slice(0, 2).join('') || '?').toUpperCase();
   const av = (name, url, cls = '') => url && /^https:\/\//.test(url) ? `<span class="mza-av ${cls}"><img src="${esc(url)}" alt="" referrerpolicy="no-referrer"></span>` : `<span class="mza-av ${cls}">${esc(initials(name))}</span>`;
   const friendly = e => { const s = String((e && (e.message || e.error_description)) || e || ''); if (/invalid login/i.test(s)) return "That email and password don't match. Try again or reset your password."; if (/already registered|already been registered/i.test(s)) return 'That email already has an account. Sign in instead, or continue with your CCFC account.'; if (/not confirmed/i.test(s)) return 'Please confirm your email first. The link is in your inbox.'; if (/provider is not enabled|unsupported provider/i.test(s)) return "That sign-in option isn't switched on yet. Use Google or email for now."; if (/password.*(6|8|short|weak)/i.test(s)) return 'Please choose a stronger password (at least 8 characters).'; if (/rate limit|too many/i.test(s)) return 'Too many tries. Please wait a minute and try again.'; if (/reauth/i.test(s)) return 'For your security, sign out and back in, then change your password.'; return s || 'Something went wrong. Please try again.'; };
-  const fn = async (action, extra = {}) => { const h = { 'Content-Type': 'application/json', apikey: CFG.supabaseKey }; if (A.session) h.Authorization = 'Bearer ' + A.session.access_token; const r = await fetch(ACCT_FN(), { method: 'POST', headers: h, body: JSON.stringify({ action, ...extra }) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'The account service is not available right now.'); return j; };
+  const fn = async (action, extra = {}) => { const h = { 'Content-Type': 'application/json', apikey: CFG.mazarKey }; if (A.session) h.Authorization = 'Bearer ' + A.session.access_token; const r = await fetch(ACCT_FN(), { method: 'POST', headers: h, body: JSON.stringify({ action, ...extra }) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'The account service is not available right now.'); return j; };
 
   /* ---- the window ---- */
   const m = document.createElement('div'); m.className = 'mza'; m.hidden = true; m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-label', 'Mazar account');
@@ -508,9 +510,9 @@ function accounts(w, api){
     btn.disabled = true;
     try {
       const s = await getCcfc(msgEl); if (msgEl){ msgEl.className = 'mza__msg'; msgEl.textContent = 'Signing you in with your CCFC account...'; }
-      const { token_hash } = await fn('ccfc-session', { ccfc_token: s.access_token });
+      const { token_hash } = await fn('ccfc-signin', { ccfc_token: s.access_token });
       let r = await sb.auth.verifyOtp({ token_hash, type: 'magiclink' }); if (r.error) r = await sb.auth.verifyOtp({ token_hash, type: 'email' }); if (r.error) throw r.error;
-      A.session = r.data.session; await fn('link', { ccfc_token: s.access_token }); centerTab = 'profile'; await refresh(true);
+      A.session = r.data.session; centerTab = 'profile'; await refresh(true);
     } catch (e){ if (msgEl){ msgEl.className = 'mza__msg is-err'; msgEl.textContent = friendly(e); } }
     finally { btn.disabled = false; }
   }
@@ -538,7 +540,7 @@ function accounts(w, api){
         ${mode === 'in' ? '<button type="button" class="mza__link mza__forgot">Forgot your password?</button>' : ''}
         <p class="mza__msg${isErr ? ' is-err' : note ? ' is-ok' : ''}" role="status" aria-live="polite">${note ? esc(note) : ''}</p>
       </form>
-      <p class="mza__fine">Mazar uses CCFC Zambia's secure sign-in. A separate Mazar account stays private to Mazar and is not added to the church's member list unless you connect it. <a href="https://ccfczambia.org/privacy" target="_blank" rel="noopener">Privacy</a></p>`;
+      <p class="mza__fine">Mazar has its own secure sign-in. Your Mazar account is never added to the church's member list, even when you connect your CCFC account. <a href="https://ccfczambia.org/privacy" target="_blank" rel="noopener">Privacy</a></p>`;
     const msg = $('.mza__msg', body), form = $('.mza__form', body);
     const say = (t, err) => { msg.className = 'mza__msg ' + (err ? 'is-err' : 'is-ok'); msg.textContent = t; };
     $('.mza__ccfc', body).addEventListener('click', e => ccfcContinue(e.currentTarget, msg));
@@ -560,7 +562,7 @@ function accounts(w, api){
     if (!A.session){ renderLogin(); return; }
     const u = A.session.user, name = nameOf(), providers = (u.app_metadata && (u.app_metadata.providers || [u.app_metadata.provider])) || ['email'];
     const prov = p => ({ email: 'Email and password', google: 'Google', facebook: 'Facebook' }[p] || p);
-    const kind = A.row && A.row.origin === 'ccfc' ? 'CCFC account' : 'Mazar account';
+    const kind = 'Mazar account';
     const tabs = [['profile', 'Profile', I.user], ['ccfc', 'CCFC account', I.church], ['security', 'Sign-in', I.shield], ['data', 'Your data', I.db]];
     const local = api.list().filter(c => c.log && c.log.some(x => x.who === 'user')).length;
     const panes = {
@@ -572,13 +574,13 @@ function accounts(w, api){
       ccfc: A.ccfc
         ? `<div class="mzc__card"><h3>Connected CCFC account</h3>
             <div class="mzc__person">${av(A.ccfc.full_name, A.ccfc.avatar_url)}<div><b>${esc(A.ccfc.full_name || 'CCFC account')}</b><span>${esc(ROLE_LABEL[A.ccfc.role] || 'Member')} &middot; Christ Connect Family Church Zambia</span>${A.row && A.row.ccfc_linked_at ? `<small>Connected ${esc(new Date(A.row.ccfc_linked_at).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' }))}</small>` : ''}</div></div>
-            <ul class="mzc__list"><li>${I.check}Your church name and role show in Mazar</li><li>${I.check}You can sign in to Mazar with your CCFC account</li><li>${I.check}Your Mazar conversations stay private to you; the church team cannot see them</li></ul>
+            <ul class="mzc__list"><li>${I.check}Your church name and role show in Mazar</li><li>${I.check}You can sign in to Mazar with your CCFC account</li><li>${I.check}Your Mazar conversations stay private to you; the church team cannot see them</li><li>${I.check}Mazar stays separate from the church's member list</li></ul>
             <div class="mzc__row"><a class="mza__chip" href="${CCFC_ACCOUNT}" target="_blank" rel="noopener">${I.ext}Open my CCFC account</a><button type="button" class="mza__chip mza__chip--danger mzc__unlink">Disconnect</button></div><p class="mza__msg" role="status" aria-live="polite"></p></div>`
         : `<div class="mzc__card"><h3>Connect your CCFC account</h3>
-            <p class="mzc__lead">${A.row && A.row.origin === 'mazar' ? 'Your Mazar account is separate from the church. You can keep it that way, or connect the account you use on ccfczambia.org.' : 'Link Mazar to the account you use on ccfczambia.org.'}</p>
+            <p class="mzc__lead">Your Mazar account is separate from the church. You can keep it that way, or connect the account you use on ccfczambia.org.</p>
             <ul class="mzc__list"><li>${I.check}Your church name and role show in Mazar</li><li>${I.check}Sign in to Mazar with your CCFC account</li><li>${I.check}Your Mazar conversations stay private to you</li></ul>
             <div class="mzc__row"><button type="button" class="mza__submit mzc__link">${I.church}Connect my CCFC account</button></div><p class="mza__msg" role="status" aria-live="polite"></p></div>`,
-      security: `<div class="mzc__card"><h3>How you sign in</h3><ul class="mzc__list">${providers.map(p => `<li>${p === 'google' ? GOOGLE_ICON : p === 'facebook' ? FB_ICON : I.shield}${esc(prov(p))}</li>`).join('')}${A.ccfc && A.row && A.row.ccfc_user_id === u.id ? `<li>${I.church}Your CCFC account</li>` : ''}</ul></div>
+      security: `<div class="mzc__card"><h3>How you sign in</h3><ul class="mzc__list">${providers.map(p => `<li>${p === 'google' ? GOOGLE_ICON : p === 'facebook' ? FB_ICON : I.shield}${esc(prov(p))}</li>`).join('')}${A.ccfc ? `<li>${I.church}Continue with CCFC (${esc(A.ccfc.full_name || 'your church account')})</li>` : ''}</ul></div>
           <form class="mzc__card mzc__pass" novalidate><h3>${providers.includes('email') ? 'Change password' : 'Add a password'}</h3>${providers.includes('email') ? '' : '<p class="mzc__lead">A password lets you also sign in with your email address.</p>'}
             <label class="mza__f"><span>New password</span><input name="p1" type="password" autocomplete="new-password" minlength="8" placeholder="At least 8 characters"></label>
             <label class="mza__f"><span>Repeat it</span><input name="p2" type="password" autocomplete="new-password"></label>
@@ -586,7 +588,7 @@ function accounts(w, api){
           <div class="mzc__card"><h3>Sign out</h3><p class="mzc__lead">Signing out of Mazar does not sign you out of the church websites.</p><div class="mzc__row"><button type="button" class="mza__chip mzc__out">Sign out</button><button type="button" class="mza__chip mzc__out" data-clear>Sign out and clear this device</button></div></div>`,
       data: `<div class="mzc__card"><h3>Sync</h3><label class="mzc__toggle"><input type="checkbox" class="mzc__sync" ${A.row && A.row.sync ? 'checked' : ''}><span><b>Save my conversations and reading plans to my account</b><small>${local} conversation${local === 1 ? '' : 's'} on this device. Only you can see them.</small></span></label></div>
           <div class="mzc__card"><h3>Your Mazar data</h3><div class="mzc__row"><button type="button" class="mza__chip mzc__export">${I.down}Download my data</button><button type="button" class="mza__chip mzc__wipe">${I.trash}Delete all conversations</button></div><p class="mza__msg" role="status" aria-live="polite"></p></div>
-          <div class="mzc__card mzc__danger"><h3>Delete account</h3><p class="mzc__lead">${A.row && A.row.origin === 'mazar' && !A.ccfc ? 'Deletes your Mazar account and everything in it. This cannot be undone.' : 'Removes Mazar and your Mazar data from your account. Your CCFC church account stays as it is.'}</p><div class="mzc__row"><button type="button" class="mza__chip mza__chip--danger mzc__delete">${A.row && A.row.origin === 'mazar' && !A.ccfc ? 'Delete my Mazar account' : 'Remove Mazar from my account'}</button></div></div>`,
+          <div class="mzc__card mzc__danger"><h3>Delete account</h3><p class="mzc__lead">Deletes your Mazar account with its conversations and reading plans. This cannot be undone. ${A.ccfc ? 'Your CCFC church account is not affected.' : ''}</p><div class="mzc__row"><button type="button" class="mza__chip mza__chip--danger mzc__delete">Delete my Mazar account</button></div></div>`,
     };
     body.innerHTML = `<div class="mzc">
       <header class="mzc__head">${av(name, photoOf(), 'mza-av--lg')}<div class="mzc__who"><h2>${esc(name || 'Your account')}</h2><p>${esc(u.email || '')}</p><div class="mzc__badges"><span class="mzc__badge">${kind}</span>${A.ccfc ? `<span class="mzc__badge mzc__badge--ok">${I.check}Connected to CCFC</span>` : ''}${A.row && A.row.sync ? `<span class="mzc__badge">${I.check}Synced</span>` : ''}</div></div></header>
@@ -607,7 +609,7 @@ function accounts(w, api){
     const sync = $('.mzc__sync', body); if (sync) sync.addEventListener('change', async () => { const { error } = await sb.from('mazar_accounts').update({ sync: sync.checked }).eq('user_id', u.id); if (error){ sync.checked = !sync.checked; flash(friendly(error)); return; } A.row = { ...(A.row || {}), sync: sync.checked }; if (sync.checked) await syncPull(); paint(); flash(sync.checked ? 'Your conversations will be saved to your account.' : 'Sync is off. New conversations stay on this device.'); });
     const exp = $('.mzc__export', body); if (exp) exp.addEventListener('click', async () => { const { data } = await sb.from('mazar_conversations').select('id, title, data, updated_at').order('updated_at', { ascending: false }); const blob = new Blob([JSON.stringify({ exported: new Date().toISOString(), account: { name: nameOf(), email: u.email, type: kind, connected_to_ccfc: !!A.ccfc }, conversations_saved: data || [], conversations_on_this_device: api.list(), reading_plans: ls.get(PLANS_KEY, []) }, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'mazar-data.json'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); });
     const wipe = $('.mzc__wipe', body); if (wipe) wipe.addEventListener('click', async () => { if (!confirm('Delete all your Mazar conversations, on this device and in your account?')) return; const { error } = await sb.from('mazar_conversations').delete().eq('user_id', u.id); if (error){ say($('.mza__msg', wipe.closest('.mzc__card')), friendly(error), true); return; } synced.clear(); api.replace([]); say($('.mza__msg', wipe.closest('.mzc__card')), 'All conversations deleted.'); });
-    const del = $('.mzc__delete', body); if (del) del.addEventListener('click', async () => { if (!confirm(del.textContent + '? This cannot be undone.')) return; del.disabled = true; try { const r = await fn('delete'); await sb.auth.signOut({ scope: 'local' }); ls.del(PLANS_KEY); api.replace([]); closeM(); alert(r.deleted === 'account' ? 'Your Mazar account has been deleted.' : 'Mazar has been removed from your account. Your CCFC account is unchanged.'); } catch (e){ del.disabled = false; flash(friendly(e)); } });
+    const del = $('.mzc__delete', body); if (del) del.addEventListener('click', async () => { if (!confirm(del.textContent + '? This cannot be undone.')) return; del.disabled = true; try { const r = await fn('delete'); await sb.auth.signOut({ scope: 'local' }); ls.del(PLANS_KEY); api.replace([]); closeM(); alert(r.deleted === 'account' ? 'Your Mazar account has been deleted.' : 'Done.'); } catch (e){ del.disabled = false; flash(friendly(e)); } });
   }
 
   /* ---- state ---- */
@@ -622,9 +624,12 @@ function accounts(w, api){
   async function load(){
     if (!A.session){ A.row = A.ccfc = null; paint(); return; }
     const { data: row, error } = await sb.rpc('mazar_ensure_account'); if (error) console.warn('mazar account', error.message);
-    A.row = row || null; A.ccfc = null;
-    if (A.row && A.row.ccfc_user_id){ const { data } = await sb.rpc('mazar_ccfc_profile'); A.ccfc = (data && data[0]) || null; }
+    A.row = row || null;
+    A.ccfc = A.row && A.row.ccfc_user_id ? { full_name: A.row.ccfc_name || '', role: A.row.ccfc_role || 'member', avatar_url: A.row.ccfc_avatar_url || null, email: A.row.ccfc_email || '' } : null;
     paint(); if (A.row && A.row.sync) await syncPull();
+    /* keep the church name, role and photo current while the church account is signed in on this device */
+    const c = ccfcCookieSession();
+    if (A.ccfc && freshCcfc(c) && c.user && c.user.id === A.row.ccfc_user_id) fn('link', { ccfc_token: c.access_token }).then(({ linked }) => { if (linked && ['full_name', 'role', 'avatar_url'].some(k => (linked[k] || null) !== (A.ccfc[k] || null))){ A.ccfc = { ...A.ccfc, ...linked }; paint(); } }).catch(() => {});
   }
   const refresh = force => { if (force) loading = null; return (loading = loading || load().finally(() => { loading = null; })); };
   sb.auth.onAuthStateChange((ev, session) => {
@@ -1018,7 +1023,7 @@ function app(){
       ls.set(CONVOS_KEY, convos); renderConvos(); } });
   window.Mazar = { open: tab => { if (FLOAT) open(true); if (tab) setTab(tab); }, ask, figure: fig };
 }
-window.MazarFigure = Figure;
+window.MazarFigure = Figure; window.MazarSky = Sky;
 function boot(){ if (OPT.mode === 'none') return; app(); applyFill(); }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
