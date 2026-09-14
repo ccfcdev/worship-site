@@ -18,7 +18,7 @@ const CFG = window.CCFC_CONFIG || {};
 const OPT = window.MAZAR || {};
 const MODE = ['widget', 'page', 'studio'].includes(OPT.mode) ? OPT.mode : 'widget';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const KB = Object.assign({ sunday: '07:45 to 10:00', venue: 'Kings Sparkle School, off Kasangula Road, Mandevu, Lusaka', email: 'info@ccfczambia.org', phone: '+260 573 762 913', call: '+260 772 890 854', mission: 'Connecting people to Christ in the power of the Holy Spirit, and empowering them to become multiplying disciples.', midweek: 'group and prayer times on WhatsApp', koinoniaUrl: 'https://koinonia.ccfczambia.org', worshipUrl: 'https://worship.ccfczambia.org' }, window.CCFC_KB || {});
+const KB = Object.assign({ sunday: '07:20 to 10:00 (intercession and welcoming 07:20, interactive Bible study 07:45, praise and worship 08:30, main sermon 09:00, announcements and visitors 09:45, farewell praise 09:55)', venue: 'Kings Sparkle School, off Kasangula Road, Mandevu, Lusaka', email: 'info@ccfczambia.org', phone: '+260 573 762 913', call: '+260 772 890 854', mission: 'Connecting people to Christ in the power of the Holy Spirit, and empowering them to become multiplying disciples.', midweek: 'group and prayer times on WhatsApp', koinoniaUrl: 'https://koinonia.ccfczambia.org', worshipUrl: 'https://worship.ccfczambia.org' }, window.CCFC_KB || {});
 const SITE_KEY = (window.CCFC_SITE && window.CCFC_SITE.key) || (MODE === 'studio' ? 'mazar' : 'ccfc');
 const THEME = OPT.theme || SITE_KEY;
 const MAIN = SITE_KEY === 'ccfc' ? '' : 'https://ccfczambia.org';
@@ -48,13 +48,17 @@ const prefs = Object.assign({ tr: 'web' }, ls.get('ozer:prefs', {}), ls.get(PREF
 const loadPlans = () => ls.get(PLANS_KEY) || ls.get('ozer:plans', []);
 
 /* ---------- offline answers (when the AI endpoint is unreachable) ---------- */
+/* the Sunday order is read from KB.sunday, "07:20 to 10:00 (intercession and welcoming 07:20, ...)", so a site's CCFC_KB stays the one source */
+const SUNDAY = (() => { const s = String(KB.sunday || ''), span = s.split(' (')[0].trim(), end = (span.match(/(\d{1,2}:\d{2})\s*$/) || [])[1] || '';
+  const items = ((s.match(/\((.*)\)/) || [])[1] || '').split(/,\s*/).map(x => x.trim().match(/^(.*?)\s+(\d{1,2}:\d{2})$/)).filter(Boolean).map(m => [m[2], m[1]]);
+  return { span, list: items.map(([t, what], i) => { const nx = (items[i + 1] || [end])[0]; return `- **${t}${nx && nx !== t ? ' to ' + nx : ''}** ${what[0].toUpperCase() + what.slice(1)}`; }).join('\n') }; })();
 const INTENTS = [
   { k:['koi 25 photo','koi 25\' photo','photos','pictures','download photo','gallery'], a:"The Koi 25' photos are on the Koinonia site. You can view each one large and download it, or download them all.", go:[KB.koinoniaUrl + '/k25-photos', "Koi 25' photos"] },
   { k:['join the team','join worship','audition','rehearse','rehearsal','practice','apply'], a:'Worship Connect rehearses every week. Apply on the Join page and a team leader will message you on WhatsApp with the next rehearsal.', go:[KB.worshipUrl + '/join', 'Join the team'] },
   { k:['cost','price','fee','how much'], a:"The Koi 26' delegate fee will be announced with the dates. For Koi 25' it was K200 for Zambian delegates and USD 10 for international delegates.", go:[KB.koinoniaUrl + '/k26#register', "Register for Koi 26'"] },
-  { k:['service time','what time','when do you meet','sunday','when is church','times','schedule','midweek','plan my visit'], a:`We gather every Sunday, ${KB.sunday}, at ${KB.venue}. Connect groups and prayer meet through the week; the office shares ${KB.midweek}.`, go:['/visit','Plan a visit'] },
+  { k:['service time','what time','when do you meet','sunday','when is church','times','schedule','midweek','plan my visit'], a:`We gather every Sunday, ${SUNDAY.span}, at ${KB.venue}.${SUNDAY.list ? '\n\n' + SUNDAY.list + '\n\n' : ' '}Connect groups and prayer meet through the week; the office shares ${KB.midweek}.`, go:['/visit','Plan a visit'] },
   { k:['where','address','location','directions','map','find you','venue','mandevu','kasangula'], a:`We meet at ${KB.venue}. Tap below for the map and directions, or message us on WhatsApp and we will send a pin.`, go:['/visit#map','Open directions'] },
-  { k:['first time','visit','visiting','new here','what to expect','dress','wear','kids','children','parking'], a:'You are very welcome. No dress code. During the announcements visitors stand and introduce themselves and the church welcomes you warmly. Children are welcome and Connect Kids runs during the sermon. Service is 07:45 to 10:00.', go:['/visit','What to expect'] },
+  { k:['first time','visit','visiting','new here','what to expect','dress','wear','kids','children','parking'], a:`You are very welcome. No dress code. Near the end of the service, during announcements and visitors, you are invited to stand and introduce yourself, and the church welcomes you warmly. Children are welcome and Connect Kids runs during the sermon. Service is ${SUNDAY.span}.`, go:['/visit','What to expect'] },
   { k:['watch','sermon','video','online','youtube','livestream','stream','acts','teaching'], a:'Teaching and worship from our gatherings are on the Watch page and on our YouTube channel. Pastor Francis Chewe is currently teaching through the Book of Acts.', go:['/watch','Watch'] },
   { k:['give','giving','tithe','offering','donate','mobile money','bank','airtel','mtn'], a:'Giving at CCFC comes from the heart; nobody is asked to give. If you want to, you can give in person on Sunday, by mobile money or by bank transfer. The Give page explains each.', go:['/give','Ways to give'] },
   { k:['contact','phone','email','whatsapp','call','number','reach'], a:`Email ${KB.email}, call ${KB.call} or message us on WhatsApp at ${KB.phone}. A real person replies.`, go:['/contact','Contact us'] },
@@ -76,7 +80,7 @@ async function remote(history){
   const r = await fetch(CFG.chatEndpoint, { method:'POST', headers:{ 'Content-Type':'application/json', ...(CFG.supabaseKey ? { apikey: CFG.supabaseKey, Authorization: 'Bearer ' + CFG.supabaseKey } : {}) }, body: JSON.stringify({ messages, page: HERE, mode: MODE === 'studio' ? 'studio' : 'site', attachments, ...(window.__mazarWho ? { who: window.__mazarWho } : {}) }) });
   if (!r.ok) throw new Error('chat endpoint ' + r.status); const ans = await r.json();
   if (!ans || typeof ans.text !== 'string') throw new Error('bad answer');
-  ans.text = ans.text.replace(/\s*[\u2014\u2013]\s*/g, ', ');
+  ans.text = ans.text.replace(/^([ \t]*)[\u2014\u2013][ \t]+/gm, '$1- ').replace(/(\d)[ \t]*[\u2014\u2013][ \t]*(\d)/g, '$1-$2').replace(/[ \t]*[\u2014\u2013][ \t]*/g, ', ');   /* no dashes, but a dash-led bullet stays a bullet and 07:20–07:45 stays a range */
   return ans;
 }
 
@@ -443,7 +447,7 @@ const DOCTRINE = [
    runs, only tags built here are emitted and links must be http(s). Blocks: fenced code (with Copy), # headings (ranked into
    h3 to h6), > quotes, nested - and 1. lists, pipe tables, --- rules, paragraphs (a single newline is a line break).
    Inline: `code`, **bold**, *italic*, ~~strike~~, ==highlight==, [label](https://...) and bare links. ---------- */
-const MD = { fence: /^ {0,3}(`{3,}|~{3,})[ \t]*([^`\s]*)[^`]*$/, hr: /^ {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$/, head: /^ {0,3}(#{1,6})[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$/, quote: /^ {0,3}> ?/, item: /^( *)([-*+•]|\d{1,9}[.)])(?:([ \t]+)(.*))?$/, sep: /^ *\|? *:?-+:? *(?:\| *:?-+:? *)*\|? *$/ };
+const MD = { fence: /^ {0,3}(`{3,}|~{3,})[ \t]*([^`\s]*)[^`]*$/, hr: /^ {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$/, head: /^ {0,3}(#{1,6})[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$/, quote: /^ {0,3}> ?/, item: /^( *)([-*+•]|\d{1,9}[.)])(?:([ \t]+)(.*))?$/, sep: /^ *\|? *:?-+:? *(?:\| *:?-+:? *)*\|? *$/, label: /^(\p{L}[\p{L}\p{M}\p{N}'’.-]*(?:[ \t]+[\p{L}\p{N}][\p{L}\p{M}\p{N}'’.-]*){0,3}):(?=[ \t]|$)/u };
 const mdEmph = s => s.replace(/(^|[^~])~~([^\s~](?:.{0,400}?[^\s~])?)~~(?!~)/g, '$1<del>$2</del>').replace(/(^|[^\w=])==([^\s=](?:.{0,400}?[^\s=])?)==(?![\w=])/g, '$1<mark>$2</mark>')
   .replace(/\*\*\*([^\s*](?:.{0,400}?[^\s*])?)\*\*\*/g, '<strong><em>$1</em></strong>').replace(/\*\*([^\s*](?:.{0,400}?[^\s*])?)\*\*/g, '<strong>$1</strong>').replace(/(^|[^\w_])__([^\s_](?:.{0,400}?[^\s_])?)__(?![\w_])/g, '$1<strong>$2</strong>')
   .replace(/(^|[^\w*])\*([^\s*](?:[^*\n]{0,400}?[^\s*])?)\*(?![\w*])/g, '$1<em>$2</em>').replace(/(^|[^\w_])_([^\s_](?:[^_\n]{0,400}?[^\s_])?)_(?![\w_])/g, '$1<em>$2</em>');
@@ -454,6 +458,14 @@ const mdInline = s => { const K = [], keep = h => '\u0001' + (K.push(h) - 1) + '
       const d = u.replace(/^https?:\/\//, '').replace(/\/$/, ''); return a(u, d.length > 48 ? d.slice(0, 46).replace(/&[#\w]*$/, '') + '…' : d) + m.slice(u.length); });
   e = mdEmph(e); for (let n = 0; n < 5 && e.includes('\u0001'); n++) e = e.replace(/\u0001(\d+)\u0001/g, (_, i) => K[+i]); return e; };
 const mdCells = l => l.replace(/\\\|/g, '\u0002').trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim().replace(/\u0002/g, '\\|'));
+/* a numbered item with details under it gets its lead line as a bold title (the whole line when short, else its first sentence
+   where that cut leaves every inline tag closed); a lead the model already opened with bold is left alone */
+const mdTitle = h => { const p = h.startsWith('<p>'), a = p ? 3 : 0, e = p ? h.indexOf('</p>') : h.search(/<(?:ul|ol|div|blockquote|hr|p)[\s>]|<h\u0003/); if (e <= a) return h;
+  let lead = h.slice(a, e), tail = ''; if (/^<strong>/.test(lead) || !lead.replace(/<[^>]+>/g, '').trim()) return h;
+  const br = lead.indexOf('<br>'); if (br > 0){ tail = lead.slice(br); lead = lead.slice(0, br); }
+  if (lead.replace(/<[^>]+>/g, '').length > 140){ const shut = x => (x.match(/<(strong|em|del|mark|code|a)[\s>]/g) || []).length === (x.match(/<\/(strong|em|del|mark|code|a)>/g) || []).length;
+    for (const mm of lead.matchAll(/[.!?:](?=\s)/g)){ const cut = mm.index + 1; if (cut > 12 && !/<[^>]*$/.test(lead.slice(0, cut)) && shut(lead.slice(0, cut))){ tail = lead.slice(cut) + tail; lead = lead.slice(0, cut); break; } } }
+  return h.slice(0, a) + `<strong>${lead}</strong>` + tail + h.slice(e); };
 const mdBlocks = (L, H, dp = 0) => { const n = L.length, ind = l => l.match(/^ */)[0].length; let out = '', i = 0, m;
   const table = j => j + 1 < n && L[j].includes('|') && L[j + 1].includes('-') && MD.sep.test(L[j + 1]) && !MD.item.test(L[j]) && mdCells(L[j]).length === mdCells(L[j + 1]).length;
   const start = j => MD.fence.test(L[j]) || MD.hr.test(L[j]) || MD.head.test(L[j]) || MD.quote.test(L[j]) || MD.item.test(L[j]) || table(j);
@@ -468,15 +480,27 @@ const mdBlocks = (L, H, dp = 0) => { const n = L.length, ind = l => l.match(/^ *
       for (i += 2; i < n && L[i].trim() && L[i].includes('|') && !MD.fence.test(L[i]) && !MD.head.test(L[i]) && !MD.quote.test(L[i]); i++){ const r = mdCells(L[i]); rows.push(Array.from({ length: k }, (_, j) => r[j] || '')); }
       const cls = hd.map((h, j) => { const col = rows.map(r => r[j]), c = [al[j] === 'c' ? 'is-c' : al[j] === 'r' || (!al[j] && col.some(Boolean) && col.every(x => !x || /^[-+]?(?:[A-Z]{1,3}\s?)?\d[\d.,]*\s?%?$/.test(x.replace(/[*`]/g, '')))) ? 'is-r' : '', [h, ...col].some(x => x.replace(/\]\([^)]*\)|[*_`[]/g, '').length > 30) ? 'is-w' : ''].filter(Boolean).join(' '); return c ? ` class="${c}"` : ''; });
       out += `<div class="mz-table"><table><thead><tr>${hd.map((h, j) => `<th${cls[j]}>${mdInline(h)}</th>`).join('')}</tr></thead>${rows.length ? `<tbody>${rows.map(r => `<tr>${r.map((c, j) => `<td${cls[j]}>${mdInline(c)}</td>`).join('')}</tr>`).join('')}</tbody>` : ''}</table></div>`; continue; }
-    if (dp < 12 && (m = l.match(MD.item))){ const base = m[1].length, ord = /\d/.test(m[2]), first = parseInt(m[2], 10), items = [];
+    if (dp < 12 && (m = l.match(MD.item))){ const base = m[1].length, ord = /\d/.test(m[2]), first = parseInt(m[2], 10), items = []; let loose = false;
       const sib = j => { const s = !MD.hr.test(L[j]) && L[j].match(MD.item); return s && s[1].length < base + 2 && /\d/.test(s[2]) === ord; };
-      while (i < n && sib(i)){ const s = L[i].match(MD.item), col = s[1].length + s[2].length + (s[3] ? Math.min(s[3].replace(/\t/g, '    ').length, 4) : 1), body = [s[4] || '']; i++;
+      /* a "-" bullet written flat under a numbered item is that item's detail: it nests inside it, so the numbering stays one list. Straight
+         after the item it always nests; after a blank line only when another numbered item follows, the item already has details, or earlier
+         items also left a blank line before theirs (so a separate closing list, like "- Pinned: ...", stays separate) */
+      const flat = j => { const s = ord && !MD.hr.test(L[j]) && L[j].match(MD.item); return !!s && !/\d/.test(s[2]) && s[1].length >= base && s[1].length < base + 2; };
+      const run = j => { let k = j; while (k < n){ if (L[k].trim() && (flat(k) || ind(L[k]) >= base + 2 || (L[k - 1].trim() && !start(k)))){ k++; continue; } if (!L[k].trim()){ let q = k; while (q < n && !L[q].trim()) q++; if (q < n && (flat(q) || ind(L[q]) >= base + 2)){ k = q; continue; } } break; } return k; };
+      while (i < n && sib(i)){ const s = L[i].match(MD.item), col = s[1].length + s[2].length + (s[3] ? Math.min(s[3].replace(/\t/g, '    ').length, 4) : 1), body = [s[4] || '']; let mine = false; i++;
         while (i < n){ const x = L[i];
-          if (!x.trim()){ let j = i; while (j < n && !L[j].trim()) j++; if (j < n && ind(L[j]) >= base + 2){ body.push(...L.slice(i, j)); i = j; continue; } if (j < n && sib(j)) i = j; break; }
+          if (!x.trim()){ let j = i; while (j < n && !L[j].trim()) j++; if (j < n && ind(L[j]) >= base + 2){ body.push(...L.slice(i, j)); i = j; continue; }
+            if (j < n && flat(j)){ const k = run(j); let q = k; while (q < n && !L[q].trim()) q++; if (mine || loose || (q < n && sib(q))){ body.push(...L.slice(i, k)); i = k; loose = loose || !mine; mine = true; continue; } }
+            if (j < n && sib(j)) i = j; break; }
+          if (flat(i)){ body.push(x); i++; mine = true; continue; }
           if (ind(x) >= base + 2 || (body[body.length - 1].trim() && !start(i))){ body.push(x); i++; continue; }
           break; }
-        const rest = body.slice(1), d = Math.min(col, ...rest.filter(x => x.trim()).map(ind)); let h = mdBlocks([body[0], ...rest.map(x => x.slice(Math.min(d, ind(x))))], H, dp + 1);
-        if (h.startsWith('<p>') && h.split('<p>').length === 2) h = h.replace(/^<p>([\s\S]*?)<\/p>/, '$1'); items.push(`<li>${h}</li>`); }
+        const rest = body.slice(1), d = Math.min(col, ...rest.filter(x => x.trim()).map(ind)), sub = rest.some(x => MD.item.test(x) && !MD.hr.test(x));
+        /* a bullet that opens with a short label ("What it means:", "Key verses:") shows the label in bold; times (07:20) and references (John 3:16) are not labels */
+        const lead = !ord && !/^(\*\*|__)/.test(body[0]) ? body[0].replace(MD.label, '**$1:**') : body[0];
+        let h = mdBlocks([lead, ...rest.map(x => x.slice(Math.min(d, ind(x))))], H, dp + 1);
+        if (h.startsWith('<p>') && h.split('<p>').length === 2) h = h.replace(/^<p>([\s\S]*?)<\/p>/, '$1');
+        if (ord && sub) h = mdTitle(h); items.push(`<li>${h}</li>`); }
       out += ord ? `<ol${first !== 1 ? ` start="${first}"` : ''}>${items.join('')}</ol>` : `<ul>${items.join('')}</ul>`; continue; }
     const p = [l.trim()]; for (i++; i < n && L[i].trim() && !start(i); i++) p.push(L[i].trim()); out += `<p>${mdInline(p.join('\n')).replace(/\n/g, '<br>')}</p>`; }
   return out; };
@@ -498,6 +522,29 @@ document.addEventListener('click', e => { const b = e.target.closest && e.target
   const txt = code.textContent, said = ok => { b.textContent = ok ? 'Copied' : 'Not copied'; b.classList.toggle('is-done', ok); clearTimeout(b._t); b._t = setTimeout(() => { b.textContent = 'Copy'; b.classList.remove('is-done'); }, 1600); };
   const legacy = () => { const ta = document.createElement('textarea'); ta.value = txt; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0'; document.body.appendChild(ta); ta.select(); let ok = false; try { ok = document.execCommand('copy'); } catch (_) {} ta.remove(); return ok; };
   if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(txt).then(() => said(true), () => said(legacy())); else said(legacy()); });
+/* ---------- "are you sure?": Mazar's own confirm, rendered inside the Mazar root so the --mz-* colours apply and the widget's
+   outside-click close never fires. sure(root, { title, body, ok, cancel, danger, icon, from }) resolves true (confirm) or false
+   (Cancel, Esc, backdrop). danger focuses Cancel first; Enter confirms unless the person has moved onto Cancel themselves;
+   cancel: false makes a one-button notice. Everything else in the root is inert while it is open. ---------- */
+let sureN = 0, sureOpen = null;
+function sure(root, o = {}){
+  if (sureOpen) sureOpen(false);
+  return new Promise(resolve => {
+    const n = ++sureN, from = o.from || document.activeElement, danger = !!o.danger, t0 = performance.now(); let moved = false;
+    const el = document.createElement('div'); el.className = 'mz-sure' + (danger ? ' is-danger' : '');
+    el.innerHTML = `<div class="mz-sure__veil" data-no></div><div class="mz-sure__card" role="alertdialog" aria-modal="true" aria-labelledby="mz-sure-t${n}"${o.body ? ` aria-describedby="mz-sure-b${n}"` : ''}><span class="mz-sure__ico" aria-hidden="true">${danger ? I[o.icon] || I.trash : markSvg()}</span><h2 class="mz-sure__t" id="mz-sure-t${n}">${esc(o.title || 'Are you sure?')}</h2>${o.body ? `<p class="mz-sure__b" id="mz-sure-b${n}">${esc(o.body)}</p>` : ''}<div class="mz-sure__row">${o.cancel === false ? '' : `<button type="button" class="mz-sure__btn mz-sure__no" data-no>${esc(o.cancel || 'Cancel')}</button>`}<button type="button" class="mz-sure__btn mz-sure__ok">${esc(o.ok || 'OK')}</button></div></div>`;
+    const okB = $('.mz-sure__ok', el), noB = $('.mz-sure__no', el), btns = [noB, okB].filter(Boolean), off = [...root.children].filter(x => !x.inert);
+    const done = yes => { if (el.classList.contains('is-out')) return; sureOpen = null; removeEventListener('keydown', key, true); el.classList.remove('is-in'); el.classList.add('is-out'); off.forEach(x => { x.inert = false; }); setTimeout(() => el.remove(), RM ? 0 : 260); if (from && from.isConnected && from.focus) from.focus({ preventScroll: true }); resolve(yes); };
+    /* capture on window: the account window, the widget and the Bible reader never see keys meant for the dialog */
+    const key = e => { e.stopPropagation(); const k = e.key;
+      if (k === 'Escape'){ e.preventDefault(); done(false); }
+      else if (k === 'Enter'){ e.preventDefault(); if (!e.repeat && performance.now() - t0 > 250) done(!(moved && document.activeElement === noB)); }
+      else if (k === 'Tab' || /^Arrow(Left|Right|Up|Down)$/.test(k)){ e.preventDefault(); moved = true; const i = btns.indexOf(document.activeElement); btns[i < 0 ? 0 : (i + (e.shiftKey || /Left|Up/.test(k) ? btns.length - 1 : 1)) % btns.length].focus(); } };
+    el.addEventListener('click', e => { if (e.target.closest('.mz-sure__ok')) done(true); else if (e.target.closest('[data-no]')) done(false); });
+    root.appendChild(el); off.forEach(x => { x.inert = true; }); addEventListener('keydown', key, true); sureOpen = done;
+    (danger && noB ? noB : okB).focus({ preventScroll: true }); void el.offsetWidth; el.classList.add('is-in');
+  });
+}
 const FIELD_LABEL = { first:'First name', middle:'Middle name', surname:'Surname', gender:'Gender', age:'Age', address:'Town', country:'Country', phone:'Phone', email:'Email', participation:'Taking part', detail:'Detail', days:'Days', dietary:'Dietary', expectation:'Expectation', name:'Name', gift:'Gift', experience:'Experience', church:'Church', message:'Message', contact:'Contact', topic:'Topic', via:'Reply by' };
 
 /* ================================================================ Mazar accounts (mazar.ccfczambia.org) ================================================================
@@ -656,13 +703,13 @@ function accounts(w, api){
       $$('[data-photo]', pf).forEach(b => b.addEventListener('click', async () => { const k = b.dataset.photo; const avatar_url = k === 'ccfc' ? A.ccfc.avatar_url : k === 'provider' ? (meta().avatar_url || meta().picture) : null; const { error } = await sb.from('mazar_accounts').update({ avatar_url: avatar_url && /^https:\/\//.test(avatar_url) ? avatar_url : null }).eq('user_id', u.id); if (error){ flash(friendly(error)); return; } A.row = { ...(A.row || {}), avatar_url }; paint(); flash('Photo updated.'); }));
     }
     const link = $('.mzc__link', body); if (link) link.addEventListener('click', () => ccfcConnect(link, $('.mza__msg', link.closest('.mzc__card'))));
-    const unlink = $('.mzc__unlink', body); if (unlink) unlink.addEventListener('click', async () => { if (!confirm('Disconnect your CCFC account from Mazar? You can connect it again any time.')) return; try { await fn('unlink'); await refresh(true); flash('Disconnected.'); } catch (e){ say($('.mza__msg', unlink.closest('.mzc__card')), friendly(e), true); } });
+    const unlink = $('.mzc__unlink', body); if (unlink) unlink.addEventListener('click', async () => { if (!await sure(w, { title: 'Disconnect your CCFC account from Mazar?', body: 'Your church name and role will no longer show in Mazar. You can connect it again any time.', ok: 'Disconnect', danger: true, icon: 'church', from: unlink })) return; try { await fn('unlink'); await refresh(true); flash('Disconnected.'); } catch (e){ say($('.mza__msg', unlink.closest('.mzc__card')), friendly(e), true); } });
     const pass = $('.mzc__pass', body); if (pass) pass.addEventListener('submit', async e => { e.preventDefault(); const out = $('.mza__msg', pass); if (pass.p1.value.length < 8){ say(out, 'Use at least 8 characters.', true); return; } if (pass.p1.value !== pass.p2.value){ say(out, 'The two passwords do not match.', true); return; } const { error } = await sb.auth.updateUser({ password: pass.p1.value }); if (error){ say(out, friendly(error), true); return; } pass.reset(); say(out, 'Password saved.'); });
     $$('.mzc__out', body).forEach(b => b.addEventListener('click', async () => { const clear = b.hasAttribute('data-clear'); await sb.auth.signOut({ scope: 'local' }); if (clear){ ls.del(PLANS_KEY); api.replace([]); } closeM(); }));
     const sync = $('.mzc__sync', body); if (sync) sync.addEventListener('change', async () => { const { error } = await sb.from('mazar_accounts').update({ sync: sync.checked }).eq('user_id', u.id); if (error){ sync.checked = !sync.checked; flash(friendly(error)); return; } A.row = { ...(A.row || {}), sync: sync.checked }; if (sync.checked) await syncPull(); paint(); flash(sync.checked ? 'Your conversations will be saved to your account.' : 'Sync is off. New conversations stay on this device.'); });
     const exp = $('.mzc__export', body); if (exp) exp.addEventListener('click', async () => { const { data } = await sb.from('mazar_conversations').select('id, title, data, updated_at').order('updated_at', { ascending: false }); const blob = new Blob([JSON.stringify({ exported: new Date().toISOString(), account: { name: nameOf(), email: u.email, type: kind, connected_to_ccfc: !!A.ccfc }, conversations_saved: data || [], conversations_on_this_device: api.list(), reading_plans: ls.get(PLANS_KEY, []) }, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'mazar-data.json'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); });
-    const wipe = $('.mzc__wipe', body); if (wipe) wipe.addEventListener('click', async () => { if (!confirm('Delete all your Mazar conversations, on this device and in your account?')) return; const { error } = await sb.from('mazar_conversations').delete().eq('user_id', u.id); if (error){ say($('.mza__msg', wipe.closest('.mzc__card')), friendly(error), true); return; } synced.clear(); api.replace([]); say($('.mza__msg', wipe.closest('.mzc__card')), 'All conversations deleted.'); });
-    const del = $('.mzc__delete', body); if (del) del.addEventListener('click', async () => { if (!confirm(del.textContent + '? This cannot be undone.')) return; del.disabled = true; try { const r = await fn('delete'); await sb.auth.signOut({ scope: 'local' }); ls.del(PLANS_KEY); api.replace([]); closeM(); alert(r.deleted === 'account' ? 'Your Mazar account has been deleted.' : 'Done.'); } catch (e){ del.disabled = false; flash(friendly(e)); } });
+    const wipe = $('.mzc__wipe', body); if (wipe) wipe.addEventListener('click', async () => { if (!await sure(w, { title: 'Delete all your Mazar conversations?', body: 'Every conversation will be removed from this device and from your account. This cannot be undone.', ok: 'Delete all', danger: true, from: wipe })) return; const { error } = await sb.from('mazar_conversations').delete().eq('user_id', u.id); if (error){ say($('.mza__msg', wipe.closest('.mzc__card')), friendly(error), true); return; } synced.clear(); api.replace([]); say($('.mza__msg', wipe.closest('.mzc__card')), 'All conversations deleted.'); });
+    const del = $('.mzc__delete', body); if (del) del.addEventListener('click', async () => { if (!await sure(w, { title: 'Delete your Mazar account?', body: `Your Mazar account, conversations and reading plans will be deleted. This cannot be undone.${A.ccfc ? ' Your CCFC church account is not affected.' : ''}`, ok: 'Delete my account', danger: true, icon: 'user', from: del })) return; del.disabled = true; try { const r = await fn('delete'); await sb.auth.signOut({ scope: 'local' }); ls.del(PLANS_KEY); api.replace([]); closeM(); sure(w, r.deleted === 'account' ? { title: 'Your Mazar account has been deleted', body: 'Thank you for spending time with Mazar. You are welcome back any time.', ok: 'Close', cancel: false } : { title: 'Done', ok: 'Close', cancel: false }); } catch (e){ del.disabled = false; flash(friendly(e)); } });
   }
 
   /* ---- state ---- */
@@ -670,7 +717,7 @@ function accounts(w, api){
     const signed = !!A.session, name = nameOf();
     $$('.mz__acct', w).forEach(b => { b.innerHTML = signed ? `${av(name, photoOf())}<span class="mz__acct-t"><b>${esc(name || 'Your account')}</b><small>${A.ccfc ? 'Connected to CCFC' : A.row && A.row.sync ? 'Saved to your account' : 'Mazar account'}</small></span>${I.menu}` : `<span class="mza-av">${I.user}</span><span class="mz__acct-t"><b>Sign in</b><small>Keep your conversations on every device</small></span>`; b.setAttribute('aria-label', signed ? 'Your Mazar account' : 'Sign in to Mazar'); });
     $$('.mz__me', w).forEach(b => { b.innerHTML = signed ? av(name, photoOf(), 'mza-av--sm') : I.user; b.setAttribute('aria-label', signed ? 'Your Mazar account' : 'Sign in to Mazar'); b.title = b.getAttribute('aria-label'); });
-    window.__mazarWho = signed && name ? { name: name.split(' ')[0] } : null;
+    window.__mazarWho = signed && name && !/\b(church|ministr\w*|fellowship|ccfc|zambia|admin\w*|office|team|mazar)\b/i.test(name) ? { name: name.split(' ')[0] } : null;   /* an account named after the church is not a first name ("Christ, here they are") */
     if (!m.hidden) (signed ? renderCenter : renderLogin)();
   }
   let loading = null;
@@ -721,6 +768,7 @@ function accounts(w, api){
   }
   ls.onset = k => { if (!suppress && (k === CONVOS_KEY || k === PLANS_KEY) && A.session && A.row && A.row.sync) queuePush(); };
   w._mzDel = id => { if (A.session && A.row && A.row.sync) sb.from('mazar_conversations').delete().eq('id', id).then(() => synced.delete(id)); };
+  w._mzSynced = () => !!(A.session && A.row && A.row.sync);
 }
 
 /* ================================================================ app ================================================================ */
@@ -789,18 +837,27 @@ function app(){
   /* ---- conversations ---- */
   let convos = STUDIO ? loadPlansSafe(CONVOS_KEY) : null;
   /* saved conversations are repaired on load, so one damaged entry can never stop Mazar from starting */
-  function loadPlansSafe(k){ const v = ls.get(k, []); return (Array.isArray(v) ? v : []).filter(c => c && typeof c === 'object' && c.id).map(c => ({ ...c, title: String(c.title || 'Conversation'), t: +c.t || Date.now(), log: Array.isArray(c.log) ? c.log.filter(m => m && typeof m.text === 'string') : [], history: Array.isArray(c.history) ? c.history.filter(m => m && typeof m.content === 'string') : [] })); }
+  function loadPlansSafe(k){ const v = ls.get(k, []); return (Array.isArray(v) ? v : []).filter(c => c && typeof c === 'object' && c.id).map(c => ({ ...c, title: String(c.title || 'Conversation'), t: +c.t || Date.now(), log: Array.isArray(c.log) ? c.log.filter(m => m && typeof m.text === 'string') : [], history: Array.isArray(c.history) ? c.history.filter(m => m && typeof m.content === 'string') : [] })).filter((c, i, a) => a.findIndex(x => x.id === c.id) === i); }
   const saved = STUDIO ? (convos[0] || null) : mem.load();
-  const state = STUDIO ? (saved || newConvo()) : (saved || { log: [], history: [], open: false });
+  /* studio: state IS the open conversation's own object inside convos. Switching points state at another stored object and
+     never copies into or clears one, so every closure that reads state (persist, add, history, the account sync) follows along. */
+  let state = STUDIO ? (saved || newConvo()) : (saved || { log: [], history: [], open: false });
   if (STUDIO && !saved) convos.unshift(state);
   function newConvo(){ return { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), title: 'New conversation', t: Date.now(), log: [], history: [], tab: 'ask' }; }
-  const persist = () => { if (STUDIO){ state.t = Date.now(); state.log = state.log.slice(-60); state.history = state.history.slice(-24); ls.set(CONVOS_KEY, convos.slice(0, 40)); renderConvos(); } else mem.save(state); };
+  /* quiet saves (a tab change) are not activity: they keep the conversation's time and place in the list */
+  const persist = quiet => { if (STUDIO){ if (!quiet){ state.t = Date.now(); const i = convos.indexOf(state); if (i > 0){ convos.splice(i, 1); convos.unshift(state); } } state.log = state.log.slice(-60); state.history = state.history.slice(-24); ls.set(CONVOS_KEY, convos.slice(0, 40)); renderConvos(); } else mem.save(state); };
   const history = () => state.history;
 
   const renderConvos = () => { const nav = $('.mz__convos', w); if (!nav) return; const groups = [['Today', 0], ['Yesterday', 1], ['Earlier', 99]]; const day = t => Math.floor((Date.now() - new Date(t).setHours(0,0,0,0)) / 864e5);
-    nav.innerHTML = groups.map(([label, d]) => { const rows = convos.filter(c => (d === 99 ? day(c.t) > 1 : day(c.t) === d)); return rows.length ? `<h5>${label}</h5>` + rows.map(c => `<div class="mz__convo ${c.id === state.id ? 'is-on' : ''}" data-id="${c.id}"><button type="button" class="mz__convo-open">${esc(c.title)}</button><button type="button" class="mz__convo-del" aria-label="Delete conversation">${I.trash}</button></div>`).join('') : ''; }).join('') || '<p class="mz__side-empty">Your conversations will appear here.</p>'; };
-  const switchConvo = id => { const found = convos.find(x => x.id === id); if (!found) return; if (found === state){ setTab('ask'); renderConvos(); closeSide(); return; } const c = { ...found }; Object.keys(state).forEach(k => delete state[k]); Object.assign(state, c); convos[convos.indexOf(found)] = state; log.querySelectorAll('.mz-msg').forEach(n => n.remove()); w.classList.toggle('has-history', state.log.some(m => m.who === 'user')); requestAnimationFrame(fitStage); state.log.forEach(m => add(m.who, m.text, m.go, m.actions, true, m.files)); if (!state.log.length) add('bot', PER_SITE.greet); setTab('ask'); renderConvos(); closeSide(); };
-  if (STUDIO){ $('.mz__convos', w).addEventListener('click', e => { const row = e.target.closest('.mz__convo'); if (!row) return; if (e.target.closest('.mz__convo-del')){ if (!confirm('Delete this conversation?')) return; convos = convos.filter(c => c.id !== row.dataset.id); if (w._mzDel) w._mzDel(row.dataset.id); if (row.dataset.id === state.id){ const n = newConvo(); convos.unshift(n); switchConvo(n.id); } ls.set(CONVOS_KEY, convos); renderConvos(); return; } switchConvo(row.dataset.id); });
+    nav.innerHTML = groups.map(([label, d]) => { const rows = convos.filter(c => (d === 99 ? day(c.t) > 1 : day(c.t) === d)); return rows.length ? `<h5>${label}</h5>` + rows.map(c => `<div class="mz__convo ${c.id === state.id ? 'is-on' : ''}" data-id="${esc(c.id)}"><button type="button" class="mz__convo-open"${c.id === state.id ? ' aria-current="true"' : ''}>${esc(c.title)}</button><button type="button" class="mz__convo-del" aria-label="Delete conversation: ${esc(c.title)}" title="Delete conversation">${I.trash}</button></div>`).join('') : ''; }).join('') || '<p class="mz__side-empty">Your conversations will appear here.</p>'; };
+  const switchConvo = id => { const found = convos.find(x => x.id === id); if (!found) return; if (found === state){ setTab('ask'); renderConvos(); closeSide(); return; }
+    const pi = convos.indexOf(state); if (pi >= 0 && state.id !== found.id && !state.log.some(m => m.who === 'user')) convos.splice(pi, 1);   /* a new conversation left without a word from the person is not kept */
+    state = found; log.querySelectorAll('.mz-msg').forEach(n => n.remove()); w.classList.toggle('has-history', state.log.some(m => m.who === 'user')); requestAnimationFrame(fitStage); state.log.forEach(m => add(m.who, m.text, m.go, m.actions, true, m.files)); if (!state.log.length) add('bot', PER_SITE.greet); setTab('ask'); renderConvos(); closeSide(); };
+  if (STUDIO){ $('.mz__convos', w).addEventListener('click', async e => { const row = e.target.closest('.mz__convo'); if (!row) return; const id = row.dataset.id, delB = e.target.closest('.mz__convo-del');
+      if (delB){ if (!await sure(w, { title: 'Delete this conversation?', body: w._mzSynced && w._mzSynced() ? 'It will be removed from this device and from your account.' : 'It will be removed from this device.', ok: 'Delete', danger: true, from: delB })) return;
+        convos = convos.filter(c => c.id !== id); if (w._mzDel) w._mzDel(id); if (id === state.id){ const n = newConvo(); convos.unshift(n); switchConvo(n.id); } ls.set(CONVOS_KEY, convos.slice(0, 40)); renderConvos();
+        const nx = $('.mz__convo.is-on .mz__convo-open', w) || $('.mz__newchat', w); if (nx && (innerWidth > 900 || w.classList.contains('is-side'))) nx.focus({ preventScroll: true }); return; }
+      switchConvo(id); });
     const startNew = () => { if (!state.log.some(m => m.who === 'user')){ setTab('ask', true); closeSide(); return; } const n = newConvo(); convos.unshift(n); switchConvo(n.id); input.focus(); };
     $('.mz__newchat', w).addEventListener('click', startNew);
     const openSide = () => w.classList.add('is-side'); const closeSide = () => w.classList.remove('is-side');
@@ -815,7 +872,7 @@ function app(){
   if (ls.get(RAIL_KEY, false)) w.classList.add('is-rail');
 
   /* ---- tabs ---- */
-  const setTab = (k, focus) => { if (!$(`.mz__tabs [data-tab="${k}"]`, w)) k = 'ask'; state.tab = k; persist(); $$('.mz__tabs [role=tab]', w).forEach(b => { const on = b.dataset.tab === k; b.setAttribute('aria-selected', on); b.tabIndex = on ? 0 : -1; if (on){ const line = $('.mz__tabline', w); line.style.transform = `translateX(${b.offsetLeft}px)`; line.style.width = b.offsetWidth + 'px'; } });
+  const setTab = (k, focus) => { if (!$(`.mz__tabs [data-tab="${k}"]`, w)) k = 'ask'; state.tab = k; persist(true); $$('.mz__tabs [role=tab]', w).forEach(b => { const on = b.dataset.tab === k; b.setAttribute('aria-selected', on); b.tabIndex = on ? 0 : -1; if (on){ const line = $('.mz__tabline', w); line.style.transform = `translateX(${b.offsetLeft}px)`; line.style.width = b.offsetWidth + 'px'; } });
     $$('.mz__view', w).forEach(v => { v.hidden = v.dataset.view !== k; }); if (k === 'today') renderToday(); if (k === 'bible' && w._rd && !w._rd.loaded && !w._rd.loading) showChapter(); w.dataset.tab = k; if (k === 'ask'){ log.scrollTop = log.scrollHeight; fig.resize(); requestAnimationFrame(fitStage); if (focus) input.focus({ preventScroll: true }); } };
   $$('.mz__tabs [role=tab]', w).forEach((b, i, all) => { b.addEventListener('click', () => setTab(b.dataset.tab, true)); b.addEventListener('keydown', e => { if (!/Arrow(Left|Right)/.test(e.key)) return; const n = all[(i + (e.key === 'ArrowRight' ? 1 : all.length - 1)) % all.length]; n.focus(); setTab(n.dataset.tab); }); });
 
@@ -862,11 +919,14 @@ function app(){
   /* ---- ask ---- */
   const queue = [];
   const ask = async q => { if (w.classList.contains('is-busy')){ if (q && queue[queue.length - 1] !== q && queue.length < 3){ queue.push(q); figs.forEach(f => f.pulse()); } return; } setTab('ask');
-    const sent = STUDIO ? atts.splice(0) : []; if (STUDIO) renderAtts();
+    const sent = STUDIO ? atts.splice(0) : [], conv = state; if (STUDIO) renderAtts();
     const entry = { role:'user', content: q || 'Please look at what I attached.' }; if (sent.length){ entry.att = true; ATTS.set(entry, sent); }
     history().push(entry); add('user', q, null, null, false, sent.map(a => ({ kind: a.kind, name: a.name, thumb: a.thumb }))); w.classList.add('has-history'); fitStage(); fig.resize(); const t = thinking(); w.classList.add('is-busy'); mood('think');
     let ans, failed = false; try { ans = CFG.chatEndpoint ? await remote(history().slice(-10)) : local(q); } catch (e){ ans = local(q); failed = !!CFG.chatEndpoint; }
-    t.remove(); w.classList.remove('is-busy'); if (failed){ mood('error'); setTimeout(() => mood('idle'), 900); } history().push({ role:'assistant', content: ans.text }); add('bot', ans.text, ans.go, (ans.actions || []).slice(0, 6)); if (queue.length) setTimeout(() => ask(queue.shift()), 700); };
+    t.remove(); w.classList.remove('is-busy'); if (failed){ mood('error'); setTimeout(() => mood('idle'), 900); }
+    if (conv !== state){ const i = convos.indexOf(conv); if (i >= 0){ conv.history = [...conv.history, { role:'assistant', content: ans.text }].slice(-24); conv.log = [...conv.log, { who: 'bot', text: ans.text, go: ans.go, actions: (ans.actions || []).slice(0, 6) }].slice(-60); conv.t = Date.now(); convos.splice(i, 1); convos.unshift(conv); ls.set(CONVOS_KEY, convos.slice(0, 40)); renderConvos(); } }   /* the person opened another conversation while Mazar was thinking: the answer is kept where the question was asked */
+    else { history().push({ role:'assistant', content: ans.text }); add('bot', ans.text, ans.go, (ans.actions || []).slice(0, 6)); }
+    if (queue.length) setTimeout(() => ask(queue.shift()), 700); };
   const grow = () => { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 160) + 'px'; };
   input.addEventListener('input', () => { grow(); mood(input.value ? 'listen' : 'idle'); });
   input.addEventListener('focus', () => mood('listen')); input.addEventListener('blur', () => { if (!w.classList.contains('is-busy')) mood('idle'); });
@@ -913,7 +973,7 @@ function app(){
   /* ---- action cards ---- */
   const flash = (b, msg) => { const old = b.innerHTML; b.innerHTML = I.check + esc(msg); b.classList.add('is-done'); setTimeout(() => { b.innerHTML = old; b.classList.remove('is-done'); }, 1800); };
   log.addEventListener('click', async e => {
-    if (e.target.closest('[data-mz-go]')){ state.open = true; persist(); return; }
+    if (e.target.closest('[data-mz-go]')){ state.open = true; persist(true); return; }
     const opt = e.target.closest('.mz-quiz__opts button'); if (opt){ const li = opt.closest('.mz-quiz__q'); if (li.dataset.done) return; li.dataset.done = '1'; const ok = +opt.dataset.i === +li.dataset.answer; opt.classList.add(ok ? 'is-right' : 'is-wrong'); $$('button', li).forEach(b => { b.disabled = true; if (+b.dataset.i === +li.dataset.answer) b.classList.add('is-right'); }); const why = $('.mz-quiz__why', li); if (why) why.hidden = false; const card = li.closest('.mz-quiz'); const done = $$('.mz-quiz__q[data-done]', card), right = $$('.mz-quiz__opts .is-right:not([disabled])', card); if (done.length === +card.dataset.n){ const score = $$('.mz-quiz__q', card).filter(q => $('.mz-quiz__opts .is-wrong', q) == null).length; const sc = $('.mz-quiz__score', card); sc.hidden = false; sc.textContent = `You scored ${score} of ${card.dataset.n}.`; if (score === +card.dataset.n) figs.forEach(f => f.joy()); } else if (ok) figs.forEach(f => f.pulse()); return; }
     const b = e.target.closest('[data-act]'); if (!b) return; const card = b.closest('.mz-card'); const act = b.dataset.act;
     if (act === 'copy' || act === 'image'){ const ref = card.dataset.ref, tr = card.dataset.tr, text = $('blockquote', card).textContent; b.disabled = true; const msg = act === 'copy' ? await (async () => { try { await navigator.clipboard.writeText(`"${text}" ${ref} (${tr})`); return 'Copied.'; } catch (_) { return 'Could not copy.'; } })() : await shareVerse(ref, text, tr, true, col()); b.disabled = false; if (msg) flash(b, msg); }
@@ -922,7 +982,7 @@ function app(){
     if (act === 'hide'){ const q = $('blockquote', card); const on = card.classList.toggle('is-hidden'); q.dataset.full = q.dataset.full || q.textContent; q.textContent = on ? q.dataset.full.replace(/[A-Za-z]/g, c => (Math.random() < .25 ? c : '_')) : q.dataset.full; b.textContent = on ? 'Show the words' : 'Hide the words'; }
     if (act === 'ics'){ const a = JSON.parse(card.dataset.cal); const z = d => new Date(d).toISOString().replace(/[-:]/g, '').replace(/\.\d+/, ''); const ics = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//CCFC Zambia//Mazar//EN','BEGIN:VEVENT',`UID:${Date.now()}@ccfczambia.org`,`DTSTAMP:${z(Date.now())}`,`DTSTART:${z(a.start)}`,`DTEND:${z(a.end)}`,`SUMMARY:${a.title.replace(/[,;]/g, '\\$&')}`,`LOCATION:${(a.location || '').replace(/[,;]/g, '\\$&')}`,`DESCRIPTION:${(a.details || '').replace(/\n/g, '\\n').replace(/[,;]/g, '\\$&')}`,'BEGIN:VALARM','TRIGGER:-PT2H','ACTION:DISPLAY','DESCRIPTION:Reminder','END:VALARM','END:VEVENT','END:VCALENDAR'].join('\r\n');
       const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' })); link.download = a.title.replace(/[^\w]+/g, '-') + '.ics'; document.body.appendChild(link); link.click(); setTimeout(() => { URL.revokeObjectURL(link.href); link.remove(); }, 1000); flash(b, 'Downloaded.'); }
-    if (act === 'form'){ const f = JSON.parse(card.dataset.form); setFill(f.form, f.fields); state.open = false; persist(); location.href = f.href; }
+    if (act === 'form'){ const f = JSON.parse(card.dataset.form); setFill(f.form, f.fields); state.open = false; persist(true); location.href = f.href; }
     if (act === 'plan'){ const p = JSON.parse(card.dataset.plan); const plans = loadPlans(); plans.unshift({ id: Date.now(), title: p.title, days: p.days, done: [] }); ls.set(PLANS_KEY, plans.slice(0, 8)); flash(b, 'Saved to Today.'); figs.forEach(f => f.joy()); setTimeout(() => setTab('today'), 700); }
   });
 
@@ -1046,12 +1106,14 @@ function app(){
     const tick = e.target.closest('.mz-plan__tick'), rb = e.target.closest('.mz-plan__ref');
     if (tick){ const d = +tick.dataset.day; p.done = p.done.includes(d) ? p.done.filter(x => x !== d) : [...p.done, d]; ls.set(PLANS_KEY, plans); renderToday(); if (p.done.includes(d)) figs.forEach(f => f.pulse()); }
     if (rb) openPassage(rb.dataset.ref);
-    if (e.target.closest('.mz-plan__del') && confirm('Remove this reading plan?')){ ls.set(PLANS_KEY, plans.filter(x => x !== p)); renderToday(); }
+    const pdel = e.target.closest('.mz-plan__del'); if (pdel && await sure(w, { title: 'Remove this reading plan?', body: `"${p.title}" and the days you have ticked off will be removed from Today.`, ok: 'Remove', danger: true, from: pdel })){ ls.set(PLANS_KEY, loadPlans().filter(x => String(x.id) !== String(p.id))); renderToday(); }
   });
 
   /* ---- restore ---- */
   if (state.log.length){ state.log.forEach(m => add(m.who, m.text, m.go, m.actions, true, m.files)); if (state.log.some(m => m.who === 'user')) w.classList.add('has-history'); }
-  $('.mz__new', w).addEventListener('click', () => { if (STUDIO){ $('.mz__newchat', w).click(); return; } const keepOpen = state.open, big = state.big; mem.clear(); state.log = []; state.history.length = 0; state.open = keepOpen; state.big = big; log.querySelectorAll('.mz-msg').forEach(n => n.remove()); w.classList.remove('has-history'); fitStage(); setTab('ask'); add('bot', PER_SITE.greet); fig.resize(); input.focus(); });
+  $('.mz__new', w).addEventListener('click', async e => { if (STUDIO){ $('.mz__newchat', w).click(); return; }
+    if (state.log.some(m => m.who === 'user') && !await sure(w, { title: 'Start a new conversation?', body: 'Your current chat will be cleared.', ok: 'Start new', from: e.currentTarget })) return;
+    const keepOpen = state.open, big = state.big; mem.clear(); state.log = []; state.history.length = 0; state.open = keepOpen; state.big = big; log.querySelectorAll('.mz-msg').forEach(n => n.remove()); w.classList.remove('has-history'); fitStage(); setTab('ask'); add('bot', PER_SITE.greet); fig.resize(); input.focus(); });
   if (STUDIO) renderConvos();
   const qp = new URLSearchParams(location.search); const deep = qp.get('mazar') || qp.get('ozer') || qp.get('chat');
   if (FLOAT){

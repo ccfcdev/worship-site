@@ -519,3 +519,44 @@ html{overflow-x:clip}
 .acct__app-ico svg{width:30px;height:30px}
 .acct__app-list:empty{display:none}
 .acct__connect{grid-column:1/-1;margin-bottom:1rem;padding:1rem 1.2rem;border-radius:var(--k-radius);background:var(--k-soft);border:1px solid var(--k-line);color:var(--k-ink)}
+
+/* ---------- "Are you sure?" (core.js sure()): replaces the browser's confirm on every site. Sits above every other
+   layer: the Upper Room dialogs (110), Mazar Prime full screen (200). Card on desktop, bottom sheet on phones. ---------- */
+.sure{position:fixed;inset:0;z-index:250;display:grid;place-items:center;padding:1rem;background:rgba(8,6,40,.5);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);opacity:0;transition:opacity .22s ease;overscroll-behavior:contain}
+.sure.is-in{opacity:1}
+.sure__card{position:relative;width:min(440px,100%);max-height:calc(100dvh - 2rem);overflow:auto;display:grid;grid-template-columns:auto minmax(0,1fr);gap:.2rem 1rem;align-items:start;padding:1.4rem 1.4rem 1.2rem;background:var(--k-panel);color:var(--k-ink);border:1px solid var(--k-line);border-radius:22px;box-shadow:0 40px 100px -30px rgba(0,0,0,.55);transform:translateY(14px) scale(.97);transition:transform .42s cubic-bezier(.16,1,.3,1);outline:none;text-align:left}
+.sure.is-in .sure__card{transform:none}
+.sure__ico{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;flex:none;background:color-mix(in srgb,var(--k-accent) 14%,transparent);color:var(--k-accent)}
+.sure__ico svg{width:22px;height:22px}
+.sure--danger .sure__ico{background:rgba(208,69,42,.14);color:#D0452A}
+.sure__text{display:grid;gap:.4rem;padding-top:.45rem}
+.sure__title{margin:0;font-family:var(--font-display);font-size:1.18rem;font-weight:650;line-height:1.25;letter-spacing:-.01em;text-transform:none;color:var(--k-head);overflow-wrap:anywhere;font-variation-settings:normal}
+.sure__title::after{content:none;display:none}
+.sure[data-site="koinonia"] .sure__title{font-family:var(--font-body);font-weight:700}
+.sure__body{margin:0;font-size:.93rem;line-height:1.55;color:var(--k-muted)}
+.sure__btns{grid-column:1/-1;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:.6rem;margin-top:1.1rem}
+.sure .sure__btns .btn{justify-content:center;padding:.72rem 1.2rem;font-size:.92rem;cursor:pointer}
+.sure .sure__btns .btn:disabled{opacity:.7;cursor:default}
+.sure--danger .sure__btns .sure__ok{background:#B8321A;color:#fff;box-shadow:0 12px 28px -14px rgba(184,50,26,.75)}
+.sure--danger .sure__btns .sure__ok:hover{background:#9C2A15;color:#fff}
+/* opened from Mazar Prime: its own night and gold, legible over the Prime workspace in any site theme */
+.sure--prime{background:rgba(0,0,0,.62)}
+.sure--prime .sure__card{background:linear-gradient(180deg,#1C1912,#0A0907);color:#F1EBDD;border-color:rgba(232,193,112,.24);box-shadow:0 40px 100px -30px rgba(0,0,0,.95),inset 0 1px 0 rgba(255,255,255,.06)}
+.sure--prime .sure__title{color:#FFF3D6}
+.sure--prime .sure__body{color:#BDB5A4}
+.sure--prime .sure__ico{background:rgba(232,193,112,.12);color:#E8C170}
+.sure--prime.sure--danger .sure__ico{background:rgba(240,138,112,.13);color:#F08A70}
+.sure--prime .sure__btns .sure__no{background:transparent;color:#F1EBDD;box-shadow:inset 0 0 0 1.5px rgba(232,193,112,.42)}
+.sure--prime .sure__btns .sure__no:hover{background:rgba(232,193,112,.1);color:#FFF3D6}
+.sure--prime .sure__btns .sure__ok{background:linear-gradient(180deg,#F6E3B0,#E8C170);color:#16110A;box-shadow:none}
+.sure--prime .sure__btns .sure__ok:hover{background:linear-gradient(180deg,#FFF0C8,#F0CF85);color:#16110A}
+.sure--prime.sure--danger .sure__btns .sure__ok{background:#B8321A;color:#fff}
+.sure--prime.sure--danger .sure__btns .sure__ok:hover{background:#CC3B20;color:#fff}
+.sure--prime :focus-visible{outline-color:#E8C170}
+@media (max-width:640px){
+  .sure{padding:0;place-items:end stretch}
+  .sure__card{width:100%;max-height:92dvh;border-radius:22px 22px 0 0;border-width:1px 0 0;padding:1.3rem 1.2rem calc(1.1rem + env(safe-area-inset-bottom,0px));transform:translateY(100%)}
+  .sure__btns{flex-direction:column-reverse;margin-top:1rem}
+  .sure .sure__btns .btn{width:100%;padding:.9rem 1.2rem;font-size:1rem}
+}
+@media (prefers-reduced-motion:reduce){.sure,.sure__card{transition:none}.sure__card{transform:none}}

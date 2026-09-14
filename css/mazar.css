@@ -104,21 +104,32 @@
 .mz-rich :where(p,ul,ol,blockquote,h3,h4,h5,h6,hr,div){margin:0}
 .mz-rich>*+*{margin-top:.85em}
 .mz-rich :is(h3,h4,h5,h6){font-family:var(--font-display,inherit);font-weight:650;font-variation-settings:normal;line-height:1.3;letter-spacing:-.006em;color:var(--mz-light);text-wrap:balance}
-.mz-rich>*+:is(h3,h4,h5,h6){margin-top:1.5em}
-.mz-rich>:is(h3,h4,h5,h6)+*{margin-top:.4em}
-.mz-rich h3{font-size:1.2em;letter-spacing:-.012em}
-.mz-rich h4{font-size:1.07em}
+.mz-rich>*+:is(h3,h4,h5,h6){margin-top:1.45em}
+.mz-rich>:is(h3,h4,h5,h6)+*{margin-top:.45em}
+.mz-rich h3{font-size:1.17em;letter-spacing:-.012em}
+.mz-rich h4{font-size:1.06em}
 .mz-rich h5{font-size:.98em}
 .mz-rich h6{font-size:.72em;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--mz-glow)}
-.mz-rich :is(ul,ol){padding-left:1.4em}
-.mz-rich li{padding-left:.25em}
-.mz-rich li+li{margin-top:.4em}
+.mz-rich p{text-wrap:pretty}
+/* lists read like ChatGPT: a lead-in sits close to its list, numbered points that carry details get air between them,
+   and the details hang under the point's text with a smaller, quieter bullet */
+.mz-rich>p+:is(ul,ol){margin-top:.5em}
+.mz-rich>:is(ul,ol)+*{margin-top:1em}
+.mz-rich :is(ul,ol){padding-left:1.45em}
+.mz-rich li{padding-left:.3em}
+.mz-rich li+li{margin-top:.45em}
+.mz-rich ol:has(>li>:is(ul,ol))>li+li{margin-top:1.05em}
 .mz-rich li>:is(ul,ol,p,blockquote,div){margin-top:.4em}
+.mz-rich li>:is(ul,ol){margin-top:.3em}
 .mz-rich li>p:first-child{margin-top:0}
-.mz-rich li li+li{margin-top:.25em}
-.mz-rich :is(ul,ol) :is(ul,ol){padding-left:1.2em}
+.mz-rich li li+li{margin-top:.3em}
+.mz-rich li :is(ul,ol){padding-left:1.05em}
 .mz-rich li::marker{color:var(--mz-glow)}
 .mz-rich ol>li::marker{font-weight:650;font-variant-numeric:tabular-nums}
+.mz-rich li ul{list-style-type:disc}
+.mz-rich li li ul{list-style-type:circle}
+.mz-rich li ul>li::marker{color:var(--mz-mute);font-size:.8em}
+.mz-rich li>strong:first-child{color:var(--mz-light)}
 .mz-rich :is(b,strong){color:var(--mz-light);font-weight:650}
 .mz-rich em{font-style:italic}
 .mz-rich del{color:var(--mz-dim);text-decoration-color:var(--mz-mute)}
@@ -127,6 +138,7 @@
 .mz-rich a:hover{text-decoration-color:currentColor}
 .mz-rich blockquote{padding:.5em 1em .55em 1.05em;border-left:2px solid var(--mz-glow);border-radius:0 14px 14px 0;background:linear-gradient(90deg,color-mix(in srgb,var(--mz-glow) 11%,transparent),transparent 90%);font-family:var(--mz-serif);font-size:1.06em;line-height:1.6;color:var(--mz-light)}
 .mz-rich blockquote>*+*{margin-top:.5em}
+.mz-rich blockquote :is(ul,ol){font-family:var(--font-body,system-ui,sans-serif);font-size:.94em}
 .mz-rich code{padding:.1em .38em;border-radius:6px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.075);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.86em;color:var(--mz-accent-2);overflow-wrap:anywhere;-webkit-box-decoration-break:clone;box-decoration-break:clone}
 .mz-code{overflow:hidden;border-radius:14px;border:1px solid var(--mz-line);background:color-mix(in srgb,var(--mz-bg2) 80%,transparent);box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
 .mz-code__bar{display:flex;align-items:center;justify-content:space-between;gap:.6rem;padding:.3em .4em .3em .95em;border-bottom:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.03);font:600 .72em/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.04em;color:var(--mz-dim)}
@@ -148,6 +160,10 @@
 .mz-rich hr{height:1px;margin:1.4em 0;border:0;background:linear-gradient(90deg,transparent,var(--mz-line) 15%,var(--mz-line) 85%,transparent)}
 .mz-rich>hr:first-child{margin-top:.4em}
 .mz-rich .mz-tw{display:none!important}
+.mz--widget:not(.is-big) .mz-rich blockquote{padding:.45em .85em .5em .9em;font-size:1.03em}
+.mz--widget:not(.is-big) .mz-table :is(th,td){padding:.5em .7em}
+.mz--widget:not(.is-big) .mz-rich li :is(ul,ol){padding-left:.95em}
+@media (max-width:640px){.mz-rich :is(ul,ol){padding-left:1.35em}.mz-rich li :is(ul,ol){padding-left:.95em}.mz-table :is(th,td){padding:.5em .7em}}
 .mz-go{display:inline-flex;align-items:center;gap:.4rem;margin-top:.7rem;padding:.5rem .9rem;border-radius:999px;border:1px solid var(--mz-line-2);color:var(--mz-accent-2);font-size:.86rem;font-weight:600;transition:background .3s,gap .3s,opacity .4s}
 .mz-go:hover{background:color-mix(in srgb,var(--mz-glow) 12%,transparent);gap:.6rem}
 .mz-go svg{width:15px;height:15px}
@@ -348,6 +364,8 @@ html.mz-lock{overflow:hidden}
 .mz__convo-del{width:30px;height:30px;display:grid;place-items:center;color:var(--mz-dim);opacity:0;transition:opacity .25s,color .25s;margin-right:.2rem}
 .mz__convo:hover .mz__convo-del{opacity:1}
 .mz__convo-del:hover{color:#FF9B9B}
+.mz__convo-del:focus-visible,.mz__convo.is-on .mz__convo-del{opacity:1}
+@media (hover:none){.mz__convo-del{opacity:.7}}
 .mz__convo-del svg{width:14px;height:14px}
 .mz__side-empty{margin:.5rem;color:var(--mz-dim);font-size:.82rem}
 .mz__side-bottom{display:grid;gap:.2rem;padding-top:.6rem;border-top:1px solid rgba(255,255,255,.07)}
@@ -359,7 +377,7 @@ html.mz-lock{overflow:hidden}
   .mz--studio .mz__panel{grid-template-columns:1fr}
   .mz__side{position:fixed;left:0;top:0;bottom:0;width:min(320px,86vw);z-index:5;transform:translateX(-102%);transition:transform .45s var(--mz-ease);background:var(--mz-bg2);box-shadow:0 0 80px rgba(0,0,0,.6)}
   .mz.is-side .mz__side{transform:none}
-  .mz.is-side::after{content:"";position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:4}
+  .mz.is-side .mz__panel::before{content:"";position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:4}   /* inside the panel's stacking context, under the sidebar (z 5); a tap on it lands on the panel and closes the menu */
   .mz__side-x,.mz__menu{display:grid}
 }
 
@@ -760,3 +778,31 @@ body.mzp-lock{overflow:hidden}
   .mzc__tabs button[aria-selected=true] span{display:inline}
 }
 @media (prefers-reduced-motion: reduce){.mza__box,.mza__veil{transition:none}}
+
+/* ---- "are you sure?" (sure() in mazar.js): lives inside the Mazar root, above the account window; a bottom sheet on phones ---- */
+.mz-sure{position:fixed;inset:0;z-index:140;display:grid;place-items:center;padding:1rem;font-family:var(--font-body,system-ui,sans-serif);color:var(--mz-ink);text-align:center}
+.mz-sure__veil{position:absolute;inset:0;background:rgba(3,3,6,.6);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);opacity:0;transition:opacity .26s}
+.mz-sure__card{position:relative;width:min(400px,100%);display:grid;justify-items:center;gap:.45rem;padding:1.6rem 1.4rem 1.3rem;border-radius:24px;background:radial-gradient(120% 70% at 50% -20%,color-mix(in srgb,var(--mz-glow) 15%,transparent),transparent 62%),linear-gradient(180deg,var(--mz-bg1),var(--mz-bg2));border:1px solid var(--mz-line-2);box-shadow:0 44px 90px -30px rgba(0,0,0,.95),inset 0 1px 0 rgba(255,255,255,.08);opacity:0;transform:translateY(14px) scale(.97);transition:opacity .26s var(--mz-ease),transform .4s var(--mz-ease)}
+.mz-sure.is-in .mz-sure__veil,.mz-sure.is-in .mz-sure__card{opacity:1}
+.mz-sure.is-in .mz-sure__card{transform:none}
+.mz-sure.is-out{pointer-events:none}
+.mz-sure__ico{display:grid;place-items:center;width:52px;height:52px;margin-bottom:.35rem;border-radius:50%;color:var(--mz-glow);background:color-mix(in srgb,var(--mz-glow) 11%,transparent);border:1px solid var(--mz-line-2)}
+.mz-sure__ico svg{width:23px;height:23px}
+.mz-sure__ico .mz-mark{width:30px;height:30px;filter:drop-shadow(0 0 8px var(--mz-glow))}
+.mz-sure.is-danger .mz-sure__ico{color:#FFB3A8;background:rgba(255,120,110,.1);border-color:rgba(255,120,110,.32)}
+.mz-sure__t{margin:0;font-family:var(--font-display,inherit);font-size:1.22rem;font-weight:700;line-height:1.22;color:var(--mz-light);text-wrap:balance}
+.mz-sure__b{margin:0;max-width:38ch;font-size:.92rem;line-height:1.5;color:var(--mz-mute);text-wrap:pretty}
+.mz-sure__row{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:.6rem;width:100%;margin-top:1rem}
+.mz-sure__btn{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:.4rem 1.1rem;border-radius:999px;font-weight:700;font-size:.92rem;line-height:1.2;transition:transform .3s var(--mz-ease),background .25s,border-color .25s,filter .25s}
+.mz-sure__no{color:var(--mz-light);background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14)}
+.mz-sure__no:hover{background:rgba(255,255,255,.11);border-color:var(--mz-line-2)}
+.mz-sure__ok{color:var(--mz-on-accent);background:linear-gradient(180deg,var(--mz-accent-2),var(--mz-accent));box-shadow:0 12px 28px -14px var(--mz-accent)}
+.mz-sure.is-danger .mz-sure__ok{color:#fff;background:linear-gradient(180deg,#EE6F62,#C9392D);box-shadow:0 12px 28px -14px #C9392D}
+.mz-sure__ok:hover{transform:translateY(-1px);filter:brightness(1.07)}
+.mz-sure__btn:focus-visible{outline:2px solid var(--mz-light);outline-offset:3px}
+@media (max-width:640px){
+  .mz-sure{padding:0;place-items:end stretch}
+  .mz-sure__card{width:100%;padding:1.5rem 1.1rem calc(1.1rem + env(safe-area-inset-bottom));border-radius:24px 24px 0 0;border-bottom:0;transform:translateY(100%)}
+  .mz-sure__btn{min-height:50px}
+}
+@media (prefers-reduced-motion:reduce){.mz-sure__card,.mz-sure__veil{transition:none}.mz-sure__card{transform:none}}

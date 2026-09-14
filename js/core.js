@@ -72,6 +72,45 @@ const friendly = err => { const t = (err && err.message) || 'Something went wron
   if (/invalid login/i.test(t)) return 'Wrong email or password.'; if (/already registered/i.test(t)) return 'That email already has an account. Sign in instead.';
   if (/rate limit/i.test(t)) return 'Too many attempts. Please wait a minute.'; if (/duplicate key/i.test(t)) return 'That title is already used. Change it slightly.';
   if (/row-level security/i.test(t)) return 'Your account is not allowed to do that.'; return t; };
+/* "Are you sure?": the sites' own replacement for the browser's confirm(). Resolves true only when confirmed.
+   Enter confirms, Escape or the backdrop cancels, Tab stays inside, focus goes back to the button that opened it.
+   Danger actions get a red button and start on Cancel. Opened from inside Mazar Prime it takes Prime's dark gold look.
+   Use: if (!(await sure({ title, body, ok:'Delete', danger:true, from: button }))) return; */
+let sureOpen = false, sureN = 0;
+function sure({ title = 'Are you sure?', body = '', ok = 'Confirm', cancel = 'Cancel', danger = false, from = document.activeElement } = {}){
+  if (sureOpen) return Promise.resolve(false);   /* a second click while one is open is a double click, never a yes */
+  sureOpen = true;
+  return new Promise(resolve => {
+    const id = 'sure-' + (++sureN), html = document.documentElement, lock = html.style.overflow !== 'hidden', opened = Date.now();
+    const prime = !!(from && from.closest && from.closest('.mzp'));
+    const ico = danger ? '<path d="M12 6v7.5M12 17.8h.01"/>' : '<path d="M9 8.8a3 3 0 1 1 4.3 2.7c-.8.4-1.3 1.1-1.3 2v.4M12 17.8h.01"/>';
+    const d = document.createElement('div'); d.className = 'sure' + (danger ? ' sure--danger' : '') + (prime ? ' sure--prime' : ''); d.dataset.site = IS_ADMIN ? 'admin' : SITE_KEY;
+    d.innerHTML = `<div class="sure__card" role="alertdialog" aria-modal="true" aria-labelledby="${id}-t"${body ? ` aria-describedby="${id}-b"` : ''} tabindex="-1">
+      <span class="sure__ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">${ico}</svg></span>
+      <div class="sure__text"><h2 class="sure__title" id="${id}-t">${esc(title)}</h2>${body ? `<p class="sure__body" id="${id}-b">${esc(body)}</p>` : ''}</div>
+      <div class="sure__btns"><button type="button" class="btn btn--ghost sure__no">${esc(cancel)}</button><button type="button" class="btn sure__ok">${esc(ok)}</button></div></div>`;
+    const no = $('.sure__no', d), yes = $('.sure__ok', d);
+    /* everything else on the page goes inert while the question is open (upload dialog, Prime full screen, the nav) */
+    const muted = [...document.body.children].filter(el => !el.inert && !/^(SCRIPT|STYLE|LINK|TEMPLATE)$/.test(el.tagName));
+    document.body.appendChild(d); muted.forEach(el => { el.inert = true; }); if (lock) html.style.overflow = 'hidden';
+    requestAnimationFrame(() => d.classList.add('is-in')); setTimeout(() => d.classList.add('is-in'), 40);
+    (danger ? no : yes).focus({ preventScroll: true });
+    let done = false, downOnBack = false;
+    const finish = v => { if (done) return; done = true; sureOpen = false; no.disabled = yes.disabled = true;
+      document.removeEventListener('keydown', key, true); muted.forEach(el => { el.inert = false; }); if (lock) html.style.overflow = '';
+      d.classList.remove('is-in'); setTimeout(() => d.remove(), matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 260);
+      resolve(v);
+      setTimeout(() => { if (from && from !== document.body && from.isConnected && !from.disabled && typeof from.focus === 'function') from.focus({ preventScroll: true }); }, 0); };
+    const key = e => {
+      if (e.key === 'Escape'){ e.preventDefault(); e.stopPropagation(); finish(false); }
+      else if (e.key === 'Enter' && !e.isComposing){ e.preventDefault(); e.stopPropagation(); if (!e.repeat && Date.now() - opened > 200) finish(true); }
+      else if (e.key === 'Tab'){ e.preventDefault(); const f = [no, yes], i = f.indexOf(document.activeElement); f[i < 0 ? (e.shiftKey ? 1 : 0) : (i + 1) % f.length].focus(); } };
+    document.addEventListener('keydown', key, true);
+    no.addEventListener('click', () => finish(false)); yes.addEventListener('click', () => finish(true));
+    d.addEventListener('pointerdown', e => { downOnBack = e.target === d; });
+    d.addEventListener('click', e => { if (e.target === d && downOnBack) finish(false); });
+  });
+}
 const OFFLINE = 'Accounts are not switched on yet. The church team is finishing setup.';
 const ICO = {
   heart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-4.4-9-8.4A5 5 0 0 1 12 6a5 5 0 0 1 9 6.6C19 16.6 12 21 12 21z"/></svg>',
@@ -318,7 +357,7 @@ async function feedAnnouncements(root, site){
     $$('.ann', box).forEach(el => { const a = items.find(x => x.id === el.dataset.id); if (!a) return;
       $('.ann__edit', el)?.addEventListener('click', () => { el.outerHTML = form(a); wireForm($(`.ann--form[data-id="${a.id}"]`, box)); });
       $('.ann__toggle', el)?.addEventListener('click', async () => { const { error } = await sb.from('announcements').update({ active: !a.active, updated_by: profile.id }).eq('id', a.id); if (error) toast(friendly(error), false); else { toast(a.active ? 'Hidden from the feed.' : 'Showing on the feed.'); load(); } });
-      $('.ann__del', el)?.addEventListener('click', async () => { if (!confirm(`Delete "${a.title}"?`)) return; const { error } = await sb.from('announcements').delete().eq('id', a.id); if (error) toast(friendly(error), false); else { toast('Announcement deleted.'); load(); } }); });
+      $('.ann__del', el)?.addEventListener('click', async e => { if (!(await sure({ title: `Delete "${a.title}"?`, body: 'It comes off the feed for everyone. This cannot be undone.', ok: 'Delete', danger: true, from: e.currentTarget }))) return; const { error } = await sb.from('announcements').delete().eq('id', a.id); if (error) toast(friendly(error), false); else { toast('Announcement deleted.'); load(); } }); });
   }
   function wireForm(f){ const st = $('.form__status', f); f.title.focus();
     $('.ann__cancel', f).addEventListener('click', render);
@@ -372,7 +411,7 @@ async function feedPage(modal){
     $$('.pm__yt', el).forEach(b => b.addEventListener('click', () => { b.outerHTML = `<div class="pm__frame"><iframe src="https://www.youtube-nocookie.com/embed/${esc(b.dataset.yt)}?autoplay=1&rel=0" title="${esc(p.title)}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe></div>`; }));
     const more = $('.post__more', el), ml = $('.post__menuList', el);
     if (more){ more.addEventListener('click', () => { ml.hidden = !ml.hidden; }); document.addEventListener('click', e => { if (!el.contains(e.target)) ml.hidden = true; });
-      $('.post__del', el)?.addEventListener('click', async () => { if (!confirm('Delete this post?')) return; const { error } = await sb.from('posts').delete().eq('id', p.id); if (error) toast(friendly(error), false); else { el.remove(); toast('Post deleted.'); } });
+      $('.post__del', el)?.addEventListener('click', async () => { ml.hidden = true; if (!(await sure({ title: 'Delete this post?', body: `"${p.title}" is removed for everyone, with its comments and likes. This cannot be undone.`, ok: 'Delete post', danger: true, from: more }))) return; const { error } = await sb.from('posts').delete().eq('id', p.id); if (error) toast(friendly(error), false); else { el.remove(); toast('Post deleted.'); } });
       $('.post__pin', el)?.addEventListener('click', async () => { const { error } = await sb.from('posts').update({ pinned: !p.pinned }).eq('id', p.id); if (error) toast(friendly(error), false); else { toast(p.pinned ? 'Unpinned.' : 'Pinned to the top.'); page = 0; load(); } }); }
   }
   load();
@@ -467,7 +506,7 @@ function blogEditor(slot, b, onDone){
       const { error } = b ? await sb.from('blogs').update(row).eq('id', b.id) : await sb.from('blogs').insert({ ...row, author_id: profile.id, slug: slugify(title) + '-' + Math.random().toString(36).slice(2,6) });
       if (error) throw error; toast(pub ? 'Published.' : 'Draft saved.'); onDone && onDone();
     } catch (err){ status.textContent = friendly(err); status.className='form__status is-err'; } });
-  $('.blog__delete', f)?.addEventListener('click', async () => { if (!confirm('Delete this post?')) return; const { error } = await sb.from('blogs').delete().eq('id', b.id); if (error) toast(error.message, false); else location.href = '/blog'; });
+  $('.blog__delete', f)?.addEventListener('click', async e => { if (!(await sure({ title: 'Delete this post?', body: `"${b.title}" comes off the blog, with its comments. This cannot be undone.`, ok: 'Delete', danger: true, from: e.currentTarget }))) return; const { error } = await sb.from('blogs').delete().eq('id', b.id); if (error) toast(error.message, false); else location.href = '/blog'; });
 }
 
 /* ---------- UPPER ROOM LIBRARY (leaders and above) ---------- */
@@ -513,7 +552,8 @@ function libraryKit(getItems, onChanged){
     document.body.appendChild(dlg); document.documentElement.style.overflow = 'hidden'; requestAnimationFrame(() => dlg.classList.add('is-in')); setTimeout(() => dlg.classList.add('is-in'), 60);
     const input = $('input[type=file]', dlg), drop = $('.upl__drop', dlg), filesEl = $('.upl__files', dlg), go = $('.upl__go', dlg), statusEl = $('.upl__status', dlg);
     const queue = []; let busy = false;
-    const close = () => { if (busy && !confirm('Uploads are still running. Close anyway?')) return; dlg.classList.remove('is-in'); document.documentElement.style.overflow = ''; setTimeout(() => dlg.remove(), 250); };
+    let closing = false;
+    const close = async () => { if (closing) return; if (busy && !(await sure({ title: 'Close anyway?', body: 'Uploads are still running.', ok: 'Close anyway', cancel: 'Keep uploading' }))) return; if (closing) return; closing = true; dlg.classList.remove('is-in'); document.documentElement.style.overflow = ''; setTimeout(() => dlg.remove(), 250); };
     $('.upl__x', dlg).addEventListener('click', close); $('.upl__cancel', dlg).addEventListener('click', close);
     dlg.addEventListener('click', e => { if (e.target === dlg) close(); }); dlg.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
     const refresh = () => { go.disabled = !queue.some(q => q.state === 'ready'); $('.upl__shared', dlg).hidden = !queue.length; drop.classList.toggle('is-compact', queue.length > 0); go.textContent = queue.filter(q => q.state === 'ready').length > 1 ? `Upload ${queue.filter(q => q.state === 'ready').length} files` : 'Upload'; };
@@ -558,7 +598,7 @@ function libraryKit(getItems, onChanged){
     const close = () => { d.classList.remove('is-in'); document.documentElement.style.overflow = ''; setTimeout(() => d.remove(), 250); };
     x.addEventListener('click', close); d.addEventListener('click', ev => { if (ev.target === d) close(); }); d.addEventListener('keydown', ev => { if (ev.key === 'Escape') close(); });
   }
-  async function remove(it){ if (!it || !confirm(`Delete "${it.title}" from the library?`)) return false;
+  async function remove(it, from){ if (!it || !(await sure({ title: `Delete "${it.title}" from the library?`, body: 'The file and its cover leave the Upper Room for everyone. This cannot be undone.', ok: 'Delete', danger: true, from }))) return false;
     await sb.storage.from('library').remove([it.path, it.cover_path].filter(Boolean)); const { error } = await sb.from('library_items').delete().eq('id', it.id);
     if (error){ toast(friendly(error), false); return false; } toast('Deleted.'); return true; }
   return { KINDS, pub, extOf, TYPE, art, openUpload, preview, remove };
@@ -592,7 +632,7 @@ async function libraryPage(modal){
     const groups = {}; rows.forEach(i => (groups[i.series || 'General'] ||= []).push(i));
     list.innerHTML = Object.entries(groups).map(([sr, its]) => `<section class="lshelf"><h3 class="lshelf__h">${esc(sr)}<span>${its.length}</span></h3><div class="lgrid">${its.map(card).join('')}</div></section>`).join('');
     $$('.lcov', list).forEach(b => b.addEventListener('click', () => preview(items.find(x => x.id === b.closest('.lcard').dataset.id))));
-    $$('.lcard__del', list).forEach(b => b.addEventListener('click', async () => { if (await remove(items.find(x => x.id === b.closest('.lcard').dataset.id))) load(); }));
+    $$('.lcard__del', list).forEach(b => b.addEventListener('click', async () => { if (await remove(items.find(x => x.id === b.closest('.lcard').dataset.id), b)) load(); }));
   }
   search.addEventListener('input', render); load();
 }
@@ -646,7 +686,7 @@ async function dashboardPage(modal){
         return `<div class="drow" data-id="${p.id}">${th ? `<img class="drow__thumb" src="${esc(th)}" alt="">` : `<span class="drow__thumb drow__thumb--k">${esc((KINDS[p.kind]||'')[0])}</span>`}<div><b>${esc(p.title)}${p.pinned ? ' <i class="pill pill--orange">Pinned</i>' : ''}</b><span>${esc(KINDS[p.kind]||p.kind)} &middot; ${esc(p.author_name)} &middot; ${esc(when(p.created_at))} &middot; ${p.reaction_count} likes &middot; ${p.comment_count} comments</span></div>
         <div class="row"><a class="pill" href="${SITE.feed}?post=${p.id}">View</a>${can.admin(r) ? `<button class="pill pin">${p.pinned ? 'Unpin' : 'Pin'}</button>` : ''}${(can.admin(r) || p.author_id === profile.id) ? '<button class="pill pill--danger del">Delete</button>' : ''}</div></div>`; }).join('') || '<p class="sub">No posts yet. Use the box above to post the first one.</p>';
       $$('.pin', l).forEach(b => b.addEventListener('click', async () => { const { error } = await sb.from('posts').update({ pinned: b.textContent === 'Pin' }).eq('id', b.closest('.drow').dataset.id); if (error) toast(friendly(error), false); else list(); }));
-      $$('.del', l).forEach(b => b.addEventListener('click', async () => { if (!confirm('Delete this post?')) return; const { error } = await sb.from('posts').delete().eq('id', b.closest('.drow').dataset.id); if (error) toast(friendly(error), false); else list(); })); }
+      $$('.del', l).forEach(b => b.addEventListener('click', async () => { if (!(await sure({ title: 'Delete this post?', body: `"${((data || []).find(x => x.id === b.closest('.drow').dataset.id) || {}).title || 'This post'}" is removed for everyone, with its comments and likes. This cannot be undone.`, ok: 'Delete post', danger: true, from: b }))) return; const { error } = await sb.from('posts').delete().eq('id', b.closest('.drow').dataset.id); if (error) toast(friendly(error), false); else list(); })); }
     list();
   }
   /* Mazar Prime: the master admin's AI assistant. Mazar's Bible and content skills plus admin powers. Reads live data, proposes a plan,
@@ -729,7 +769,7 @@ async function dashboardPage(modal){
     const verse = a => a && a.reference ? `<div class="mz-card mz-card--verse"><span class="mz-card__k">${esc(a.reference)} <i>${esc(a.translation || '')}</i></span><blockquote>${esc(a.text)}</blockquote></div>` : '';
     const planHtml = (p, id) => { const n = p.steps.length, res = p.results || [];
       const head = p.status === 'applied' ? `Applied <span>${res.filter(x => x.ok).length} of ${n} done</span>` : p.status === 'discarded' ? 'Discarded <span>Nothing was changed</span>' : livePlans.has(id) ? `Plan <span>${n} change${n > 1 ? 's' : ''}, waiting for your approval</span>` : 'Plan <span>Not applied</span>';
-      const steps = p.steps.map((x, i) => { const r = res[i]; return `<li class="${r ? (r.ok ? 'is-ok' : 'is-err') : ''}"><span class="mzp__tag">${esc(TOOL[x.tool] || 'Change')}</span><span class="mzp__sum">${esc(x.summary || x.tool)}</span>${r ? `<span class="mzp__res">${r.ok ? 'Done' : 'Failed: ' + esc(String(r.detail || ''))}</span>` : ''}</li>`; }).join('');
+      const steps = p.steps.map((x, i) => { const r = res[i]; return `<li class="${r ? (r.ok ? 'is-ok' : 'is-err') : ''}"><span class="mzp__tag">${esc(TOOL[x.tool] || 'Change')}</span><span class="mzp__sum">${esc(x.summary || x.tool)}</span>${r ? `<span class="mzp__res">${r.ok ? (r.detail === 'already done' ? 'Already done' : 'Done') : 'Failed: ' + esc(String(r.detail || ''))}</span>` : ''}</li>`; }).join('');
       const foot = p.status === 'pending' ? (livePlans.has(id) ? `<button class="mz-chip mz-chip--gold" type="button" data-plan="apply">Apply ${n} change${n > 1 ? 's' : ''}</button><button class="mz-chip" type="button" data-plan="discard">Discard</button><small>Nothing changes until you apply</small>` : '<small>Plans are not kept between visits. Ask again for a fresh plan.</small>') : '';
       return `<div class="mzp__plan is-${p.status}" data-id="${id}"><div class="mzp__plan-h">${head}</div><ol class="mzp__steps">${steps}</ol>${foot ? `<div class="mzp__plan-f">${foot}</div>` : ''}</div>`; };
     const render = (m, i) => { const el = document.createElement('div'); el.className = 'mz-msg is-' + (m.who === 'user' ? 'user' : 'bot'); el.dataset.i = i;
@@ -747,8 +787,9 @@ async function dashboardPage(modal){
       nav.innerHTML = list.length ? [['Today', d => d === 0], ['Yesterday', d => d === 1], ['Earlier', d => d > 1]].map(([h, f]) => { const rs = list.filter(c => f(day(c.t))); return rs.length ? `<h5>${h}</h5>` + rs.map(c => `<div class="mzp__convo ${c === cur ? 'is-on' : ''}" data-id="${esc(c.id)}"><button type="button" class="mzp__convo-open"><b>${esc(c.title)}</b><small>${esc(SITE_NAME[c.site] || '')} &middot; ${esc(when(new Date(c.t).toISOString()))}</small></button><button type="button" class="mzp__convo-del" aria-label="Delete conversation">${PI.trash}</button></div>`).join('') : ''; }).join('') : '<p class="mzp__side-empty">Your conversations with Mazar Prime will appear here.</p>'; };
     const open = c => { cur = c; paintLog(); paintSide(); root.classList.remove('is-side'); if (innerWidth > 900) ta.focus({ preventScroll: true }); };
     const startNew = () => { if (!cur.log.length){ open(cur); return; } convos = convos.filter(c => c.log.length); const c = fresh(); convos.unshift(c); open(c); };
-    $('.mzp__convos', root).addEventListener('click', e => { const row = e.target.closest('.mzp__convo'); if (!row) return; const c = convos.find(x => x.id === row.dataset.id); if (!c) return;
-      if (e.target.closest('.mzp__convo-del')){ if (!confirm('Delete this conversation?')) return; convos = convos.filter(x => x !== c); save(); if (c === cur){ const n = fresh(); convos.unshift(n); open(n); } else paintSide(); return; }
+    $('.mzp__convos', root).addEventListener('click', async e => { const row = e.target.closest('.mzp__convo'); if (!row) return; const c = convos.find(x => x.id === row.dataset.id); if (!c) return;
+      const del = e.target.closest('.mzp__convo-del');
+      if (del){ if (!(await sure({ title: 'Delete this conversation?', body: `"${c.title}" is removed from this device. This cannot be undone.`, ok: 'Delete', danger: true, from: del })) || !convos.includes(c)) return; convos = convos.filter(x => x !== c); save(); if (c === cur){ const n = fresh(); convos.unshift(n); open(n); } else paintSide(); return; }
       open(c); });
     $('.mzp__new', root).addEventListener('click', startNew); $('.mzp__newbtn', root).addEventListener('click', startNew);
     const railBtn = $('.mzp__rail', root);
@@ -779,8 +820,9 @@ async function dashboardPage(modal){
       if (b.dataset.plan === 'discard'){ m.plan.status = 'discarded'; livePlans.delete(card.dataset.id); cur.history.push({ role: 'user', content: '[The admin discarded the plan. Nothing was changed.]' }); save(); repaint(i); return; }
       $$('[data-plan]', card).forEach(x => { x.disabled = true; }); b.textContent = 'Applying...'; setBusy(true, 'Applying changes...'); mood('think');
       try { const { results } = await call({ apply: m.plan.steps.map(x => ({ tool: x.tool, args: x.args })), instruction: m.plan.instruction });
-        m.plan.status = 'applied'; m.plan.results = (results || []).map(x => ({ ok: !!x.ok, detail: x.ok ? '' : String(x.detail || '') })); livePlans.delete(card.dataset.id);
-        cur.history.push({ role: 'user', content: '[The admin applied the plan. Results: ' + (results || []).map(x => (x.ok ? 'ok' : 'failed') + ' ' + x.tool).join(', ') + ']' }); save(); repaint(i); scrollEnd();
+        m.plan.status = 'applied'; m.plan.results = (results || []).map(x => ({ ok: !!x.ok, detail: x.ok ? (x.detail === 'already done' ? 'already done' : '') : String(x.detail || '') })); livePlans.delete(card.dataset.id);
+        /* the note carries each step's summary so Mazar Prime knows exactly what is now live and never proposes it again */
+        cur.history.push({ role: 'user', content: '[The admin applied the plan. Results: ' + (results || []).map((x, j) => `${x.ok ? (x.detail === 'already done' ? 'already done' : 'done') : 'failed'}: ${(m.plan.steps[j] && m.plan.steps[j].summary) || x.tool}`).join('; ') + ']' }); save(); repaint(i); scrollEnd();
         applySettings(); const bad = m.plan.results.filter(x => !x.ok).length; toast(bad ? `${bad} change${bad > 1 ? 's' : ''} failed. See the plan for details.` : 'Changes applied.', !bad); if (fig) fig.joy(); mood('idle'); setBusy(false, 'Ready'); }
       catch (err){ $$('[data-plan]', card).forEach(x => { x.disabled = false; }); b.textContent = 'Apply'; toast(err.message, false); mood('error'); setTimeout(() => mood('idle'), 900); setBusy(false, 'Ready'); } });
 
@@ -813,7 +855,7 @@ async function dashboardPage(modal){
       kpis.innerHTML = `<div class="stat"><b>${rs.length}</b><span>${ed ? "registered for Koi " + ed.slice(1) + "'" : 'registrations'}</span></div><div class="stat"><b>${week}</b><span>in the last 7 days</span></div><div class="stat"><b>${part}</b><span>want to take part on stage</span></div><div class="stat"><b>${top.map(([t,n]) => `${t} ${n}`).join(', ') || '0'}</b><span>top towns</span></div>`;
       list.innerHTML = rs.map(x => `<details class="drow drow--exp" data-id="${x.id}"><summary>${avatar(x.first_name + ' ' + x.surname)}<div><b>${esc(x.first_name)} ${x.middle_name ? esc(x.middle_name) + ' ' : ''}${esc(x.surname)} <i class="pill">Koi ${esc(x.edition.slice(1))}'</i></b><span>${esc(x.residence||'')}${x.country ? ', ' + esc(x.country) : ''} &middot; ${esc(x.phone)}${x.email ? ' &middot; ' + esc(x.email) : ''} &middot; ${esc(when(x.created_at))}</span></div><div class="row"><a class="pill" href="https://wa.me/${esc(String(x.phone).replace(/\D/g,''))}" target="_blank" rel="noopener">${ICO.wa} WhatsApp</a>${can.admin(r) ? '<button class="pill pill--danger del">Remove</button>' : ''}</div></summary>
         <dl class="drow__dl"><dt>Gender</dt><dd>${esc(x.gender||'')}</dd><dt>Age</dt><dd>${esc(x.age_range||'')}</dd><dt>Role</dt><dd>${esc(x.participation||'')} ${esc(x.participation_detail||'')}</dd><dt>Days</dt><dd>${esc(x.days||'')}</dd><dt>Dietary</dt><dd>${esc(x.dietary||'')}</dd><dt>Expectation</dt><dd>${esc(x.expectation||'')}</dd><dt>Registered</dt><dd>${esc(fullDate(x.created_at))}</dd></dl></details>`).join('') || '<p class="sub">No registrations match.</p>';
-      $$('.del', list).forEach(b => b.addEventListener('click', async e => { e.preventDefault(); if (!confirm('Remove this registration?')) return; await sb.from('registrations').delete().eq('id', b.closest('.drow').dataset.id); const i = all.findIndex(x => x.id === b.closest('.drow').dataset.id); all.splice(i,1); render(); })); };
+      $$('.del', list).forEach(b => b.addEventListener('click', async e => { e.preventDefault(); const x = all.find(y => y.id === b.closest('.drow').dataset.id); if (!(await sure({ title: 'Remove this registration?', body: x ? `${x.first_name} ${x.surname} will no longer be on the Koi ${String(x.edition).slice(1)}' list. This cannot be undone.` : 'This cannot be undone.', ok: 'Remove', danger: true, from: b }))) return; await sb.from('registrations').delete().eq('id', b.closest('.drow').dataset.id); const i = all.findIndex(x => x.id === b.closest('.drow').dataset.id); all.splice(i,1); render(); })); };
     s.addEventListener('input', render); render();
   }
   async function appsTab(){
@@ -830,7 +872,7 @@ async function dashboardPage(modal){
         <div class="drow__body"><dl class="drow__dl"><dt>Experience</dt><dd>${esc(x.experience||'') || 'Not given'}</dd><dt>Message</dt><dd>${esc(x.message||'') || 'None'}</dd></dl><label class="field"><span>Team notes (private)</span><textarea class="notes" rows="2" placeholder="Auditioned on..., voice part, availability">${esc(x.notes||'')}</textarea></label><div class="row"><button class="btn btn--ghost save">Save notes</button>${can.admin(r) ? '<button class="pill pill--danger del">Delete</button>' : ''}</div></div></details>`).join('') || `<div class="empty"><h3>No ${st ? APP_STATUS[st].toLowerCase() : ''} applications</h3><p>Applications from the Join page land here.</p></div>`;
       $$('.status', list).forEach(sel => sel.addEventListener('change', async () => { const id = sel.closest('.drow').dataset.id; const { error } = await sb.from('applications').update({ status: sel.value, reviewed_by: profile.id }).eq('id', id); if (error) toast(friendly(error), false); else { all.find(x => x.id === id).status = sel.value; toast('Status updated.'); $$('.chip', panel).forEach(b => { const i = $('i', b); if (i) i.textContent = count(b.dataset.s); }); } }));
       $$('.save', list).forEach(b => b.addEventListener('click', async e => { e.preventDefault(); const d = b.closest('.drow'); const { error } = await sb.from('applications').update({ notes: $('.notes', d).value }).eq('id', d.dataset.id); toast(error ? friendly(error) : 'Notes saved.', !error); }));
-      $$('.del', list).forEach(b => b.addEventListener('click', async e => { e.preventDefault(); if (!confirm('Delete this application?')) return; const id = b.closest('.drow').dataset.id; await sb.from('applications').delete().eq('id', id); all.splice(all.findIndex(x => x.id === id), 1); render(); })); };
+      $$('.del', list).forEach(b => b.addEventListener('click', async e => { e.preventDefault(); const x = all.find(y => y.id === b.closest('.drow').dataset.id); if (!(await sure({ title: 'Delete this application?', body: `${x ? x.name + "'s application and the team notes on it are" : 'The application is'} removed. This cannot be undone.`, ok: 'Delete', danger: true, from: b }))) return; const id = b.closest('.drow').dataset.id; await sb.from('applications').delete().eq('id', id); all.splice(all.findIndex(x => x.id === id), 1); render(); })); };
     s.addEventListener('input', render); render();
   }
   async function teamTab(){
@@ -854,7 +896,7 @@ async function dashboardPage(modal){
           editing = null; members = await load(); render(); toast('Team updated.'); } catch (err){ status.textContent = friendly(err); status.className = 'cmp__status is-err'; } });
       $('.cancel', f)?.addEventListener('click', () => { editing = null; render(); });
       $$('.edit', list).forEach(b => b.addEventListener('click', () => { editing = members.find(m => m.id === b.closest('.drow').dataset.id); render(); scrollTo({ top: panel.offsetTop - 100, behavior:'smooth' }); }));
-      $$('.del', list).forEach(b => b.addEventListener('click', async () => { const m = members.find(x => x.id === b.closest('.drow').dataset.id); if (!confirm(`Remove ${m.name} from the team page?`)) return; const { error } = await sb.from('team_members').delete().eq('id', m.id); if (error) toast(friendly(error), false); else { members = await load(); render(); } }));
+      $$('.del', list).forEach(b => b.addEventListener('click', async () => { const m = members.find(x => x.id === b.closest('.drow').dataset.id); if (!(await sure({ title: `Remove ${m.name} from the team page?`, body: 'They will no longer show on the Worship Connect team page. You can add them again later.', ok: 'Remove', danger: true, from: b }))) return; const { error } = await sb.from('team_members').delete().eq('id', m.id); if (error) toast(friendly(error), false); else { members = await load(); render(); } }));
       const move = async (id, dir) => { const i = members.findIndex(m => m.id === id), j = i + dir; if (j < 0 || j >= members.length) return; [members[i], members[j]] = [members[j], members[i]]; await Promise.all(members.map((m, k) => sb.from('team_members').update({ sort: k }).eq('id', m.id))); render(); };
       $$('.up', list).forEach(b => b.addEventListener('click', () => move(b.closest('.drow').dataset.id, -1))); $$('.down', list).forEach(b => b.addEventListener('click', () => move(b.closest('.drow').dataset.id, 1))); };
     render();
@@ -883,13 +925,13 @@ async function dashboardPage(modal){
           <div class="row"><button type="button" class="pill lrow__view">Preview</button><a class="pill" href="${esc(kit.pub(i.path))}" target="_blank" rel="noopener">Open</a>${canDel ? '<button type="button" class="pill pill--danger del">Delete</button>' : ''}</div></div>`; }).join('')
         || `<p class="sub">${items.length ? 'Nothing matches. Try another word or type.' : 'The Upper Room is empty. Upload the first book, notes or slides.'}</p>`;
       $$('.lrow__thumb, .lrow__view', list).forEach(b => b.addEventListener('click', () => kit.preview(items.find(x => x.id === b.closest('.drow').dataset.id))));
-      $$('.del', list).forEach(b => b.addEventListener('click', async () => { b.disabled = true; if (await kit.remove(items.find(x => x.id === b.closest('.drow').dataset.id))) load(); else b.disabled = false; })); }
+      $$('.del', list).forEach(b => b.addEventListener('click', async () => { if (b.disabled) return; b.disabled = true; if (await kit.remove(items.find(x => x.id === b.closest('.drow').dataset.id), b)) load(); else b.disabled = false; })); }
     search.addEventListener('input', render); load();
   }
   async function blogsTab(){
     const { data } = await sb.from('blogs').select('id, title, slug, published, published_at, created_at, author:member_cards!author_id(full_name)').order('created_at', { ascending:false }).limit(100);
     panel.innerHTML = `<div class="row mb-2"><a class="btn" href="/blog?new=1">Write a post</a></div><div class="dash__list">${(data||[]).map(b => `<div class="drow" data-id="${b.id}"><div><b>${esc(b.title)}</b><span>${b.published ? 'Published ' + esc(when(b.published_at)) : 'Draft'} &middot; ${esc(b.author?.full_name||'')}</span></div><div class="row"><a class="pill" href="/blog?post=${esc(b.slug)}">Open</a>${can.admin(r) ? '<button class="pill pill--danger del">Delete</button>' : ''}</div></div>`).join('') || '<p class="sub">No blog posts yet.</p>'}</div>`;
-    $$('.del', panel).forEach(b => b.addEventListener('click', async () => { if (!confirm('Delete this blog post?')) return; const { error } = await sb.from('blogs').delete().eq('id', b.closest('.drow').dataset.id); if (error) toast(friendly(error), false); else blogsTab(); }));
+    $$('.del', panel).forEach(b => b.addEventListener('click', async () => { if (!(await sure({ title: 'Delete this blog post?', body: `"${((data || []).find(x => x.id === b.closest('.drow').dataset.id) || {}).title || 'This post'}" comes off the blog, with its comments. This cannot be undone.`, ok: 'Delete', danger: true, from: b }))) return; const { error } = await sb.from('blogs').delete().eq('id', b.closest('.drow').dataset.id); if (error) toast(friendly(error), false); else blogsTab(); }));
   }
   async function usersTab(){
     panel.innerHTML = `<div class="dash__toolbar"><input class="dash__search" placeholder="Search by name or email" aria-label="Search users"><select class="rolesel dash__rolefilter"><option value="">All roles</option>${Object.entries(ROLES).map(([k,v]) => `<option value="${k}">${v.label}</option>`).join('')}</select></div><div class="dash__list"></div>`;
@@ -911,7 +953,7 @@ async function dashboardPage(modal){
         const name = (c.target && c.target.name) || u.full_name || '', email = (c.target && c.target.email) || u.email || '', m = c.moves || {};
         const parts = [m.posts ? plural(m.posts, 'post', 'posts') : '', m.blogs ? plural(m.blogs, 'blog', 'blogs') : '', m.library ? plural(m.library, 'library file', 'library files') : ''].filter(Boolean);
         const moves = parts.length ? ` Their ${andList(parts)} ${parts.length === 1 && /^1 /.test(parts[0]) ? 'moves' : 'move'} to you.` : '';
-        if (!confirm(`Delete ${name ? `${name} (${email})` : email}?${moves} Their registrations and applications stay with the church without their account link. Their profile, comments and likes are removed. To come back they will need to create a new account. This cannot be undone.`)) return;
+        if (!(await sure({ title: `Delete ${name ? `${name} (${email})` : email}?`, body: `${moves.trim() ? moves.trim() + ' ' : ''}Their registrations and applications stay with the church without their account link. Their profile, comments and likes are removed. To come back they will need to create a new account. This cannot be undone.`, ok: 'Delete account', danger: true, from: b }))) return;
         b.textContent = 'Deleting...'; await usersFn({ action:'delete', user_id:u.id });
         data.splice(data.indexOf(u), 1); busy = false; render(); toast(`${name || email}'s account was deleted.`);
       } catch (e){ toast(e.message, false); if (e.status === 502) usersTab(); }   /* 502: not deleted, but already a Member with their content moved, so reload the list */
@@ -993,7 +1035,7 @@ async function accountPage(modal){
       if (!m){ st.innerHTML = 'Not connected. <a class="link" href="https://mazar.ccfczambia.org/?account=connect" target="_blank" rel="noopener">Connect in Mazar</a>'; list.innerHTML = ''; return; }
       st.textContent = 'Connected';
       list.innerHTML = `<div class="drow"><div><b>${esc(m.name || 'Your Mazar account')}</b><span>${m.linked_at ? 'Connected ' + esc(when(m.linked_at)) : ''}</span></div><div class="row"><a class="pill" href="https://mazar.ccfczambia.org" target="_blank" rel="noopener">Open Mazar</a><button class="pill pill--danger" data-unlink>Disconnect</button></div></div>`;
-      $$('[data-unlink]', list).forEach(b => b.addEventListener('click', async () => { if (!confirm('Disconnect Mazar from your church account? Your Mazar account and conversations stay as they are.')) return; try { await mazarFn('ccfc-disconnect'); toast('Disconnected from Mazar.'); loadApps(); } catch (e){ toast(e.message, false); } })); };
+      $$('[data-unlink]', list).forEach(b => b.addEventListener('click', async () => { if (!(await sure({ title: 'Disconnect Mazar from your church account?', body: 'Your Mazar account and conversations stay as they are. You can connect again any time.', ok: 'Disconnect', danger: true, from: b }))) return; try { await mazarFn('ccfc-disconnect'); toast('Disconnected from Mazar.'); loadApps(); } catch (e){ toast(e.message, false); } })); };
     loadApps();
     const file = $('.acct__camera input', app); const pick = () => file.click();
     $('.acct__pick', app).addEventListener('click', pick); $('.acct__camera', app).addEventListener('click', e => { e.preventDefault(); pick(); });
