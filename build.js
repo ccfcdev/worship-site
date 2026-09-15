@@ -175,7 +175,10 @@ const notFound = { file:'404.html', title:'Page not found', og:'worship-1', noin
   </ul>
 </div></section>` };
 const pages = [home, videos, latest, team, join, notFound];
-for (const p of pages){ SEO.lint(p, WSEO[p.file][0], WSEO[p.file][1]); const html = SEO.clean(layout(p)); if (/[—–]/.test(html)) { console.error('dash in', p.file); process.exit(1); } fs.writeFileSync(path.join(__dirname, p.file), html); }
+/* page editor: text, photos, links and sections the Master Admin changed through Mazar Prime are baked into the HTML */
+const PAGE_CONTENT = SEO.loadPageContent('worship'), CONTENT_MAP = [];
+for (const p of pages){ SEO.lint(p, WSEO[p.file][0], WSEO[p.file][1]); const html = SEO.editable(SEO.clean(layout(p)), { site:'worship', file:p.file, origin:ORIGIN, overrides:PAGE_CONTENT, map:CONTENT_MAP }); if (/[—–]/.test(html)) { console.error('dash in', p.file); process.exit(1); } fs.writeFileSync(path.join(__dirname, p.file), html); }
+SEO.writeContentMap(__dirname, CONTENT_MAP, PAGE_CONTENT);
 fs.writeFileSync(path.join(__dirname, 'sitemap.xml'), SEO.sitemapXml(ORIGIN, pages.map(p => Object.assign({ priority: { 'videos.html':'0.9', 'join.html':'0.8', 'team.html':'0.7' }[p.file], changefreq: ['index.html','latest.html','videos.html'].includes(p.file) ? 'weekly' : 'monthly' }, p))));
 fs.writeFileSync(path.join(__dirname, 'robots.txt'), SEO.robotsTxt(ORIGIN));
 fs.writeFileSync(path.join(__dirname, 'site.webmanifest'), SEO.manifestJson({ name: 'Worship Connect', short: 'Worship Connect', themeColor: '#0A0A0B', background: '#0A0A0B' }));

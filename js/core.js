@@ -695,11 +695,13 @@ async function dashboardPage(modal){
   async function assistantTab(){
     const EP = CFG.adminEndpoint, KEY = PRIME_KEY + profile.id, RAIL = 'mazar-prime:rail';
     const SITE_NAME = { ccfc: 'Church', koinonia: 'Koinonia', worship: 'Worship Connect' };
-    const TOOL = { set_setting: 'Site text', create_post: 'New post', update_post: 'Edit post', delete_post: 'Delete post', create_announcement: 'Announcement', update_announcement: 'Announcement', delete_announcement: 'Announcement', upsert_team_member: 'Team', remove_team_member: 'Team', set_application_status: 'Application' };
+    const TOOL = { set_setting: 'Site text', create_post: 'New post', update_post: 'Edit post', delete_post: 'Delete post', create_announcement: 'Announcement', update_announcement: 'Announcement', delete_announcement: 'Announcement', upsert_team_member: 'Team', remove_team_member: 'Team', set_application_status: 'Application',
+      set_page_text: 'Page text', set_page_image: 'Photo', set_page_link: 'Link', set_section_visible: 'Section', reset_page_content: 'Undo edit' };
     const svg = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
     const PI = {
       plus: svg('<path d="M12 5v14M5 12h14"/>'), rail: svg('<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/>'), menu: svg('<path d="M4 7h16M4 12h16M4 17h10"/>'),
       full: svg('<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>'), shrink: svg('<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>'), trash: svg('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>'),
+      clip: svg('<path d="M20.5 11.2l-8.4 8.4a5.3 5.3 0 0 1-7.5-7.5l8.9-8.9a3.6 3.6 0 0 1 5.1 5.1l-8.9 8.9a1.8 1.8 0 0 1-2.5-2.5l8.2-8.2"/>'),
       send: svg('<path d="M12 19V5M6 11l6-6 6 6"/>'), edit: svg('<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/>'), pulse: svg('<path d="M3 12h4l3-7 4 14 3-7h4"/>'), book: svg('<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5M9 7h6"/>'),
     };
     const GROUPS = [
@@ -712,7 +714,11 @@ async function dashboardPage(modal){
     const hr = new Date().getHours(), hello = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening';
 
     /* ---- conversations (this device) ---- */
-    const load = () => { try { const v = JSON.parse(localStorage.getItem(KEY) || '[]'); return (Array.isArray(v) ? v : []).filter(c => c && c.id && Array.isArray(c.log)).map(c => ({ ...c, history: Array.isArray(c.history) ? c.history : [] })); } catch (_) { return []; } };
+    /* what a conversation has read that other people wrote: 'submissions' (public forms) is stronger than 'content'
+       (posts, search results). The server says what each answer read; the conversation keeps the strongest and sends it
+       back, so a page change asked for later in the same conversation is still refused or flagged. New conversation resets it. */
+    const stronger = (a, b) => a === 'submissions' || b === 'submissions' ? 'submissions' : a === 'content' || b === 'content' ? 'content' : null;
+    const load = () => { try { const v = JSON.parse(localStorage.getItem(KEY) || '[]'); return (Array.isArray(v) ? v : []).filter(c => c && c.id && Array.isArray(c.log)).map(c => ({ ...c, history: Array.isArray(c.history) ? c.history : [], untrusted: stronger(c.untrusted, null) })); } catch (_) { return []; } };
     const save = () => { try { localStorage.setItem(KEY, JSON.stringify(convos.filter(c => c.log.length).slice(0, 30).map(c => ({ ...c, log: c.log.slice(-60), history: c.history.slice(-24) })))); } catch (_) {} };
     const fresh = () => ({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), title: 'New conversation', t: Date.now(), site, log: [], history: [] });
     let convos = load(), cur = fresh(); convos.unshift(cur);
@@ -745,7 +751,7 @@ async function dashboardPage(modal){
             <div class="mzp__starts">${GROUPS.map(([ic, h, s, xs]) => `<div class="mzp__group"><h4>${ic}${esc(h)}</h4><small>${esc(s)}</small>${xs.map(x => `<button type="button">${esc(x)}</button>`).join('')}</div>`).join('')}</div>
           </div>
         </div>
-        <form class="mz__form mzp__form"><textarea name="q" rows="1" placeholder="${EP ? (innerWidth <= 640 ? 'Ask Mazar Prime...' : 'Ask Mazar Prime to change, check or write something...') : 'Mazar Prime is not configured (js/config.js adminEndpoint)'}" aria-label="Instruction for Mazar Prime" maxlength="4000"></textarea><button class="mz__send" type="submit" aria-label="Send">${PI.send}</button></form>
+        <form class="mz__form mzp__form"><div class="mzp__atts" hidden></div>${EP ? `<button class="mzp__attach" type="button" aria-label="Attach a photo" title="Attach a photo for a page (JPG, PNG or WebP, up to 5 MB)">${PI.clip}</button><input class="mzp__file" type="file" accept="image/jpeg,image/png,image/webp" hidden>` : ''}<textarea name="q" rows="1" placeholder="${EP ? (innerWidth <= 640 ? 'Ask Mazar Prime...' : 'Ask Mazar Prime to change, check or write something...') : 'Mazar Prime is not configured (js/config.js adminEndpoint)'}" aria-label="Instruction for Mazar Prime" maxlength="4000"></textarea><button class="mz__send" type="submit" aria-label="Send">${PI.send}</button></form>
         <p class="mzp__fine"><span>Enter to send. Shift and Enter for a new line.</span><span>Every applied change is logged under your name.</span></p>
       </div></section>`;
 
@@ -767,13 +773,43 @@ async function dashboardPage(modal){
 
     /* ---- messages ---- */
     const verse = a => a && a.reference ? `<div class="mz-card mz-card--verse"><span class="mz-card__k">${esc(a.reference)} <i>${esc(a.translation || '')}</i></span><blockquote>${esc(a.text)}</blockquote></div>` : '';
+    /* a page step's exact before and after: every word (changes highlighted), every link target with its host (off-site in
+       red), both photos, and a section's visibility. Plans saved before this carry no diff and show their summary only. */
+    const pieces = s => String(s).split(/(\s+)/).filter(Boolean);
+    const wordDiff = (a, b) => { const A = pieces(a), B = pieces(b), n = A.length, m = B.length;
+      if (n * m > 400000) return [esc(a), esc(b)];
+      const T = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
+      for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) T[i][j] = A[i] === B[j] ? T[i + 1][j + 1] + 1 : Math.max(T[i + 1][j], T[i][j + 1]);
+      let i = 0, j = 0, x = '', y = '';
+      while (i < n || j < m){
+        if (i < n && j < m && A[i] === B[j]){ x += esc(A[i++]); y += esc(B[j++]); }
+        else if (j >= m || (i < n && T[i + 1][j] >= T[i][j + 1])){ const t = A[i++]; x += /^\s+$/.test(t) ? esc(t) : `<del>${esc(t)}</del>`; }
+        else { const t = B[j++]; y += /^\s+$/.test(t) ? esc(t) : `<ins>${esc(t)}</ins>`; } }
+      return [x, y]; };
+    const hrefChip = h => { const w = pageHref(h); return `<span class="mzp__href${w.off ? ' is-off' : ''}"><code>${esc(h)}</code><em>${esc(w.where)}${w.off ? ', off-site' : ''}</em></span>`; };
+    const linksIn = t => [...String(t || '').matchAll(/\[([^\[\]\n]{1,300})\]\(([^()\s]{1,500})\)/g)].map(k => ({ label: k[1], href: k[2] }));
+    const photoUrl = (src, s) => PAGE_PHOTO.test(src) ? src : (/^\/assets\/[A-Za-z0-9_.\/-]+(\?v=[A-Za-z0-9._-]+)?$/.test(src) && !/\.\.|\/\//.test(src) && SITES[s]) ? SITES[s].origin + src : '';
+    const diffHtml = x => { const d = x.diff; if (!d || typeof d !== 'object' || !d.before || !d.after || typeof d.before !== 'object' || typeof d.after !== 'object') return '';
+      const s = x.args && x.args.site, row = (k, v, cls = '') => `<div class="mzp__dr${cls}"><span class="mzp__dk">${k}</span><div class="mzp__dv">${v}</div></div>`;
+      const said = v => v.label != null ? `<b>${esc(v.label)}</b>` : '';
+      switch (d.kind){
+        case 'text': { const [b, a] = wordDiff(d.before.text || '', d.after.text || ''), lb = linksIn(d.before.text), la = linksIn(d.after.text);
+          const moved = la.some(l => !lb.some(o => o.href === l.href)) || lb.some(o => !la.some(l => l.href === o.href));
+          return `<div class="mzp__diff">${row('Now', `<p class="mzp__dt">${b}</p>`)}${row('New', `<p class="mzp__dt">${a}</p>`)}${la.length || lb.length ? row(moved ? 'Links changed' : 'Links', la.length ? la.map(l => `<span class="mzp__lk"><b>${esc(l.label)}</b>${hrefChip(l.href)}</span>`).join('') : '<small>No links after this change</small>', moved ? ' is-chg' : '') : ''}</div>`; }
+        case 'link': return `<div class="mzp__diff">${row('Now', `${said(d.before)}${hrefChip(d.before.href)}`)}${row('New', `${said(d.after)}${hrefChip(d.after.href)}`, d.before.href !== d.after.href ? ' is-chg' : '')}</div>`;
+        case 'image': { const fig = v => { const u = photoUrl(v.src, s); return `<figure class="mzp__ph">${u ? `<img src="${esc(u)}" alt="" loading="lazy">` : '<span class="mzp__ph-none">No preview</span>'}<figcaption><code>${esc(v.src)}</code><span>${v.alt ? esc(v.alt) : 'No description'}</span></figcaption></figure>`; };
+          return `<div class="mzp__diff">${row('Now', fig(d.before))}${row('New', fig(d.after), ' is-chg')}</div>`; }
+        case 'section': { const pill = v => `<span class="mzp__vis ${v ? 'is-on' : 'is-off'}">${v ? 'Visible' : 'Hidden'}</span>`;
+          return `<div class="mzp__diff">${row('Section', `${pill(d.before.visible !== false)}<span class="mzp__to" aria-label="becomes">&rarr;</span>${pill(d.after.visible !== false)}`)}</div>`; }
+      }
+      return ''; };
     const planHtml = (p, id) => { const n = p.steps.length, res = p.results || [];
       const head = p.status === 'applied' ? `Applied <span>${res.filter(x => x.ok).length} of ${n} done</span>` : p.status === 'discarded' ? 'Discarded <span>Nothing was changed</span>' : livePlans.has(id) ? `Plan <span>${n} change${n > 1 ? 's' : ''}, waiting for your approval</span>` : 'Plan <span>Not applied</span>';
-      const steps = p.steps.map((x, i) => { const r = res[i]; return `<li class="${r ? (r.ok ? 'is-ok' : 'is-err') : ''}"><span class="mzp__tag">${esc(TOOL[x.tool] || 'Change')}</span><span class="mzp__sum">${esc(x.summary || x.tool)}</span>${r ? `<span class="mzp__res">${r.ok ? (r.detail === 'already done' ? 'Already done' : 'Done') : 'Failed: ' + esc(String(r.detail || ''))}</span>` : ''}</li>`; }).join('');
+      const steps = p.steps.map((x, i) => { const r = res[i]; return `<li class="${r ? (r.ok ? 'is-ok' : 'is-err') : ''}"><span class="mzp__tag">${esc(TOOL[x.tool] || 'Change')}</span><span class="mzp__sum">${esc(x.summary || x.tool)}</span>${r ? `<span class="mzp__res">${r.ok ? (r.detail === 'already done' ? 'Already done' : 'Done') : 'Failed: ' + esc(String(r.detail || ''))}</span>` : ''}${diffHtml(x)}</li>`; }).join('');
       const foot = p.status === 'pending' ? (livePlans.has(id) ? `<button class="mz-chip mz-chip--gold" type="button" data-plan="apply">Apply ${n} change${n > 1 ? 's' : ''}</button><button class="mz-chip" type="button" data-plan="discard">Discard</button><small>Nothing changes until you apply</small>` : '<small>Plans are not kept between visits. Ask again for a fresh plan.</small>') : '';
-      return `<div class="mzp__plan is-${p.status}" data-id="${id}"><div class="mzp__plan-h">${head}</div><ol class="mzp__steps">${steps}</ol>${foot ? `<div class="mzp__plan-f">${foot}</div>` : ''}</div>`; };
+      return `<div class="mzp__plan is-${p.status}" data-id="${id}"><div class="mzp__plan-h">${head}</div>${p.notice ? `<p class="mzp__notice" role="note">${esc(p.notice)}</p>` : ''}<ol class="mzp__steps">${steps}</ol>${foot ? `<div class="mzp__plan-f">${foot}</div>` : ''}</div>`; };
     const render = (m, i) => { const el = document.createElement('div'); el.className = 'mz-msg is-' + (m.who === 'user' ? 'user' : 'bot'); el.dataset.i = i;
-      if (m.who === 'user') el.innerHTML = `<div class="mz-msg__body">${esc(m.text)}</div>`;
+      if (m.who === 'user') el.innerHTML = `<div class="mz-msg__body">${esc(m.text)}${m.photo && PAGE_PHOTO.test(m.photo) ? `<img class="mzp__sent" src="${esc(m.photo)}" alt="Attached photo" loading="lazy">` : ''}</div>`;
       else el.innerHTML = `<span class="mz-msg__mark">${primeMark()}</span><div class="mz-msg__body">${m.who === 'err' ? `<p class="mzp__err">${esc(m.text)}</p>` : `<div class="mz-rich">${rich(m.text)}</div>`}${(m.actions || []).map(verse).join('')}${m.plan ? planHtml(m.plan, cur.id + ':' + i) : ''}${m.engine ? `<div class="mzp__meta"><span>via ${esc(m.engine)}</span></div>` : ''}</div>`;
       return el; };
     const paintLog = () => { $$('.mz-msg', log).forEach(n => n.remove()); cur.log.forEach((m, i) => log.appendChild(render(m, i))); setHistory(cur.log.length > 0); if (cur.log.length) scrollEnd(); else log.scrollTop = 0; };
@@ -806,12 +842,14 @@ async function dashboardPage(modal){
     let busy = false;
     const setBusy = (on, text) => { busy = on; root.classList.toggle('is-busy', on); status.textContent = text; };
     const call = async body => { const { data: { session: s } } = await sb.auth.getSession(); if (!s) throw new Error('Your sign-in has expired. Please sign in again.'); const r = await fetch(EP, { method:'POST', headers:{ 'Content-Type':'application/json', apikey: CFG.supabaseKey, Authorization: 'Bearer ' + s.access_token }, body: JSON.stringify(Object.assign({ site }, body)) }); const j = await r.json().catch(() => ({})); if (!r.ok || j.error) throw new Error(j.error || ('HTTP ' + r.status)); return j; };
-    const ask = async q => { if (busy || !EP || !q) return; const conv = cur; setBusy(true, 'Working...');
-      push({ who: 'user', text: q }); conv.history.push({ role: 'user', content: q }); mood('think');
+    /* the model gets an attached photo as its public address, so it can propose set_page_image with it */
+    const ask = async (q, photo = null) => { if (busy || !EP || !q) return; const conv = cur; setBusy(true, 'Working...');
+      push(photo ? { who: 'user', text: q, photo } : { who: 'user', text: q }); conv.history.push({ role: 'user', content: photo ? `${q}\n\n[Attached photo: ${photo}]` : q }); mood('think');
       const t = document.createElement('div'); t.className = 'mz-msg is-bot'; t.innerHTML = `<span class="mz-msg__mark">${primeMark()}</span><div class="mz-msg__body"><span class="mz-think"><i></i><i></i><i></i></span><small class="mzp__muted">Looking at the sites</small></div>`; log.appendChild(t); scrollEnd();
-      try { const ans = await call({ messages: conv.history.slice(-14) }); t.remove();
+      try { const ans = await call(Object.assign({ messages: conv.history.slice(-14) }, conv.untrusted ? { untrusted: conv.untrusted } : {})); t.remove();
+        conv.untrusted = stronger(conv.untrusted, ans.untrusted);
         const m = { who: 'bot', text: ans.text || '', actions: ans.actions || [], engine: ans.engine || '' };
-        if (ans.plan && ans.plan.length){ m.plan = { steps: ans.plan.map(x => ({ tool: x.tool, args: x.args, summary: x.summary })), status: 'pending', instruction: q }; livePlans.add(conv.id + ':' + conv.log.length); }
+        if (ans.plan && ans.plan.length){ m.plan = { steps: ans.plan.map(x => Object.assign({ tool: x.tool, args: x.args, summary: x.summary }, x.diff ? { diff: x.diff } : {})), status: 'pending', instruction: q, ...(ans.planNotice ? { notice: String(ans.planNotice) } : {}) }; livePlans.add(conv.id + ':' + conv.log.length); }
         mood('speak'); push(m, conv); conv.history.push({ role: 'assistant', content: m.text }); save(); engineOn(m.engine); setTimeout(() => mood('idle'), 900);
         setBusy(false, m.engine ? 'Ready. Last answer by ' + m.engine.replace(/ \(.*\)$/, '') : 'Ready'); }
       catch (e){ t.remove(); push({ who: 'err', text: e.message }, conv); mood('error'); setTimeout(() => mood('idle'), 900); setBusy(false, 'Ready'); }
@@ -823,12 +861,38 @@ async function dashboardPage(modal){
         m.plan.status = 'applied'; m.plan.results = (results || []).map(x => ({ ok: !!x.ok, detail: x.ok ? (x.detail === 'already done' ? 'already done' : '') : String(x.detail || '') })); livePlans.delete(card.dataset.id);
         /* the note carries each step's summary so Mazar Prime knows exactly what is now live and never proposes it again */
         cur.history.push({ role: 'user', content: '[The admin applied the plan. Results: ' + (results || []).map((x, j) => `${x.ok ? (x.detail === 'already done' ? 'already done' : 'done') : 'failed'}: ${(m.plan.steps[j] && m.plan.steps[j].summary) || x.tool}`).join('; ') + ']' }); save(); repaint(i); scrollEnd();
-        applySettings(); const bad = m.plan.results.filter(x => !x.ok).length; toast(bad ? `${bad} change${bad > 1 ? 's' : ''} failed. See the plan for details.` : 'Changes applied.', !bad); if (fig) fig.joy(); mood('idle'); setBusy(false, 'Ready'); }
+        applySettings(); applyPageContent(); const bad = m.plan.results.filter(x => !x.ok).length; toast(bad ? `${bad} change${bad > 1 ? 's' : ''} failed. See the plan for details.` : 'Changes applied.', !bad); if (fig) fig.joy(); mood('idle'); setBusy(false, 'Ready'); }
       catch (err){ $$('[data-plan]', card).forEach(x => { x.disabled = false; }); b.textContent = 'Apply'; toast(err.message, false); mood('error'); setTimeout(() => mood('idle'), 900); setBusy(false, 'Ready'); } });
 
     const grow = () => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 180) + 'px'; };
     ta.addEventListener('input', () => { grow(); if (!busy) mood(ta.value ? 'listen' : 'idle'); });
-    form.addEventListener('submit', e => { e.preventDefault(); const q = ta.value.trim(); if (!q || busy) return; ta.value = ''; grow(); ask(q); });
+    /* ---- a photo for the page editor: JPG, PNG or WebP up to 5 MB, uploaded with the admin's own sign-in to the site-photos bucket, <site>/<uuid>.<ext> ---- */
+    let att = null; const attBox = $('.mzp__atts', form), fileIn = $('.mzp__file', form);
+    const paintAtt = () => { attBox.hidden = !att; attBox.innerHTML = att ? `<span class="mzp__att${att.status === 'up' ? ' is-up' : att.status === 'err' ? ' is-err' : ''}"><img src="${esc(att.thumb)}" alt=""><span class="mzp__att-t"><b>${esc(att.name)}</b><small>${att.status === 'up' ? 'Uploading...' : att.status === 'err' ? esc(att.error) : 'Attached. Say where it goes.'}</small></span><button type="button" class="mzp__att-x" aria-label="Remove the photo">${ICO.x}</button></span>` : ''; };
+    const dropAtt = () => { if (att && att.thumb) URL.revokeObjectURL(att.thumb); att = null; paintAtt(); };
+    const attach = async file => {
+      if (!file || busy) return;
+      const ext = PHOTO_TYPES[file.type];
+      if (!ext){ toast('Photos for the pages must be JPG, PNG or WebP.', false); return; }
+      if (file.size > PHOTO_MAX){ toast(`That photo is ${fmtBytes(file.size)}. Please choose one under 5 MB.`, false); return; }
+      dropAtt(); const me = att = { name: file.name, thumb: URL.createObjectURL(file), status: 'up' }; paintAtt();
+      const id = (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2)).replace(/[^a-z0-9-]/gi, '');
+      const path = `${site}/${id}.${ext}`;
+      try { const { error } = await sb.storage.from('site-photos').upload(path, file, { contentType: file.type, upsert: false, cacheControl: '31536000' }); if (error) throw error;
+        const url = sb.storage.from('site-photos').getPublicUrl(path).data.publicUrl; if (!PAGE_PHOTO.test(url)) throw new Error('The photo was stored somewhere unexpected.');
+        if (att === me){ me.status = 'ok'; me.url = url; } }
+      catch (err){ if (att === me){ me.status = 'err'; me.error = friendly(err); } }
+      if (att === me){ paintAtt(); if (me.status === 'ok' && innerWidth > 900) ta.focus({ preventScroll: true }); } };
+    if (fileIn){
+      $('.mzp__attach', form).addEventListener('click', () => { if (!busy) fileIn.click(); });
+      fileIn.addEventListener('change', () => { attach(fileIn.files[0]); fileIn.value = ''; });
+      attBox.addEventListener('click', e => { if (e.target.closest('.mzp__att-x')) dropAtt(); });
+      ta.addEventListener('paste', e => { const f = [...((e.clipboardData && e.clipboardData.files) || [])].find(x => /^image\//.test(x.type)); if (f){ e.preventDefault(); attach(f); } });
+    }
+    form.addEventListener('submit', e => { e.preventDefault(); if (busy) return; const q = ta.value.trim();
+      if (att && att.status === 'up'){ toast('The photo is still uploading.', false); return; }
+      const photo = att && att.status === 'ok' ? att.url : null; if (!q && !photo) return;
+      ta.value = ''; grow(); if (att) dropAtt(); ask(q || 'Use the attached photo on the site.', photo); });
     ta.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing){ e.preventDefault(); form.requestSubmit(); } });
     $$('.mzp__group button', hi).forEach(b => b.addEventListener('click', () => ask(b.textContent)));
     paintSide(); paintLog();
@@ -1147,9 +1211,177 @@ async function applySettings(){ if (!ready) return; try {
   else if (bar) bar.remove();
 } catch (_) {} }
 
+/* ================================================================ PAGE EDITOR (text, photos, links and sections changed through Mazar Prime)
+   build-shared.js editable() tags the public pages with data-edit="<page>:<kind>:<hash>" and bakes the changes stored
+   in public.page_content into the HTML. This applies what changed since the last build, and puts back the original
+   where a change was undone (data-edit-default, written by the build). Stored values never become HTML: text is
+   built from text nodes and a few safe elements, and links and photos must pass the same allowlist as the database.
+   The child rules (decoration, inline markup, {n} pieces) mirror build-shared.js; change both together.
+   ?edit=1 on any page, for the Master Administrator only: every editable piece is outlined, and clicking one copies
+   its key with a ready sentence for Mazar Prime. Hidden sections show dimmed. */
+const PAGE_SITES = ['ccfc', 'koinonia', 'worship'];
+const PAGE_PHOTO = /^https:\/\/dcqydtkjzgilyjnjyisb\.supabase\.co\/storage\/v1\/object\/public\/site-photos\/(ccfc|koinonia|worship)\/[A-Za-z0-9_-]{1,80}\.(jpe?g|png|webp)$/;
+const PHOTO_TYPES = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }, PHOTO_MAX = 5 * 1024 * 1024;
+/* where a link goes, in words, for the plan card: this site, email, phone, a church host, or off-site */
+const pageHref = h => { const s = String(h || '');
+  if (/^mailto:/i.test(s)) return { where: 'email', off: false }; if (/^tel:/i.test(s)) return { where: 'phone', off: false };
+  if (/^[\/#]/.test(s) && !/^\/\//.test(s)) return { where: 'this site', off: false };
+  if (!/^https:\/\/[!-~]+$/i.test(s)) return { where: 'not an allowed link', off: true };
+  try { const host = new URL(s).hostname.toLowerCase(); return { where: host, off: !(host === 'ccfczambia.org' || host.endsWith('.ccfczambia.org')) }; } catch (_) { return { where: 'not a valid address', off: true }; } };
+const PE = (() => {
+  /* printable ASCII only: no look-alike hosts */
+  const href = h => typeof h === 'string' && h.length <= 500 && !/[^ -~]/.test(h) && /^(https:\/\/[^\s"'<>\\\/][^\s"'<>\\]*|\/(?![\/\\])[^\s"'<>\\]*|#[A-Za-z0-9_:.-]*|mailto:[^\s"'<>\\]+|tel:\+?[0-9 ()-]{3,30})$/.test(h);
+  const src = s => typeof s === 'string' && s.length <= 500 && !s.includes('..') && ((/^\/assets\/[A-Za-z0-9_.\/-]+\.(webp|jpe?g|png|avif|gif|svg)(\?v=[A-Za-z0-9._-]+)?$/.test(s) && !s.includes('//')) || PAGE_PHOTO.test(s));
+  const DASH = '[' + String.fromCharCode(0x2013, 0x2014) + ']', RANGE = new RegExp('(\\d)\\s*' + DASH + '\\s*(\\d)', 'g'), DASHES = new RegExp('\\s*' + DASH + '\\s*', 'g');
+  const dash = s => String(s ?? '').replace(RANGE, '$1 to $2').replace(DASHES, ', ');
+  const norm = s => String(s).replace(/[^\S\n]+/g, ' ').replace(/ *\n */g, '\n').trim();
+  const spaces = s => String(s).replace(/\s+/g, ' '), blank = s => !/\S/.test(String(s)), tagLike = /<\s*\/?\s*[a-z!]/i;
+  const INLINE = { B: 'b', STRONG: 'b', EM: 'em', I: 'em' }, LIVE = ['data-setting', 'data-cd', 'data-count', 'aria-live'];
+  const BR = { nodeType: 1, tagName: 'BR', textContent: '', attributes: [], childNodes: [], hasAttribute: () => false, getAttribute: () => null, querySelector: () => null, classList: { contains: () => false }, virtual: true };
+  /* a [data-split] heading after js/site.js wrapped its lines: read it as the lines joined by <br> */
+  const isSplit = el => el.hasAttribute('data-split') && el.children.length > 0 && [...el.children].every(c => c.classList.contains('ml')) && [...el.childNodes].every(c => c.nodeType === 1);
+  const kidsOf = el => isSplit(el) ? [...el.children].flatMap((ml, i) => [...(i ? [BR] : []), ...(ml.firstElementChild || ml).childNodes]) : [...el.childNodes];
+  const unsplit = el => { const out = []; [...el.children].forEach((ml, i) => { if (i) out.push(document.createElement('br')); out.push(...(ml.firstElementChild || ml).childNodes); }); el.replaceChildren(...out); };
+  const resplit = el => { const lines = [[]]; [...el.childNodes].forEach(n => n.nodeName === 'BR' ? lines.push([]) : lines[lines.length - 1].push(n));
+    el.replaceChildren(...lines.map(ns => { const ml = document.createElement('span'), s = document.createElement('span'); ml.className = 'ml is-rv'; s.append(...ns); ml.append(s); return ml; })); };
+  const live = el => LIVE.some(a => el.hasAttribute(a)) || el.classList.contains('year');
+  const content = c => c.nodeType === 3 ? !blank(c.data) : c.nodeType === 1 && !(blank(c.textContent) && !(c.tagName === 'IMG' || c.querySelector('img')) && !live(c));
+  const inline = c => { if (c.nodeType !== 1) return null; if (c.tagName === 'BR') return 'br';
+    const plain = c.childNodes.length > 0 && [...c.childNodes].every(x => x.nodeType === 3) && !blank(c.textContent);
+    if (INLINE[c.tagName] && !c.attributes.length && plain) return INLINE[c.tagName];
+    if (c.tagName === 'A' && plain && [...c.attributes].every(a => ['href', 'target', 'rel'].includes(a.name)) && href(c.getAttribute('href'))) return 'a';
+    return null; };
+  const zones = kids => { kids = kids.filter(c => c.nodeType === 3 || c.nodeType === 1); const F = kids.findIndex(content); if (F < 0) return null; let L = kids.length - 1; while (!content(kids[L])) L--; return { kids, F, L }; };
+  const mini = z => { let out = ''; const pieces = [];
+    for (let k = z.F; k <= z.L; k++){ const c = z.kids[k]; if (c.nodeType === 3){ out += spaces(c.data); continue; }
+      const kind = inline(c);
+      if (kind === 'br') out += '\n';
+      else if (kind === 'b' || kind === 'em'){ const t = spaces(c.textContent), mk = kind === 'b' ? '**' : '_'; out += (/^ /.test(t) ? ' ' : '') + mk + t.trim() + mk + (/ $/.test(t) ? ' ' : ''); }
+      else if (kind === 'a') out += `[${spaces(c.textContent).trim()}](${c.getAttribute('href')})`;
+      else { pieces.push(c); out += `{${pieces.length}}`; } }
+    return { text: norm(out), pieces }; };
+  const parse = s => { const out = [], re = /\{(\d{1,2})\}|\n|\[([^\[\]\n]{1,300})\]\(([^()\s]{1,500})\)|\*\*([^*\n]+?)\*\*|_([^_\n]+?)_/g; let last = 0, m;
+    while ((m = re.exec(s))){ if (m.index > last) out.push({ t: 'text', v: s.slice(last, m.index) });
+      if (m[1] !== undefined) out.push({ t: 'piece', n: +m[1] }); else if (m[0] === '\n') out.push({ t: 'br' });
+      else if (m[2] !== undefined) out.push({ t: 'a', v: m[2], href: m[3] }); else if (m[4] !== undefined) out.push({ t: 'b', v: m[4] }); else out.push({ t: 'em', v: m[5] });
+      last = re.lastIndex; }
+    if (last < s.length) out.push({ t: 'text', v: s.slice(last) }); return out; };
+  const external = h => /^https:\/\//i.test(h) && !/^https:\/\/([a-z0-9-]+\.)?ccfczambia\.org(\/|$)/i.test(h);
+  const replaceZone = (el, z, nodes) => { const first = z.kids[z.F], last = z.kids[z.L], out = [...z.kids.slice(0, z.F)];
+    if (first.nodeType === 3 && /^\s/.test(first.data)) out.push(document.createTextNode(' '));
+    out.push(...nodes);
+    if (last.nodeType === 3 && /\s$/.test(last.data)) out.push(document.createTextNode(' '));
+    out.push(...z.kids.slice(z.L + 1)); el.replaceChildren(...out); };
+
+  function text(el, value){
+    const v = norm(dash(value)); if (!v || v.length > 2000 || tagLike.test(v) || parse(v).some(x => (x.t === 'text' && /\]\(/.test(x.v)) || (x.t === 'a' && !href(x.href)))) return;   /* ignored whole, as the build does */
+    let z = zones(kidsOf(el)); if (!z || mini(z).text === v) return;   /* already showing it: nothing moves */
+    const rich = el.hasAttribute('data-edit-rich'), [bTag, emTag] = (el.getAttribute('data-edit-rich') || '').split(' ');
+    const split = isSplit(el); if (split){ unsplit(el); z = zones([...el.childNodes]); if (!z) return; }
+    const { pieces } = mini(z); let nodes;
+    if (!rich) nodes = [document.createTextNode(v)];
+    else { nodes = []; const used = new Set();
+      for (const x of parse(v)){
+        if (x.t === 'text') nodes.push(document.createTextNode(x.v));
+        else if (x.t === 'br') nodes.push(document.createElement('br'));
+        else if (x.t === 'b' || x.t === 'em'){ const t = document.createElement(x.t === 'b' ? (bTag === 'strong' ? 'strong' : 'b') : (emTag === 'i' ? 'i' : 'em')); t.textContent = x.v; nodes.push(t); }
+        else if (x.t === 'a'){ if (!href(x.href)){ nodes.push(document.createTextNode(x.v)); continue; } const a = document.createElement('a'); a.setAttribute('href', x.href); if (external(x.href)){ a.target = '_blank'; a.rel = 'noopener'; } a.textContent = x.v; nodes.push(a); }
+        else { if (x.n < 1 || x.n > pieces.length || used.has(x.n)){ if (split) resplit(el); return; } used.add(x.n); nodes.push(pieces[x.n - 1]); } }
+      if (used.size !== pieces.length){ if (split) resplit(el); return; } }
+    replaceZone(el, z, nodes); if (split) resplit(el);
+  }
+  /* a value with any part out of bounds is ignored whole, exactly as the build does. isDefault: the original written by
+     the build (data-edit-default) being put back; it passes the same link and photo allowlists as a stored change. */
+  const srcsetOk = s => typeof s === 'string' && s.length <= 2000 && s.split(',').every(c => src(c.trim().split(/\s+/)[0]));
+  function image(el, v, isDefault){
+    if (!src(v.src)) return;
+    if (v.alt != null && (typeof v.alt !== 'string' || (!isDefault && (v.alt.length > 300 || tagLike.test(v.alt))))) return;
+    const alt = typeof v.alt === 'string' ? (isDefault ? v.alt : norm(dash(v.alt))) : null;
+    if (el.getAttribute('src') !== v.src){ el.removeAttribute('srcset'); el.removeAttribute('sizes');
+      if (isDefault && srcsetOk(v.srcset)){ el.setAttribute('srcset', v.srcset); if (typeof v.sizes === 'string' && /^[\w\s(),:.%-]{0,300}$/.test(v.sizes)) el.setAttribute('sizes', v.sizes); }
+      el.setAttribute('src', v.src); }
+    if (alt !== null && el.getAttribute('alt') !== alt) el.setAttribute('alt', alt);
+  }
+  function link(el, v, isDefault){
+    const hasHref = v.href != null, hasLabel = v.label != null;
+    if ((hasHref && !href(v.href)) || (hasLabel && (typeof v.label !== 'string' || !norm(v.label) || (!isDefault && (v.label.length > 200 || tagLike.test(v.label))))) || (!hasHref && !hasLabel)) return;
+    const z = zones([...el.childNodes]), zone = z ? z.kids.slice(z.F, z.L + 1) : [];
+    const labelled = !!z && zone.every(c => c.nodeType === 3 || (c.tagName === 'BR' && !c.attributes.length));
+    if (!isDefault && hasLabel && !labelled) return;   /* a link made of several pieces has no single label to change */
+    if (typeof v.href === 'string' && el.getAttribute('href') !== v.href) el.setAttribute('href', v.href);
+    if (typeof v.label !== 'string' || !labelled) return;
+    const label = isDefault ? v.label : norm(dash(v.label));
+    if (norm(zone.map(c => c.nodeType === 3 ? spaces(c.data) : '\n').join('')) === label) return;
+    replaceZone(el, z, label.split('\n').flatMap((l, i) => i ? [document.createElement('br'), document.createTextNode(l)] : [document.createTextNode(l)]));
+  }
+  function apply(el, kind, v, isDefault){
+    if (!v || typeof v !== 'object') return;
+    if (kind === 'text' && typeof v.text === 'string') text(el, v.text);
+    else if (kind === 'image') image(el, v, isDefault);
+    else if (kind === 'link') link(el, v, isDefault);
+    else if (kind === 'section' && typeof v.visible === 'boolean'){ if (el.hasAttribute('data-pe-seen')) el.classList.toggle('pe-hidden', !v.visible); else if (el.hidden !== !v.visible) el.hidden = !v.visible; }
+  }
+  return { apply, text, parse, mini: el => { const z = zones(kidsOf(el)); return z ? mini(z).text : ''; } };
+})();
+const pageEditable = () => !IS_ADMIN && !!window.CCFC_SITE && PAGE_SITES.includes(window.CCFC_SITE.key);
+const PAGE_KEY = /^(site|[a-z0-9][a-z0-9-]{0,60}):(text|image|link|section):[0-9a-f]{8}(-[0-9]{1,3})?$/;
+async function applyPageContent(){
+  if (!pageEditable()) return;
+  /* the elements are taken before waiting on the network, so nothing added to the page later is ever patched */
+  const els = $$('[data-edit]').filter(el => PAGE_KEY.test(el.dataset.edit)); if (!els.length) return;
+  const keys = [...new Set(els.map(el => el.dataset.edit))];
+  let rows = null;   /* stays null when the changes could not be read: then the page keeps what the build baked in */
+  if (ready) try {
+    const parts = await Promise.all(Array.from({ length: Math.ceil(keys.length / 150) }, (_, i) => keys.slice(i * 150, (i + 1) * 150))
+      .map(chunk => sb.from('page_content').select('key, kind, value').eq('site', SITE_KEY).in('key', chunk).limit(chunk.length)));
+    if (parts.every(p => !p.error && Array.isArray(p.data))) rows = parts.flatMap(p => p.data);
+  } catch (_) {}
+  if (!rows) return;
+  const byKey = new Map(rows.map(r => [r.key, r]));
+  for (const el of els){
+    const key = el.dataset.edit, kind = key.split(':')[1], r = byKey.get(key);
+    let v = r && r.kind === kind ? r.value : null, isDefault = false;
+    if (!v && el.hasAttribute('data-edit-default')){ try { v = JSON.parse(el.getAttribute('data-edit-default')); isDefault = true; } catch (_) {} }
+    try { PE.apply(el, kind, v, isDefault); } catch (_) {}
+  }
+}
+function pageEditView(){
+  if ($('.pe-bar')) return;
+  const els = $$('[data-edit]'), site = SITES[SITE_KEY];
+  document.documentElement.classList.add('pe-on');
+  const mark = () => $$('section[data-edit]').forEach(s => { s.setAttribute('data-pe-seen', ''); if (s.hidden){ s.hidden = false; s.classList.add('pe-hidden'); } });
+  mark();
+  const bar = document.createElement('div'); bar.className = 'pe-bar'; bar.setAttribute('role', 'region'); bar.setAttribute('aria-label', 'Page editor');
+  const off = new URL(location.href); off.searchParams.delete('edit');
+  bar.innerHTML = `<b>Page editor</b><span class="pe-bar__t">${els.length} editable pieces. Click one to copy its key for Mazar Prime.</span><button type="button" class="pe-bar__pick" aria-pressed="true">Picking</button><a class="pe-bar__x" href="${esc('/' + off.pathname.replace(/^\/+/, '') + off.search + off.hash)}">Exit</a>`;   /* one leading slash: never a //other-host address */
+  const badge = document.createElement('div'); badge.className = 'pe-badge'; badge.hidden = true; badge.setAttribute('aria-hidden', 'true');
+  document.body.append(bar, badge);
+  let cur = null, picking = true;
+  const kindWord = el => ({ text: /^H\d$/.test(el.tagName) ? 'heading' : el.tagName === 'LI' ? 'list item' : el.tagName === 'P' ? 'paragraph' : el.tagName === 'BUTTON' ? 'button' : 'text', image: 'photo', link: 'link', section: 'section' })[el.dataset.edit.split(':')[1]] || 'piece';
+  const place = el => { cur = el; const r = el.getBoundingClientRect(); badge.textContent = `${kindWord(el)} ${el.dataset.edit}${el.classList.contains('pe-hidden') ? ' (hidden)' : ''}`; badge.hidden = false;
+    badge.style.top = Math.max(bar.offsetHeight + 4, r.top - badge.offsetHeight - 2) + 'px'; badge.style.left = Math.min(innerWidth - badge.offsetWidth - 8, Math.max(8, r.left)) + 'px';
+    $$('.pe-cur').forEach(x => x.classList.remove('pe-cur')); el.classList.add('pe-cur'); };
+  const hint = el => { const key = el.dataset.edit, kind = key.split(':')[1], where = `on ${site.label}`;
+    return kind === 'section' ? `Tell Prime: ${where}, ${el.classList.contains('pe-hidden') ? 'show' : 'hide'} section ${key}`
+      : kind === 'image' ? `Tell Prime: ${where}, change photo ${key} to the attached photo`
+      : kind === 'link' ? `Tell Prime: ${where}, change link ${key} to go to ... and read "..."`
+      : `Tell Prime: ${where}, change ${key} to "..."`; };
+  const copy = async el => { const h = hint(el); let ok = false;
+    try { await navigator.clipboard.writeText(h); ok = true; } catch (_) { const t = document.createElement('textarea'); t.value = h; t.setAttribute('readonly', ''); t.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(t); t.select(); try { ok = document.execCommand('copy'); } catch (__) {} t.remove(); }
+    toast(ok ? 'Copied: ' + h : h, ok); };
+  document.addEventListener('mouseover', e => { if (!picking || e.target.closest('.pe-bar')) return; const el = e.target.closest('[data-edit]'); if (el && el !== cur) place(el); }, true);
+  addEventListener('scroll', () => { if (cur && !badge.hidden) place(cur); }, { passive: true });
+  addEventListener('resize', () => { if (cur && !badge.hidden) place(cur); });
+  document.addEventListener('click', e => { if (!picking || e.target.closest('.pe-bar') || e.altKey) return; const el = e.target.closest('[data-edit]'); if (!el) return;
+    e.preventDefault(); e.stopPropagation(); place(el); copy(el); }, true);
+  const pick = $('.pe-bar__pick', bar);
+  pick.addEventListener('click', () => { picking = !picking; pick.setAttribute('aria-pressed', String(picking)); pick.textContent = picking ? 'Picking' : 'Links work'; document.documentElement.classList.toggle('pe-on', picking); badge.hidden = !picking; if (!picking) $$('.pe-cur').forEach(x => x.classList.remove('pe-cur')); });
+}
+
 /* ================================================================ BOOT */
 async function boot(){
   Consent.init();
+  const pageContent = applyPageContent();   /* starts straight away; the ?edit=1 view waits for the sign-in below */
   const modal = authModal();
   if (ready){ const { data } = await sb.auth.getSession(); session = data.session; await loadProfile(); goneNote();
     if (location.hash === '' && location.href.endsWith('#')) history.replaceState(null, '', location.pathname + location.search);
@@ -1167,6 +1399,7 @@ async function boot(){
     if (new URLSearchParams(location.search).get('reset')){ const p = prompt('Choose a new password (at least 8 characters)'); if (p && p.length >= 8){ const { error } = await sb.auth.updateUser({ password:p }); toast(error ? friendly(error) : 'Password updated.', !error); } } }
   accountUI(modal);
   applySettings(); feedPage(modal); blogPage(modal); libraryPage(modal); dashboardPage(modal); teamPage(); accountPage(modal);
+  if (new URLSearchParams(location.search).get('edit') === '1' && pageEditable() && can.master(role())) pageContent.then(pageEditView, pageEditView);
   if (new URLSearchParams(location.search).get('signin')) modal.open('in');
   if (new URLSearchParams(location.search).get('new') && $('#blog') && can.blog(role())) $('.blog__new')?.click();
 }
