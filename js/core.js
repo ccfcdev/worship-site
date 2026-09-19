@@ -406,8 +406,9 @@ async function feedPage(modal){
     let qry = sb.from('feed').select('*').eq('site', site).order('pinned', { ascending:false }).order('created_at', { ascending:false }).range(page*PAGE, page*PAGE + PAGE - 1);
     if (kind) qry = qry.eq('kind', kind);
     let want = q.get('post'); if (want && !/^[0-9a-f-]{36}$/i.test(want)){ const { data: legacy } = await sb.rpc('resolve_legacy_feed_post', { p_slug: want }); want = legacy; } if (want && !append && !kind){ const { data:one } = await sb.from('feed').select('*').eq('id', want).maybeSingle(); if (one){ qry = qry.neq('id', want); var first = one; } }
-    const { data, error } = await qry;
-    if (error){ list.innerHTML = `<div class="empty"><h3>Could not load the feed</h3><p>${esc(error.message)}</p></div>`; return; }
+    let data, error;
+    try { ({ data, error } = await qry); } catch (e) { error = e; }
+    if (error){ list.innerHTML = `<div class="empty"><h3>Could not load the feed</h3><p>${esc(error.message || 'Please try again.')}</p></div>`; return; }
     const rows = first ? [first, ...data] : data;
     if (!rows.length && !append){ list.innerHTML = `<div class="empty"><h3>${kind ? 'Nothing in ' + KINDS[kind].toLowerCase() + ' yet' : 'Nothing posted yet'}</h3><p>${SITES[site].feedLabel} will appear here as the team posts.</p></div>`; return; }
     if (session && !append){ const { data:r } = await sb.from('reactions').select('post_id').eq('user_id', session.user.id); mine = new Set((r||[]).map(x => x.post_id)); }
@@ -435,7 +436,9 @@ async function feedPage(modal){
       $('.post__del', el)?.addEventListener('click', async () => { ml.hidden = true; if (!(await sure({ title: 'Delete this post?', body: `"${p.title}" is removed for everyone, with its comments and likes. This cannot be undone.`, ok: 'Delete post', danger: true, from: more }))) return; const { error } = await sb.from('posts').delete().eq('id', p.id); if (error) toast(friendly(error), false); else { el.remove(); toast('Post deleted.'); } });
       $('.post__pin', el)?.addEventListener('click', async () => { const { error } = await sb.from('posts').update({ pinned: !p.pinned }).eq('id', p.id); if (error) toast(friendly(error), false); else { toast(p.pinned ? 'Unpinned.' : 'Pinned to the top.'); page = 0; load(); } }); }
   }
-  load();
+  /* load() is the last thing feedPage does, so anything throwing above it would otherwise leave the
+     list exactly as the page shipped: empty. */
+  load().catch(() => { list.innerHTML = `<div class="empty"><h3>Could not load the feed</h3><p>Please refresh the page.</p></div>`; });
 }
 
 /* ================================================================ COMPOSER */
@@ -1382,7 +1385,16 @@ async function boot(){
   Consent.init();
   const pageContent = applyPageContent();   /* starts straight away; the ?edit=1 view waits for the sign-in below */
   const modal = authModal();
-  if (ready){ const { data } = await sb.auth.getSession(); session = data.session; await loadProfile(); goneNote();
+  if (ready){
+    /* Restoring a session can throw, and it can also simply never settle. Either way boot used to
+       stop here, so no page rendered at all: the feed kept the empty list it shipped with and the
+       library kept its untouched gate, with nothing in the console to say why. Boot now carries on
+       after six seconds and treats the visitor as signed out; the auth listener below reloads the
+       page if the session turns up late. */
+    const restore = (async () => { const { data } = await sb.auth.getSession(); session = data.session; await loadProfile(); })();
+    try { await Promise.race([restore, new Promise((_, stop) => setTimeout(() => stop(new Error('auth-slow')), 6000))]); }
+    catch (e) { if (e && e.message !== 'auth-slow'){ session = null; profile = null; } }
+    goneNote();
     if (location.hash === '' && location.href.endsWith('#')) history.replaceState(null, '', location.pathname + location.search);
     /* Reload once when someone signs in or out so role-dependent pages re-render. Guarded so it can never loop. */
     let lastUid = session?.user?.id || null; const RL = 'ccfc:reloaded-for';
@@ -1396,8 +1408,12 @@ async function boot(){
       if ($('#feed,#dashboard,#library,#account,#leadership')){ if (location.hash) history.replaceState(null, '', location.pathname + location.search); location.reload(); } else goneNote();
     });
     if (new URLSearchParams(location.search).get('reset')){ const p = prompt('Choose a new password (at least 8 characters)'); if (p && p.length >= 8){ const { error } = await sb.auth.updateUser({ password:p }); toast(error ? friendly(error) : 'Password updated.', !error); } } }
-  accountUI(modal);
-  applySettings(); leadershipPage(modal); feedPage(modal); libraryPage(modal); dashboardPage(modal); teamPage(); accountPage(modal);
+  const safe = (what, run) => { try { const r = run(); if (r && r.catch) r.catch(e => console.error('CCFC ' + what, e)); }
+    catch (e) { console.error('CCFC ' + what, e); } };
+  safe('account bar', () => accountUI(modal));
+  safe('settings', applySettings); safe('leadership', () => leadershipPage(modal)); safe('feed', () => feedPage(modal));
+  safe('library', () => libraryPage(modal)); safe('dashboard', () => dashboardPage(modal)); safe('team', teamPage);
+  safe('account', () => accountPage(modal));
   if (new URLSearchParams(location.search).get('edit') === '1' && pageEditable() && can.master(role())) pageContent.then(pageEditView, pageEditView);
   if (new URLSearchParams(location.search).get('signin')) modal.open('in');
 }
