@@ -259,6 +259,8 @@
 .drow b{display:block;font-family:var(--font-display);color:var(--k-head);font-size:1rem}
 .drow b .pill{font-size:.62rem;padding:.2rem .55rem;vertical-align:middle;margin-left:.3rem}
 .drow span{font-size:.82rem;color:var(--k-muted)}
+/* The registration number names the Drive file, so it is read and typed, not just glanced at. */
+.drow span .ref{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.02em;color:var(--k-ink)}
 .drow small{font-size:.75rem;color:var(--k-faint);max-width:20ch}
 .drow .pill{cursor:pointer}
 .drow .pill[disabled]{opacity:.3;cursor:default}
