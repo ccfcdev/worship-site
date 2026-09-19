@@ -46,7 +46,10 @@ function sitemapXml(origin, pages, today = new Date().toISOString().slice(0, 10)
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${rows.join('\n')}\n</urlset>\n`;
 }
 
-function robotsTxt(origin, extraSitemaps = [], disallow = ['/dashboard', '/account']) {
+/* Only the app shell is blocked from crawling. The account-only pages carry noindex instead, and a
+   crawler has to be able to fetch a page to read that; blocking them here would leave them eligible
+   to appear as a bare URL. */
+function robotsTxt(origin, extraSitemaps = [], disallow = ['/dashboard']) {
   return `# ${origin}\nUser-agent: *\nAllow: /\n${disallow.map(d => `Disallow: ${d}`).join('\n')}\n\nSitemap: ${origin}/sitemap.xml\n${extraSitemaps.map(s => `Sitemap: ${s}`).join('\n')}${extraSitemaps.length ? '\n' : ''}`;
 }
 
