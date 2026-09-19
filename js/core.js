@@ -383,10 +383,19 @@ async function leadershipPage(modal){
   body.innerHTML='<p class="sub mb-2">Conference registrations are counted below. Other reports will become available as ministry records are connected; website accounts are not counted as church members.</p>'+groups.map(([title,items])=>'<section class="mb-3"><h2 class="mb-1">'+esc(title)+'</h2><div class="dash__stats">'+items.map(label=>'<div class="stat"><b>'+ (label==='Event registrations' ? esc(data.event_registrations) : 'Not yet tracked')+'</b><span>'+esc(label)+'</span></div>').join('')+'</div></section>').join('')+'<p class="sub">Event registrations: all Koinonia editions. Updated '+esc(fullDate(data.generated_at))+'.</p>';
 }
 
+/* The feed and the library are for people with an account. Their links are already hidden when
+   signed out, but someone can still arrive on the page from a bookmark or a shared link, so the
+   page says what it is and offers a way in rather than showing an empty list. */
+function memberWall(what, why){
+  return `<div class="empty"><h3>${esc(what)} is for the church family</h3><p>${esc(why)}</p>
+    <div class="row mt-2"><button class="btn" data-auth="in">Sign in</button><button class="btn btn--ghost" data-auth="up">Create account</button></div></div>`;
+}
 async function feedPage(modal){
   const root = $('#feed'); if (!root) return; const site = root.dataset.site || SITE_KEY;
   const list = $('.feed__list', root), composerSlot = $('.feed__composer', root), filters = $('.feed__filters', root);
   if (!ready){ list.innerHTML = `<div class="empty"><h3>The feed is almost ready</h3><p>Accounts and the feed switch on as soon as the church team finishes setup. Follow us on Facebook in the meantime.</p></div>`; return; }
+  if (!session){ list.innerHTML = memberWall('The church feed', 'News, photos and videos the church shares with its members. Create an account or sign in to read it.');
+    if (composerSlot) composerSlot.innerHTML = ''; if (filters) filters.innerHTML = ''; accountUI(modal); return; }
   const q = new URLSearchParams(location.search); let kind = q.get('kind') || '', page = 0; const PAGE = 20; let mine = new Set(); const lb = lightbox();
   if (filters){ const kinds = ['', ...SITES[site].kinds]; filters.innerHTML = kinds.map(k => `<button class="chip ${k === kind ? 'is-on' : ''}" data-k="${k}">${k ? KINDS[k] : 'All'}</button>`).join('');
     $$('.chip', filters).forEach(b => b.addEventListener('click', () => { kind = b.dataset.k; $$('.chip', filters).forEach(x => x.classList.toggle('is-on', x === b)); history.replaceState(null, '', location.pathname + (kind ? `?kind=${kind}` : '')); page = 0; load(); })); }
@@ -591,6 +600,8 @@ function libraryKit(getItems, onChanged){
 async function libraryPage(modal){
   const root = $('#library'); if (!root) return; const gate = $('.lib__gate', root), app = $('.lib__app', root);
   if (!ready){ gate.innerHTML = `<h2>Almost ready</h2><p class="sub">The library opens as soon as accounts are switched on.</p>`; return; }
+  if (!session){ gate.innerHTML = memberWall('The Upper Room library', 'Books, notes and slides the church shares with its members. Create an account or sign in to open it.');
+    gate.hidden = false; app.hidden = true; accountUI(modal); return; }
   gate.hidden = true; app.hidden = false;
   const list = $('.lib__list', app), search = $('.lib__search', app), chips = $('.lib__chips', app), tools = $('.lib__tools', app);
   let items = [], kind = '';
