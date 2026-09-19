@@ -16,17 +16,17 @@ const ROLES = {
   admin:        { label:'Admin',   short:'Admin',   desc:'Everything the Master Administrator can do, except assigning or changing Admin accounts.' },
   leader:       { label:'Leader',  short:'Leader',  desc:'Posts announcements, moderates comments, reviews Worship Connect applications and Koinonia registrations, and adds material to the Upper Room library.' },
   media:        { label:'Media',   short:'Media',   desc:'Posts photos, videos and content to the CCFC, Koinonia and Worship Connect feeds.' },
-  blogger:      { label:'Blogger', short:'Blogger', desc:'Writes, publishes and updates blog posts, and adds material to the Upper Room library.' },
-  member:       { label:'Member',  short:'Member',  desc:'Follows the feed and the blog, comments and reacts.' },
+  blogger:      { label:'Writer', short:'Writer', desc:'Writes and publishes in the Church feed, and adds material to the Upper Room library.' },
+  member:       { label:'Member',  short:'Member',  desc:'Follows the Church Feed, comments and reacts.' },
 };
 const ADMINS = ['master_admin','admin'];
 const can = {
-  post: r => ['master_admin','admin','leader','media'].includes(r),
-  blog: r => ['master_admin','admin','blogger'].includes(r),
+  post: (r, site=SITE_KEY) => ['master_admin','admin','leader','media'].includes(r) || (r === 'blogger' && site === 'ccfc'),
   moderate: r => ['master_admin','admin','leader'].includes(r),
   library: r => ['master_admin','admin','leader','blogger'].includes(r),   /* who may add to the Upper Room; reading is open to all */
   staff: r => r && r !== 'member',
   admin: r => ADMINS.includes(r),
+  leadership: r => ['master_admin','admin','leader'].includes(r),
   master: r => r === 'master_admin',
 };
 const KINDS = { news:'News', announcement:'Announcement', photo:'Photos', video:'Video', music:'Music' };
@@ -34,10 +34,10 @@ const KINDS = { news:'News', announcement:'Announcement', photo:'Photos', video:
 const SITES = {
   ccfc:     { label:'CCFC Zambia', short:'CCFC', origin:'https://ccfczambia.org', feed:'/feed', feedLabel:'Church feed', feedWord:'the family',
               kinds:['news','photo','video','announcement'], logo:'/assets/logo/ccfc-mark.png?v=2', dashTitle:'Church dashboard',
-              links: r => [['/account','Account Center'], ['/feed','Church feed'], ['/blog','Blog'], ['/library','Upper Room library'], can.staff(r) ? [ADMIN_ORIGIN + '/?site=ccfc','Admin panel'] : null] },
+              links: r => [['/account','Account Center'], ['/feed','Church feed'], can.leadership(r) ? ['/leadership','Leadership Hub'] : null, ['/library','Upper Room library'], can.staff(r) ? [ADMIN_ORIGIN + '/?site=ccfc','Admin panel'] : null] },
   koinonia: { label:'Koinonia Experience', short:'Koinonia', origin:'https://koinonia.ccfczambia.org', feed:'/updates', feedLabel:'Conference updates', feedWord:'everyone coming to Koinonia',
               kinds:['news','announcement','video','photo'], logo:'/assets/logo/ccfc-mark.png?v=2', dashTitle:'Koinonia dashboard',
-              links: r => [['https://ccfczambia.org/account','Account Center'], ['/updates','Updates'], ['/k26#register',"Register for Koi 26'"], can.staff(r) ? [ADMIN_ORIGIN + '/?site=koinonia','Admin panel'] : null] },
+              links: r => [['https://ccfczambia.org/account','Account Center'], ['/updates','Updates'], ['/register',"Register for Koi 26'"], can.staff(r) ? [ADMIN_ORIGIN + '/?site=koinonia','Admin panel'] : null] },
   worship:  { label:'Worship Connect', short:'Worship', origin:'https://worship.ccfczambia.org', feed:'/latest', feedLabel:'Latest from the team', feedWord:'the team',
               kinds:['video','music','photo','news'], logo:'/assets/logo/ccfc-mark-white.png?v=2', dashTitle:'Worship Connect dashboard',
               links: r => [['https://ccfczambia.org/account','Account Center'], ['/latest','Latest'], ['/team','The team'], ['/join','Join the team'], can.staff(r) ? [ADMIN_ORIGIN + '/?site=worship','Admin panel'] : null] },
@@ -295,7 +295,7 @@ function mediaBlock(p){
 function postCard(p, liked){
   const mine = profile && profile.id === p.author_id, r = role();
   const long = (p.body || '').length > 420;
-  const menu = (mine || can.admin(r)) ? `<div class="post__menu"><button class="post__more" aria-label="Post options" aria-haspopup="true">${ICO.more}</button><div class="post__menuList" hidden>${can.admin(r) ? `<button class="post__pin">${p.pinned ? 'Unpin from top' : 'Pin to top'}</button>` : ''}<button class="post__del">Delete post</button></div></div>` : '';
+  const menu = (mine || can.admin(r)) ? `<div class="post__menu"><button class="post__more" aria-label="Post options" aria-haspopup="true">${ICO.more}</button><div class="post__menuList" hidden>${can.admin(r) ? `<button class="post__pin">${p.pinned ? 'Unpin from top' : 'Pin to top'}</button>` : ''}<button class="post__edit">Edit post</button><button class="post__del">Delete post</button></div></div>` : '';
   return `<article class="post ${p.pinned ? 'is-pinned' : ''} kind-${esc(p.kind)}" data-id="${p.id}" id="post-${p.id}">
     <header class="post__head">${avatar(p.author_name, p.author_avatar)}<div class="post__who"><b>${esc(p.author_name || SITE.short)}</b><span>${esc(ROLES[p.author_role]?.short || '')} &middot; <time title="${esc(fullDate(p.created_at))}">${esc(when(p.created_at))}</time>${p.pinned ? ` &middot; <i class="post__pinned">${ICO.pin} Pinned</i>` : ''}</span></div><span class="kind kind--${esc(p.kind)}">${esc(KINDS[p.kind] || p.kind)}</span>${menu}</header>
     <h3 class="post__title">${esc(p.title)}</h3>
@@ -372,6 +372,17 @@ async function feedAnnouncements(root, site){
   load();
 }
 
+async function leadershipPage(modal){
+  const root = $('#leadership'); if(!root) return; const body = $('.leadership__content',root);
+  if(!session){ body.innerHTML='<p>Sign in with your church leadership account to continue.</p><button class="btn mt-2" data-auth="in">Sign in</button>'; accountUI(modal); return; }
+  if(!can.leadership(role())){ body.innerHTML='<div class="empty"><h2>Leadership access required</h2><p>This page is available to Leaders, Admins and Master Administrators.</p></div>'; return; }
+  const {data,error}=await sb.rpc('leadership_summary');
+  if(error){ body.innerHTML='<div class="empty"><h2>Reports are unavailable</h2><p>The reporting service could not be reached. Please try again later.</p></div>'; return; }
+  if(!can.leadership(role())){ body.textContent='Leadership access required.'; return; }
+  const groups=[['People and belonging',['Total people','Active members','Visitors this month','Visitor follow-up status','Members in Connect Groups']],['Attendance and care',['Connect Group attendance','Sunday attendance','Members needing attendance follow-up','Pastoral-care workload']],['Talent and development',['Talent audits completed','Talent awaiting review','People in training','Active mentorships','Deployment readiness','Leadership pipeline']],['Serving and events',['Ministry staffing gaps','Volunteer engagement','Event registrations']]];
+  body.innerHTML='<p class="sub mb-2">Conference registrations are counted below. Other reports will become available as ministry records are connected; website accounts are not counted as church members.</p>'+groups.map(([title,items])=>'<section class="mb-3"><h2 class="mb-1">'+esc(title)+'</h2><div class="dash__stats">'+items.map(label=>'<div class="stat"><b>'+ (label==='Event registrations' ? esc(data.event_registrations) : 'Not yet tracked')+'</b><span>'+esc(label)+'</span></div>').join('')+'</div></section>').join('')+'<p class="sub">Event registrations: all Koinonia editions. Updated '+esc(fullDate(data.generated_at))+'.</p>';
+}
+
 async function feedPage(modal){
   const root = $('#feed'); if (!root) return; const site = root.dataset.site || SITE_KEY;
   const list = $('.feed__list', root), composerSlot = $('.feed__composer', root), filters = $('.feed__filters', root);
@@ -380,12 +391,12 @@ async function feedPage(modal){
   if (filters){ const kinds = ['', ...SITES[site].kinds]; filters.innerHTML = kinds.map(k => `<button class="chip ${k === kind ? 'is-on' : ''}" data-k="${k}">${k ? KINDS[k] : 'All'}</button>`).join('');
     $$('.chip', filters).forEach(b => b.addEventListener('click', () => { kind = b.dataset.k; $$('.chip', filters).forEach(x => x.classList.toggle('is-on', x === b)); history.replaceState(null, '', location.pathname + (kind ? `?kind=${kind}` : '')); page = 0; load(); })); }
   feedAnnouncements(root, site);
-  if (can.post(role())) composer(composerSlot, site, () => { page = 0; load(); }); else if (composerSlot) composerSlot.innerHTML = '';
+  if (can.post(role(), site)) composer(composerSlot, site, () => { page = 0; load(); }); else if (composerSlot) composerSlot.innerHTML = '';
   async function load(append=false){
     if (!append) list.innerHTML = '<div class="skel"></div><div class="skel"></div><div class="skel"></div>';
     let qry = sb.from('feed').select('*').eq('site', site).order('pinned', { ascending:false }).order('created_at', { ascending:false }).range(page*PAGE, page*PAGE + PAGE - 1);
     if (kind) qry = qry.eq('kind', kind);
-    const want = q.get('post'); if (want && !append && !kind){ const { data:one } = await sb.from('feed').select('*').eq('id', want).maybeSingle(); if (one){ qry = qry.neq('id', want); var first = one; } }
+    let want = q.get('post'); if (want && !/^[0-9a-f-]{36}$/i.test(want)){ const { data: legacy } = await sb.rpc('resolve_legacy_feed_post', { p_slug: want }); want = legacy; } if (want && !append && !kind){ const { data:one } = await sb.from('feed').select('*').eq('id', want).maybeSingle(); if (one){ qry = qry.neq('id', want); var first = one; } }
     const { data, error } = await qry;
     if (error){ list.innerHTML = `<div class="empty"><h3>Could not load the feed</h3><p>${esc(error.message)}</p></div>`; return; }
     const rows = first ? [first, ...data] : data;
@@ -410,6 +421,7 @@ async function feedPage(modal){
     const imgs = (p.media||[]).filter(x => x.type === 'image'); $$('.pm__img', el).forEach(b => b.addEventListener('click', () => lb.open(imgs, +b.dataset.i)));
     $$('.pm__yt', el).forEach(b => b.addEventListener('click', () => { b.outerHTML = `<div class="pm__frame"><iframe src="https://www.youtube-nocookie.com/embed/${esc(b.dataset.yt)}?autoplay=1&rel=0" title="${esc(p.title)}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe></div>`; }));
     const more = $('.post__more', el), ml = $('.post__menuList', el);
+    $('.post__edit', el)?.addEventListener('click', () => editFeedPost(p, () => load()));
     if (more){ more.addEventListener('click', () => { ml.hidden = !ml.hidden; }); document.addEventListener('click', e => { if (!el.contains(e.target)) ml.hidden = true; });
       $('.post__del', el)?.addEventListener('click', async () => { ml.hidden = true; if (!(await sure({ title: 'Delete this post?', body: `"${p.title}" is removed for everyone, with its comments and likes. This cannot be undone.`, ok: 'Delete post', danger: true, from: more }))) return; const { error } = await sb.from('posts').delete().eq('id', p.id); if (error) toast(friendly(error), false); else { el.remove(); toast('Post deleted.'); } });
       $('.post__pin', el)?.addEventListener('click', async () => { const { error } = await sb.from('posts').update({ pinned: !p.pinned }).eq('id', p.id); if (error) toast(friendly(error), false); else { toast(p.pinned ? 'Unpinned.' : 'Pinned to the top.'); page = 0; load(); } }); }
@@ -434,7 +446,7 @@ function composer(slot, site, onPosted){
       <div class="cmp__bar">
         <div class="cmp__tools"><button type="button" class="cmp__tool" data-t="media" title="Photos or video">${ICO.image}<span>Media</span></button><button type="button" class="cmp__tool" data-t="yt" title="YouTube video">${ICO.yt}<span>YouTube</span></button>${can.admin(r) ? `<label class="cmp__tool cmp__pin"><input type="checkbox" name="pinned">${ICO.pin}<span>Pin</span></label>` : ''}</div>
         <span class="cmp__count" aria-live="polite"></span>
-        <button class="btn cmp__submit" type="submit">Post ${ICO.arrow}</button>
+        <button class="btn btn--ghost cmp__draft" type="submit" data-draft="1">Save draft</button><button class="btn cmp__submit" type="submit">Post ${ICO.arrow}</button>
       </div>
       <div class="cmp__status" aria-live="polite"></div>
     </div></form>`;
@@ -442,7 +454,7 @@ function composer(slot, site, onPosted){
   let picked = [];
   const open = () => { col.hidden = true; body.hidden = false; title.focus(); }; const close = () => { body.hidden = true; col.hidden = false; };
   $('.cmp__open', f).addEventListener('click', open); $('.cmp__close', f).addEventListener('click', close);
-  if (new URLSearchParams(location.search).get('compose')) open();
+  if (new URLSearchParams(location.search).has('compose') || new URLSearchParams(location.search).has('new')) open();
   $$('.cmp__kinds input', f).forEach(i => i.addEventListener('change', () => { $$('.cmp__kinds .chip', f).forEach(c => c.classList.toggle('is-on', $('input', c).checked)); if (i.value === 'video' && i.checked){ yt.hidden = false; ytIn.focus(); } if ((i.value === 'photo') && i.checked) drop.hidden = false; }));
   $$('.cmp__tool[data-t]', f).forEach(b => b.addEventListener('click', () => { if (b.dataset.t === 'media'){ drop.hidden = false; files.click(); } else { yt.hidden = false; ytIn.focus(); } }));
   $('.cmp__ytx', f).addEventListener('click', () => { ytIn.value = ''; yt.hidden = true; ytPrev.hidden = true; ytPrev.innerHTML = ''; });
@@ -456,57 +468,29 @@ function composer(slot, site, onPosted){
   ['dragleave','drop'].forEach(ev => f.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('is-over'); if (ev === 'drop'){ open(); addFiles(e.dataTransfer.files); } }));
   f.addEventListener('paste', e => { const fl = [...(e.clipboardData?.files || [])]; if (fl.length){ drop.hidden = false; addFiles(fl); } });
   f.addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') f.requestSubmit(); });
-  f.addEventListener('submit', async e => { e.preventDefault(); const t = title.value.trim(); if (!t){ status.textContent = 'Give the post a headline.'; status.className = 'cmp__status is-err'; title.focus(); return; }
+  f.addEventListener('submit', async e => { e.preventDefault(); if(submit.disabled) return; const draft = e.submitter?.dataset.draft === '1'; const t = title.value.trim(); if (!t){ status.textContent = 'Give the post a headline.'; status.className = 'cmp__status is-err'; title.focus(); return; }
     submit.disabled = true; status.className = 'cmp__status';
     try { const media = []; const id = ytId(ytIn.value); if (id) media.push({ type:'youtube', id });
       for (let i = 0; i < picked.length; i++){ status.textContent = `Uploading ${i+1} of ${picked.length}...`; const u = await uploadTo('feed', picked[i], profile.id); media.push({ type:u.type, url:u.url, path:u.path }); }
-      status.textContent = 'Publishing...';
-      const kind = f.kind.value; const { error } = await sb.from('posts').insert({ site, author_id: profile.id, title:t, body: text.value.trim(), kind, media, pinned: !!(f.pinned && f.pinned.checked) }); if (error) throw error;
+      status.textContent = draft ? 'Saving draft...' : 'Publishing...';
+      const kind = f.kind.value; const { error } = await sb.from('posts').insert({ site, author_id: profile.id, title:t, body: text.value.trim(), kind, media, published: !draft, pinned: !!(f.pinned && f.pinned.checked) }); if (error) throw error;
       f.reset(); picked = []; renderPreview(); ytPrev.innerHTML = ''; yt.hidden = ytPrev.hidden = drop.hidden = true; text.style.height = ''; $$('.cmp__kinds .chip', f).forEach((c,i) => c.classList.toggle('is-on', !i));
-      status.textContent = ''; close(); toast('Posted.'); onPosted && onPosted();
+      status.textContent = ''; close(); toast(draft ? 'Draft saved. Open the admin panel to edit or publish it.' : 'Posted.'); onPosted && onPosted();
     } catch (err){ status.textContent = friendly(err); status.className = 'cmp__status is-err'; } finally { submit.disabled = false; } });
 }
 
-/* ---------- BLOG ---------- */
-async function blogPage(modal){
-  const root = $('#blog'); if (!root) return; const list = $('.blog__list', root), single = $('.blog__single', root), editorSlot = $('.blog__editor', root);
-  if (!ready){ list.innerHTML = `<div class="empty"><h3>The blog is almost ready</h3><p>Articles from the CCFC bloggers will appear here once accounts are switched on.</p></div>`; return; }
-  const slug = new URLSearchParams(location.search).get('post');
-  if (can.blog(role())) editorSlot.innerHTML = `<div class="row"><button class="btn btn--navy blog__new">Write a post</button><a class="link" href="${ADMIN_ORIGIN}/?site=ccfc&tab=blogs">Manage my posts</a></div>`;
-  $('.blog__new', root)?.addEventListener('click', () => { editorSlot.innerHTML = ''; blogEditor(editorSlot, null, () => location.href = '/blog'); editorSlot.scrollIntoView({ behavior:'smooth' }); });
-  if (slug){ list.hidden = true; single.hidden = false;
-    const { data:b } = await sb.from('blog_feed').select('*').eq('slug', slug).maybeSingle();
-    if (!b){ single.innerHTML = `<div class="empty"><h3>Post not found</h3><p><a class="link" href="/blog">Back to the blog</a></p></div>`; return; }
-    document.title = `${b.title} | CCFC Blog`;
-    single.innerHTML = `<article class="article"><a class="link" href="/blog">All posts</a><h1>${esc(b.title)}</h1><p class="article__meta">By ${esc(b.author_name)} &middot; ${esc(when(b.published_at || b.created_at))}${b.tags?.length ? ' &middot; ' + b.tags.map(esc).join(', ') : ''}</p>
-      ${b.cover_url ? `<img class="article__cover" src="${esc(b.cover_url)}" alt="">` : ''}<div class="article__body">${md(b.body)}</div>
-      ${(profile && (profile.id === b.author_id || can.admin(role()))) ? '<div class="row mt-2"><button class="btn btn--ghost blog__edit">Edit this post</button></div>' : ''}
-      <h3 class="mt-3">Comments</h3><div class="post__comments blog__comments"></div></article>`;
-    const loadC = wireComments($('.blog__comments', single), 'blog_id', b.id, modal); loadC();
-    $('.blog__edit', single)?.addEventListener('click', () => { editorSlot.innerHTML=''; blogEditor(editorSlot, b, () => location.reload()); editorSlot.scrollIntoView({ behavior:'smooth' }); });
-    return; }
-  const { data, error } = await sb.from('blog_feed').select('*').order('published_at', { ascending:false }).limit(30);
-  if (error){ list.innerHTML = `<div class="empty"><h3>Could not load the blog</h3><p>${esc(error.message)}</p></div>`; return; }
-  if (!data?.length){ list.innerHTML = `<div class="empty"><h3>No articles yet</h3><p>The first blog post will appear here.</p></div>`; return; }
-  list.innerHTML = data.map((b,i) => `<a class="bcard ${i===0?'bcard--lead':''}" href="/blog?post=${esc(b.slug)}"><div class="ph">${b.cover_url ? `<img src="${esc(b.cover_url)}" alt="" loading="lazy">` : `<span class="bcard__mono">${esc(initials(b.title))}</span>`}</div><div class="bcard__body"><span class="bcard__meta">${esc(b.author_name)} &middot; ${esc(when(b.published_at || b.created_at))}</span><h3>${esc(b.title)}</h3><p>${esc(b.excerpt)}</p><span class="link">Read ${b.comment_count ? `&middot; ${b.comment_count} comments` : ''}</span></div></a>`).join('');
-}
-function blogEditor(slot, b, onDone){
-  slot.innerHTML = `<form class="compose blogform" novalidate><div class="compose__head"><b>${b ? 'Edit post' : 'New blog post'}</b></div>
-    <div class="field"><label for="b-title">Title</label><input id="b-title" name="title" required maxlength="140" value="${esc(b?.title||'')}"></div>
-    <div class="field"><label for="b-excerpt">Excerpt (one or two sentences shown in the list)</label><input id="b-excerpt" name="excerpt" maxlength="240" value="${esc(b?.excerpt||'')}"></div>
-    <div class="field"><label for="b-body">Body</label><textarea id="b-body" name="body" rows="14" placeholder="Write here. Use ## for a heading, - for a list, **bold**.">${esc(b?.body||'')}</textarea></div>
-    <div class="compose__row"><div class="field"><label for="b-tags">Tags (comma separated)</label><input id="b-tags" name="tags" value="${esc((b?.tags||[]).join(', '))}"></div><div class="field"><label for="b-cover">Cover image</label><input id="b-cover" name="cover" type="file" accept="image/*"></div></div>
-    <div class="row"><button class="btn" type="submit" data-pub="1">${b?.published ? 'Update' : 'Publish'}</button><button class="btn btn--ghost" type="submit" data-pub="0">Save as draft</button>${b ? '<button class="btn btn--ghost blog__delete" type="button">Delete</button>' : ''}<span class="form__status" aria-live="polite"></span></div></form>`;
-  const f = $('.blogform', slot), status = $('.form__status', f); let pub = true;
-  $$('button[type=submit]', f).forEach(x => x.addEventListener('click', () => pub = x.dataset.pub === '1'));
-  f.addEventListener('submit', async e => { e.preventDefault(); const title = f.title.value.trim(); if (!title){ status.textContent = 'Give the post a title.'; status.className='form__status is-err'; return; }
-    status.className='form__status'; status.textContent = 'Saving...';
-    try { let cover_url = b?.cover_url || null; if (f.cover.files[0]) cover_url = (await uploadTo('feed', f.cover.files[0], 'blog/' + profile.id)).url;
-      const row = { title, excerpt: f.excerpt.value.trim(), body: f.body.value, tags: f.tags.value.split(',').map(s => s.trim()).filter(Boolean), cover_url, published: pub, published_at: pub ? (b?.published_at || new Date().toISOString()) : null };
-      const { error } = b ? await sb.from('blogs').update(row).eq('id', b.id) : await sb.from('blogs').insert({ ...row, author_id: profile.id, slug: slugify(title) + '-' + Math.random().toString(36).slice(2,6) });
-      if (error) throw error; toast(pub ? 'Published.' : 'Draft saved.'); onDone && onDone();
-    } catch (err){ status.textContent = friendly(err); status.className='form__status is-err'; } });
-  $('.blog__delete', f)?.addEventListener('click', async e => { if (!(await sure({ title: 'Delete this post?', body: `"${b.title}" comes off the blog, with its comments. This cannot be undone.`, ok: 'Delete', danger: true, from: e.currentTarget }))) return; const { error } = await sb.from('blogs').delete().eq('id', b.id); if (error) toast(error.message, false); else location.href = '/blog'; });
+async function editFeedPost(post, onSaved){
+  if(!post || !(can.admin(role()) || post.author_id === profile?.id)) return;
+  const dialog=document.createElement('dialog'); dialog.className='feed-editor'; dialog.setAttribute('aria-label','Edit feed post');
+  dialog.innerHTML=`<form><h2>Edit post</h2><label class="field"><span>Title</span><input name="title" required value="${esc(post.title)}"></label><label class="field"><span>Post</span><textarea name="body" rows="10">${esc(post.body||'')}</textarea></label><p class="sub">Existing photos and videos will be kept.</p><div class="row"><button class="btn" type="submit" value="publish">${post.published === false ? 'Publish' : 'Save changes'}</button><button class="btn btn--ghost" type="submit" value="draft">Save as draft</button><button class="btn btn--ghost" type="button" data-cancel>Cancel</button></div><p class="form__status" aria-live="polite"></p></form>`;
+  const form=$('form',dialog), status=$('.form__status',dialog); let busy=false;
+  $('[data-cancel]',dialog).addEventListener('click',()=>{if(!busy) dialog.close();});
+  dialog.addEventListener('cancel',e=>{if(busy)e.preventDefault();}); dialog.addEventListener('close',()=>dialog.remove());
+  form.addEventListener('submit',async e=>{e.preventDefault();if(busy || !form.title.value.trim())return;busy=true;$$('button',form).forEach(b=>b.disabled=true);status.textContent='Saving...';
+    try{const {data,error}=await sb.from('posts').update({title:form.title.value.trim(),body:form.body.value.trim(),published:e.submitter?.value!=='draft'}).eq('id',post.id).select('id').maybeSingle();
+      if(error || !data)throw new Error('The post could not be saved. Please check your access and try again.');dialog.close();toast('Post saved.');onSaved?.();
+    }catch(err){status.textContent=err.message;}finally{busy=false;$$('button',form).forEach(b=>b.disabled=false);}
+  });document.body.append(dialog);dialog.showModal();
 }
 
 /* ---------- UPPER ROOM LIBRARY (leaders and above) ---------- */
@@ -628,7 +612,7 @@ async function libraryPage(modal){
       ${(can.admin(role()) || i.uploader_id === profile?.id) ? `<button type="button" class="lcard__del" aria-label="Delete ${esc(i.title)}">&times;</button>` : ''}</article>`; }
   function render(){ const q = (search.value || '').toLowerCase();
     const rows = items.filter(i => (!kind || i.kind === kind) && (!q || (i.title + ' ' + i.series + ' ' + i.description + ' ' + i.file_name).toLowerCase().includes(q)));
-    if (!rows.length){ list.innerHTML = `<div class="empty"><h3>${items.length ? 'Nothing matches' : 'The shelves are empty for now'}</h3><p>${items.length ? 'Try another word or type.' : 'Books, notes and slides will appear here as leaders and bloggers add them.'}</p>${!items.length && can.library(role()) ? '<button class="btn mt-2 lib__add2" type="button">Upload the first item</button>' : ''}</div>`; const b2 = $('.lib__add2', list); if (b2) b2.addEventListener('click', openUpload); return; }
+    if (!rows.length){ list.innerHTML = `<div class="empty"><h3>${items.length ? 'Nothing matches' : 'The shelves are empty for now'}</h3><p>${items.length ? 'Try another word or type.' : 'Books, notes and slides will appear here as leaders and writers add them.'}</p>${!items.length && can.library(role()) ? '<button class="btn mt-2 lib__add2" type="button">Upload the first item</button>' : ''}</div>`; const b2 = $('.lib__add2', list); if (b2) b2.addEventListener('click', openUpload); return; }
     const groups = {}; rows.forEach(i => (groups[i.series || 'General'] ||= []).push(i));
     list.innerHTML = Object.entries(groups).map(([sr, its]) => `<section class="lshelf"><h3 class="lshelf__h">${esc(sr)}<span>${its.length}</span></h3><div class="lgrid">${its.map(card).join('')}</div></section>`).join('');
     $$('.lcov', list).forEach(b => b.addEventListener('click', () => preview(items.find(x => x.id === b.closest('.lcard').dataset.id))));
@@ -640,8 +624,8 @@ async function libraryPage(modal){
 /* ================================================================ DASHBOARDS: one per site */
 const DASH = {
   ccfc:     { eyebrow:'Christ Connect Family Church Zambia', intro:'Everything the church posts, publishes and keeps for its leaders.',
-              stats: s => [['Members', s?.users], ['New this month', s?.new_users_30d], ['Feed posts', s?.posts], ['Blog posts', s?.blogs], ['Library items', s?.library]],
-              tabs: r => [can.master(r) ? ['assistant','Mazar Prime'] : null, can.post(r) ? ['posts','Church feed'] : null, can.admin(r) ? ['settings','Site text'] : null, (can.blog(r) || can.admin(r)) ? ['blogs','Blog'] : null, can.library(r) ? ['library','Upper Room library'] : null, can.admin(r) ? ['users','Members and roles'] : null, can.admin(r) ? ['audit','Role changes'] : null, ['roles','Role guide']] },
+              stats: s => [['Members', s?.users], ['New this month', s?.new_users_30d], ['Feed posts', s?.posts], ['Library items', s?.library]],
+              tabs: r => [can.master(r) ? ['assistant','Mazar Prime'] : null, can.post(r) ? ['posts','Church feed'] : null, can.admin(r) ? ['settings','Site text'] : null, can.library(r) ? ['library','Upper Room library'] : null, can.admin(r) ? ['users','Members and roles'] : null, can.admin(r) ? ['audit','Role changes'] : null, ['roles','Role guide']] },
   koinonia: { eyebrow:'Koinonia Experience', intro:'Conference updates, videos and photos, and everyone who has registered for the next edition.',
               stats: s => [["Registered for Koi 26'", s?.regs_next], ['All registrations', s?.registrations], ['Updates posted', s?.posts], ['Reactions', s?.reactions], ['Comments', s?.comments]],
               tabs: r => [can.master(r) ? ['assistant','Mazar Prime'] : null, can.moderate(r) ? ['regs','Registrations'] : null, can.admin(r) ? ['settings','Site text'] : null, can.post(r) ? ['posts','Updates and media'] : null, can.admin(r) ? ['users','Members and roles'] : null, can.admin(r) ? ['audit','Role changes'] : null, ['roles','Role guide']] },
@@ -664,7 +648,7 @@ async function dashboardPage(modal){
   gate.hidden = true; app.hidden = false;
   const q = new URLSearchParams(location.search);
   $('.dash__head', app).innerHTML = `<span class="eyebrow">${esc(D.eyebrow)}</span><h1>${esc(SITE.dashTitle)}</h1><p class="sub">${esc(D.intro)}</p>
-    <div class="dash__who">${avatar(profile.full_name, profile.avatar_url)}<div><b>${esc(profile.full_name || profile.email)}</b><span class="pill pill--orange">${esc(ROLES[r].label)}</span></div>
+    ${can.leadership(r) ? '<p><a class="btn btn--ghost" href="https://ccfczambia.org/leadership">Leadership Hub</a></p>' : ''}<div class="dash__who">${avatar(profile.full_name, profile.avatar_url)}<div><b>${esc(profile.full_name || profile.email)}</b><span class="pill pill--orange">${esc(ROLES[r].label)}</span></div>
     ${can.admin(r) && !IS_ADMIN ? `<div class="dash__others">${Object.entries(SITES).filter(([k]) => k !== site).map(([k,s]) => `<a href="${ADMIN_ORIGIN}/?site=${k}">${esc(s.short)} dashboard ${ICO.arrow}</a>`).join('')}</div>` : ''}</div>`;
   const bar = $('.dash__tabs', app), panel = $('.dash__panel', app), statsEl = $('.dash__stats', app);
   const { data: stats } = await sb.rpc('dashboard_stats', { p_site: site });
@@ -672,7 +656,7 @@ async function dashboardPage(modal){
   const tabs = D.tabs(r).filter(Boolean);
   bar.innerHTML = tabs.map(t => `<button class="dash__tab" data-t="${t[0]}">${t[1]}</button>`).join('');
   const show = t => { $$('.dash__tab', bar).forEach(x => x.classList.toggle('is-on', x.dataset.t === t)); history.replaceState(null, '', IS_ADMIN ? `/?site=${site}&tab=${t}` : `/dashboard?tab=${t}`); panel.innerHTML = '<div class="skel"></div>';
-    ({ assistant: assistantTab, settings: settingsTab, posts: postsTab, regs: regsTab, apps: appsTab, team: teamTab, blogs: blogsTab, library: libraryTab, users: usersTab, audit: auditTab, roles: rolesTab })[t](); };
+    ({ assistant: assistantTab, settings: settingsTab, posts: postsTab, regs: regsTab, apps: appsTab, team: teamTab, library: libraryTab, users: usersTab, audit: auditTab, roles: rolesTab })[t](); };
   $$('.dash__tab', bar).forEach(b => b.addEventListener('click', () => show(b.dataset.t)));
   const csvOf = (name, cols, rows) => { const body = [cols.join(','), ...rows.map(x => cols.map(c => '"' + String(x[c] ?? '').replace(/"/g,'""') + '"').join(','))].join('\n'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([body], { type:'text/csv' })); a.download = name; a.click(); };
 
@@ -681,10 +665,11 @@ async function dashboardPage(modal){
     composer($('.feed__composer', panel), site, list);
     const filters = $('.feed__filters', panel); let kind = ''; filters.innerHTML = ['', ...SITES[site].kinds].map(k => `<button class="chip ${k ? '' : 'is-on'}" data-k="${k}">${k ? KINDS[k] : 'All'}</button>`).join('');
     $$('.chip', filters).forEach(b => b.addEventListener('click', () => { kind = b.dataset.k; $$('.chip', filters).forEach(x => x.classList.toggle('is-on', x === b)); list(); }));
-    async function list(){ let qry = sb.from('feed').select('*').eq('site', site).order('created_at', { ascending:false }).limit(80); if (kind) qry = qry.eq('kind', kind); const { data } = await qry; const l = $('.dash__list', panel);
+    async function list(){ let qry = sb.from('posts').select('*').eq('site', site).order('created_at', { ascending:false }).limit(80); if (kind) qry = qry.eq('kind', kind); const { data, error } = await qry; const l = $('.dash__list', panel); if(error){ l.textContent='Posts could not be loaded. Please try again.'; return; }
       l.innerHTML = (data||[]).map(p => { const th = (p.media||[]).find(m => m.type === 'image')?.url || ((p.media||[]).find(m => m.type === 'youtube') ? `https://i.ytimg.com/vi/${(p.media||[]).find(m => m.type === 'youtube').id}/mqdefault.jpg` : '');
-        return `<div class="drow" data-id="${p.id}">${th ? `<img class="drow__thumb" src="${esc(th)}" alt="">` : `<span class="drow__thumb drow__thumb--k">${esc((KINDS[p.kind]||'')[0])}</span>`}<div><b>${esc(p.title)}${p.pinned ? ' <i class="pill pill--orange">Pinned</i>' : ''}</b><span>${esc(KINDS[p.kind]||p.kind)} &middot; ${esc(p.author_name)} &middot; ${esc(when(p.created_at))} &middot; ${p.reaction_count} likes &middot; ${p.comment_count} comments</span></div>
-        <div class="row"><a class="pill" href="${SITE.feed}?post=${p.id}">View</a>${can.admin(r) ? `<button class="pill pin">${p.pinned ? 'Unpin' : 'Pin'}</button>` : ''}${(can.admin(r) || p.author_id === profile.id) ? '<button class="pill pill--danger del">Delete</button>' : ''}</div></div>`; }).join('') || '<p class="sub">No posts yet. Use the box above to post the first one.</p>';
+        return `<div class="drow" data-id="${p.id}">${th ? `<img class="drow__thumb" src="${esc(th)}" alt="">` : `<span class="drow__thumb drow__thumb--k">${esc((KINDS[p.kind]||'')[0])}</span>`}<div><b>${esc(p.title)}${p.pinned ? ' <i class="pill pill--orange">Pinned</i>' : ''}</b><span>${esc(KINDS[p.kind]||p.kind)} &middot; ${p.published ? 'Published' : 'Draft'} &middot; ${esc(when(p.created_at))}</span></div>
+        <div class="row">${p.published ? `<a class="pill" href="${SITES[site].origin}${SITE.feed}?post=${p.id}">View</a>` : ''}${can.admin(r) || p.author_id === profile.id ? '<button class="pill edit">Edit</button>' : ''}${can.admin(r) ? `<button class="pill pin">${p.pinned ? 'Unpin' : 'Pin'}</button>` : ''}${(can.admin(r) || p.author_id === profile.id) ? '<button class="pill pill--danger del">Delete</button>' : ''}</div></div>`; }).join('') || '<p class="sub">No posts yet. Use the box above to post the first one.</p>';
+      $$('.edit', l).forEach(b => b.addEventListener('click', () => editFeedPost(data.find(p => p.id === b.closest('.drow').dataset.id), list)));
       $$('.pin', l).forEach(b => b.addEventListener('click', async () => { const { error } = await sb.from('posts').update({ pinned: b.textContent === 'Pin' }).eq('id', b.closest('.drow').dataset.id); if (error) toast(friendly(error), false); else list(); }));
       $$('.del', l).forEach(b => b.addEventListener('click', async () => { if (!(await sure({ title: 'Delete this post?', body: `"${((data || []).find(x => x.id === b.closest('.drow').dataset.id) || {}).title || 'This post'}" is removed for everyone, with its comments and likes. This cannot be undone.`, ok: 'Delete post', danger: true, from: b }))) return; const { error } = await sb.from('posts').delete().eq('id', b.closest('.drow').dataset.id); if (error) toast(friendly(error), false); else list(); })); }
     list();
@@ -906,8 +891,9 @@ async function dashboardPage(modal){
   }
   async function regsTab(){
     const { data } = await sb.from('registrations').select('*').eq('site','koinonia').order('created_at', { ascending:false }).limit(2000); const all = data || [];
+    const delivery = new Map(); if(all.length){ const {data:states,error:deliveryError}=await sb.rpc('registration_delivery_status',{p_ids:all.map(x=>x.id)}); if(!deliveryError) (states||[]).forEach(x=>delivery.set(x.registration_id,x)); }
     const editions = [...new Set(all.map(x => x.edition))].sort().reverse(); let ed = editions.includes('k26') ? 'k26' : (editions[0] || '');
-    const cols = ['edition','first_name','middle_name','surname','gender','age_range','residence','country','phone','email','participation','participation_detail','days','dietary','expectation','created_at'];
+    const cols = ['edition','first_name','middle_name','surname','gender','age_range','residence','country','phone','whatsapp_number','email','participation','participation_detail','days','dietary','expectation','created_at'];
     panel.innerHTML = `<div class="dash__toolbar"><div class="feed__filters">${['', ...editions].map(e => `<button class="chip ${e === ed ? 'is-on' : ''}" data-e="${e}">${e ? "Koi " + e.slice(1) + "'" : 'All editions'}</button>`).join('')}</div><input class="dash__search" placeholder="Search name, phone, town or email" aria-label="Search registrations"><button class="btn btn--ghost dash__csv">Download CSV</button></div>
       <div class="dash__kpis"></div><div class="dash__list"></div>`;
     const list = $('.dash__list', panel), s = $('.dash__search', panel), kpis = $('.dash__kpis', panel);
@@ -918,13 +904,13 @@ async function dashboardPage(modal){
       const towns = {}; rs.forEach(x => { const t = (x.residence||'').trim().toLowerCase().replace(/\b\w/g, c => c.toUpperCase()); if (t) towns[t] = (towns[t]||0) + 1; }); const top = Object.entries(towns).sort((a,b) => b[1]-a[1]).slice(0,3);
       kpis.innerHTML = `<div class="stat"><b>${rs.length}</b><span>${ed ? "registered for Koi " + ed.slice(1) + "'" : 'registrations'}</span></div><div class="stat"><b>${week}</b><span>in the last 7 days</span></div><div class="stat"><b>${part}</b><span>want to take part on stage</span></div><div class="stat"><b>${top.map(([t,n]) => `${t} ${n}`).join(', ') || '0'}</b><span>top towns</span></div>`;
       list.innerHTML = rs.map(x => `<details class="drow drow--exp" data-id="${x.id}"><summary>${avatar(x.first_name + ' ' + x.surname)}<div><b>${esc(x.first_name)} ${x.middle_name ? esc(x.middle_name) + ' ' : ''}${esc(x.surname)} <i class="pill">Koi ${esc(x.edition.slice(1))}'</i></b><span>${esc(x.residence||'')}${x.country ? ', ' + esc(x.country) : ''} &middot; ${esc(x.phone)}${x.email ? ' &middot; ' + esc(x.email) : ''} &middot; ${esc(when(x.created_at))}</span></div><div class="row"><a class="pill" href="https://wa.me/${esc(String(x.phone).replace(/\D/g,''))}" target="_blank" rel="noopener">${ICO.wa} WhatsApp</a>${can.admin(r) ? '<button class="pill pill--danger del">Remove</button>' : ''}</div></summary>
-        <dl class="drow__dl"><dt>Gender</dt><dd>${esc(x.gender||'')}</dd><dt>Age</dt><dd>${esc(x.age_range||'')}</dd><dt>Role</dt><dd>${esc(x.participation||'')} ${esc(x.participation_detail||'')}</dd><dt>Days</dt><dd>${esc(x.days||'')}</dd><dt>Dietary</dt><dd>${esc(x.dietary||'')}</dd><dt>Expectation</dt><dd>${esc(x.expectation||'')}</dd><dt>Registered</dt><dd>${esc(fullDate(x.created_at))}</dd></dl></details>`).join('') || '<p class="sub">No registrations match.</p>';
+        <dl class="drow__dl"><dt>Drive copy</dt><dd>${esc(delivery.get(x.id)?.drive_status || 'Status unavailable')}</dd><dt>Confirmation email</dt><dd>${esc(delivery.get(x.id)?.email_status || 'Status unavailable')}</dd><dt>WhatsApp</dt><dd>${esc(x.whatsapp_number||'Not supplied')}</dd><dt>Gender</dt><dd>${esc(x.gender||'')}</dd><dt>Age</dt><dd>${esc(x.age_range||'')}</dd><dt>Role</dt><dd>${esc(x.participation||'')} ${esc(x.participation_detail||'')}</dd><dt>Days</dt><dd>${esc(x.days||'')}</dd><dt>Dietary</dt><dd>${esc(x.dietary||'')}</dd><dt>Expectation</dt><dd>${esc(x.expectation||'')}</dd><dt>Registered</dt><dd>${esc(fullDate(x.created_at))}</dd></dl></details>`).join('') || '<p class="sub">No registrations match.</p>';
       $$('.del', list).forEach(b => b.addEventListener('click', async e => { e.preventDefault(); const x = all.find(y => y.id === b.closest('.drow').dataset.id); if (!(await sure({ title: 'Remove this registration?', body: x ? `${x.first_name} ${x.surname} will no longer be on the Koi ${String(x.edition).slice(1)}' list. This cannot be undone.` : 'This cannot be undone.', ok: 'Remove', danger: true, from: b }))) return; await sb.from('registrations').delete().eq('id', b.closest('.drow').dataset.id); const i = all.findIndex(x => x.id === b.closest('.drow').dataset.id); all.splice(i,1); render(); })); };
     s.addEventListener('input', render); render();
   }
   async function appsTab(){
     const { data } = await sb.from('applications').select('*').eq('site','worship').order('created_at', { ascending:false }).limit(1000); const all = data || []; let st = 'new';
-    const cols = ['status','name','phone','email','gift','experience','church','message','notes','created_at'];
+    const cols = ['status','name','phone','whatsapp_number','email','gift','experience','church','message','notes','created_at'];
     const count = k => all.filter(x => k ? x.status === k : true).length;
     panel.innerHTML = `<div class="dash__toolbar"><div class="feed__filters">${['new','contacted','audition','accepted','declined',''].map(k => `<button class="chip ${k === st ? 'is-on' : ''}" data-s="${k}">${k ? APP_STATUS[k] : 'All'} <i>${count(k)}</i></button>`).join('')}</div><input class="dash__search" placeholder="Search name, phone or gift" aria-label="Search applications"><button class="btn btn--ghost dash__csv">Download CSV</button></div><div class="dash__list"></div>`;
     const list = $('.dash__list', panel), s = $('.dash__search', panel);
@@ -992,11 +978,6 @@ async function dashboardPage(modal){
       $$('.del', list).forEach(b => b.addEventListener('click', async () => { if (b.disabled) return; b.disabled = true; if (await kit.remove(items.find(x => x.id === b.closest('.drow').dataset.id), b)) load(); else b.disabled = false; })); }
     search.addEventListener('input', render); load();
   }
-  async function blogsTab(){
-    const { data } = await sb.from('blogs').select('id, title, slug, published, published_at, created_at, author:member_cards!author_id(full_name)').order('created_at', { ascending:false }).limit(100);
-    panel.innerHTML = `<div class="row mb-2"><a class="btn" href="/blog?new=1">Write a post</a></div><div class="dash__list">${(data||[]).map(b => `<div class="drow" data-id="${b.id}"><div><b>${esc(b.title)}</b><span>${b.published ? 'Published ' + esc(when(b.published_at)) : 'Draft'} &middot; ${esc(b.author?.full_name||'')}</span></div><div class="row"><a class="pill" href="/blog?post=${esc(b.slug)}">Open</a>${can.admin(r) ? '<button class="pill pill--danger del">Delete</button>' : ''}</div></div>`).join('') || '<p class="sub">No blog posts yet.</p>'}</div>`;
-    $$('.del', panel).forEach(b => b.addEventListener('click', async () => { if (!(await sure({ title: 'Delete this blog post?', body: `"${((data || []).find(x => x.id === b.closest('.drow').dataset.id) || {}).title || 'This post'}" comes off the blog, with its comments. This cannot be undone.`, ok: 'Delete', danger: true, from: b }))) return; const { error } = await sb.from('blogs').delete().eq('id', b.closest('.drow').dataset.id); if (error) toast(friendly(error), false); else blogsTab(); }));
-  }
   async function usersTab(){
     panel.innerHTML = `<div class="dash__toolbar"><input class="dash__search" placeholder="Search by name or email" aria-label="Search users"><select class="rolesel dash__rolefilter"><option value="">All roles</option>${Object.entries(ROLES).map(([k,v]) => `<option value="${k}">${v.label}</option>`).join('')}</select></div><div class="dash__list"></div>`;
     const list = $('.dash__list', panel), search = $('.dash__search', panel), rf = $('.dash__rolefilter', panel);
@@ -1015,7 +996,7 @@ async function dashboardPage(modal){
     async function removeAccount(u, b){ if (!u || busy) return; busy = true; const lock = on => $$('.del, .rolesel', list).forEach(x => { x.disabled = on; }); lock(true); b.textContent = 'Checking...';
       try { const c = await usersFn({ action:'check', user_id:u.id }); if (!c.allowed){ toast(c.reason || 'This account cannot be deleted.', false); return; }
         const name = (c.target && c.target.name) || u.full_name || '', email = (c.target && c.target.email) || u.email || '', m = c.moves || {};
-        const parts = [m.posts ? plural(m.posts, 'post', 'posts') : '', m.blogs ? plural(m.blogs, 'blog', 'blogs') : '', m.library ? plural(m.library, 'library file', 'library files') : ''].filter(Boolean);
+        const parts = [m.posts ? plural(m.posts, 'post', 'posts') : '', m.library ? plural(m.library, 'library file', 'library files') : ''].filter(Boolean);
         const moves = parts.length ? ` Their ${andList(parts)} ${parts.length === 1 && /^1 /.test(parts[0]) ? 'moves' : 'move'} to you.` : '';
         if (!(await sure({ title: `Delete ${name ? `${name} (${email})` : email}?`, body: `${moves.trim() ? moves.trim() + ' ' : ''}Their registrations and applications stay with the church without their account link. Their profile, comments and likes are removed. To come back they will need to create a new account. This cannot be undone.`, ok: 'Delete account', danger: true, from: b }))) return;
         b.textContent = 'Deleting...'; await usersFn({ action:'delete', user_id:u.id });
@@ -1032,7 +1013,7 @@ async function dashboardPage(modal){
     panel.innerHTML = `<div class="dash__list">${rows.sort((x, y) => new Date(y.at) - new Date(x.at)).slice(0, 100).map(x => x.html).join('') || '<p class="sub">No role changes yet.</p>'}</div>`; }
   function rolesTab(){ panel.innerHTML = `<div class="values">${Object.values(ROLES).map(x => `<div class="value"><h3>${esc(x.label)}</h3><p>${esc(x.desc)}</p></div>`).join('')}</div>`; }
   /* open the first tab last, once every helper above exists */
-  const want = q.get('tab'); show(tabs.find(t => t[0] === want) ? want : tabs[0][0]);
+  const want = q.get('tab') === 'blogs' ? 'posts' : q.get('tab'); show(tabs.find(t => t[0] === want) ? want : tabs[0][0]);
 }
 
 
@@ -1394,14 +1375,13 @@ async function boot(){
       const uid = s?.user?.id || null; if (uid === lastUid) return;
       lastUid = uid; session = s; await loadProfile(); accountUI(modal);
       const key = uid || 'signed-out'; if (mem(RL) === key) return goneNote(); mem(RL, key);
-      if ($('#feed,#dashboard,#library,#blog,#account')){ if (location.hash) history.replaceState(null, '', location.pathname + location.search); location.reload(); } else goneNote();
+      if ($('#feed,#dashboard,#library,#account,#leadership')){ if (location.hash) history.replaceState(null, '', location.pathname + location.search); location.reload(); } else goneNote();
     });
     if (new URLSearchParams(location.search).get('reset')){ const p = prompt('Choose a new password (at least 8 characters)'); if (p && p.length >= 8){ const { error } = await sb.auth.updateUser({ password:p }); toast(error ? friendly(error) : 'Password updated.', !error); } } }
   accountUI(modal);
-  applySettings(); feedPage(modal); blogPage(modal); libraryPage(modal); dashboardPage(modal); teamPage(); accountPage(modal);
+  applySettings(); leadershipPage(modal); feedPage(modal); libraryPage(modal); dashboardPage(modal); teamPage(); accountPage(modal);
   if (new URLSearchParams(location.search).get('edit') === '1' && pageEditable() && can.master(role())) pageContent.then(pageEditView, pageEditView);
   if (new URLSearchParams(location.search).get('signin')) modal.open('in');
-  if (new URLSearchParams(location.search).get('new') && $('#blog') && can.blog(role())) $('.blog__new')?.click();
 }
 document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', boot) : boot();
 })();

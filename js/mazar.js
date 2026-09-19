@@ -55,7 +55,7 @@ const SUNDAY = (() => { const s = String(KB.sunday || ''), span = s.split(' (')[
 const INTENTS = [
   { k:['koi 25 photo','koi 25\' photo','photos','pictures','download photo','gallery'], a:"The Koi 25' photos are on the Koinonia site. You can view each one large and download it, or download them all.", go:[KB.koinoniaUrl + '/k25-photos', "Koi 25' photos"] },
   { k:['join the team','join worship','audition','rehearse','rehearsal','practice','apply'], a:'Worship Connect rehearses every week. Apply on the Join page and a team leader will message you on WhatsApp with the next rehearsal.', go:[KB.worshipUrl + '/join', 'Join the team'] },
-  { k:['cost','price','fee','how much'], a:"The Koi 26' delegate fee will be announced with the dates. For Koi 25' it was K200 for Zambian delegates and USD 10 for international delegates.", go:[KB.koinoniaUrl + '/k26#register', "Register for Koi 26'"] },
+  { k:['cost','price','fee','how much'], a:"The Koi 26' delegate fee will be announced with the dates. For Koi 25' it was K200 for Zambian delegates and USD 10 for international delegates.", go:[KB.koinoniaUrl + '/register', "Register for Koi 26'"] },
   { k:['service time','what time','when do you meet','sunday','when is church','times','schedule','midweek','plan my visit'], a:`We gather every Sunday, ${SUNDAY.span}, at ${KB.venue}.${SUNDAY.list ? '\n\n' + SUNDAY.list + '\n\n' : ' '}Connect groups and prayer meet through the week; the office shares ${KB.midweek}.`, go:['/visit','Plan a visit'] },
   { k:['where','address','location','directions','map','find you','venue','mandevu','kasangula'], a:`We meet at ${KB.venue}. Tap below for the map and directions, or message us on WhatsApp and we will send a pin.`, go:['/visit#map','Open directions'] },
   { k:['first time','visit','visiting','new here','what to expect','dress','wear','kids','children','parking'], a:`You are very welcome. No dress code. Near the end of the service, during announcements and visitors, you are invited to stand and introduce yourself, and the church welcomes you warmly. Children are welcome and Connect Kids runs during the sermon. Service is ${SUNDAY.span}.`, go:['/visit','What to expect'] },
@@ -1000,12 +1000,16 @@ function app(){
   const hideSheet = () => { vsheet.hidden = true; };
   const updateSheet = () => { $$('.mz__v', scroll).forEach(el => el.classList.toggle('is-sel', RD.sel.has(+el.dataset.v))); if (!RD.sel.size){ hideSheet(); return; } vsheet.hidden = false; $('.mz__vsheet-ref', vsheet).textContent = selRef(); $('.mz__vs-tr', vsheet).hidden = curV().lang === 'en'; };
   const closePicker = () => { picker.hidden = true; picker.innerHTML = ''; RD.pk = null; };
+  let chapterRequest = 0;
   async function showChapter(opts = {}){
+    const requestId = ++chapterRequest;
     const v = curV(); updateNav(); savePos(); closePicker(); RD.sel.clear(); hideSheet(); RD.loading = true;
     scroll.innerHTML = '<div class="mz__loading"><i></i><i></i><i></i></div>'; delete scroll.dataset.ref; mood('think');
     try {
       const d = await fetchChapter(v.id, RD.book, RD.chapter);
+      if(requestId !== chapterRequest) return;
       let enMap = null; if (RD.par && v.lang !== 'en'){ try { const en = await fetchChapter('web', RD.book, RD.chapter); enMap = Object.fromEntries(en.verses.map(x => [x.verse, x.text])); } catch (_) {} }
+      if(requestId !== chapterRequest) return;
       const prevRef = RD.book === 1 && RD.chapter === 1 ? '' : (RD.chapter > 1 ? refOf(RD.book, RD.chapter - 1) : refOf(RD.book - 1, CHAPTERS[RD.book - 2]));
       const nextRef = RD.book === 66 && RD.chapter === CHAPTERS[65] ? '' : (RD.chapter < CHAPTERS[RD.book - 1] ? refOf(RD.book, RD.chapter + 1) : refOf(RD.book + 1, 1));
       scroll.innerHTML = `<header><span class="mz-card__k">${esc(v.name)} <i>${esc(v.year)}</i>${v.lang !== 'en' ? ` <i>&middot; ${esc(v.langName)}</i>` : ''}</span><h3>${esc(refOf(RD.book, RD.chapter))}</h3></header>
@@ -1018,7 +1022,7 @@ function app(){
       if (opts.focus){ const [a, b] = opts.focus; for (let n = a; n <= (b || a); n++) if ($(`.mz__v[data-v="${n}"]`, scroll)) RD.sel.add(n); updateSheet(); const first = $(`.mz__v[data-v="${a}"]`, scroll); if (first) setTimeout(() => first.scrollIntoView({ block: 'center', behavior: RM ? 'auto' : 'smooth' }), 60); }
       else scroll.scrollTop = 0;
       mood('idle'); figs.forEach(f => f.pulse());
-    } catch (err){ scroll.innerHTML = `<div class="mz__empty">${markSvg()}<p>${esc(err.message)}</p>${err.bg ? `<a class="mz-chip mz-chip--gold" href="${esc(err.bg)}" target="_blank" rel="noopener">Read ${esc(refOf(RD.book, RD.chapter))} on BibleGateway ${I.ext}</a>` : ''}<button type="button" class="mz-chip" data-b="pickver">Choose another version</button></div>`; if (!err.bg){ mood('error'); setTimeout(() => mood('idle'), 900); } else mood('idle'); }
+    } catch (err){ if(requestId !== chapterRequest) return; scroll.innerHTML = `<div class="mz__empty">${markSvg()}<p>${esc(err.message)}</p>${err.bg ? `<a class="mz-chip mz-chip--gold" href="${esc(err.bg)}" target="_blank" rel="noopener">Read ${esc(refOf(RD.book, RD.chapter))} on BibleGateway ${I.ext}</a>` : ''}<button type="button" class="mz-chip" data-b="pickver">Choose another version</button></div>`; if (!err.bg){ mood('error'); setTimeout(() => mood('idle'), 900); } else mood('idle'); }
     RD.loading = false; RD.loaded = true;
   }
   const step = dir => { let b = RD.book, c = RD.chapter + dir; if (c < 1){ if (b === 1) return; b--; c = CHAPTERS[b - 1]; } else if (c > CHAPTERS[b - 1]){ if (b === 66) return; b++; c = 1; } RD.book = b; RD.chapter = c; showChapter(); };
@@ -1127,6 +1131,7 @@ function app(){
     setTab(['bible','today','tasks','study','ask'].includes(deep) ? deep : (state.tab || 'ask'));
     const q = qp.get('q'); if (q) setTimeout(() => ask(q), 400);
   }
+  const passageRef = qp.get('ref'); if (passageRef && parseRef(passageRef)){ if (FLOAT) open(true); openPassage(passageRef); }
   addEventListener('resize', () => { if (FLOAT && panel.hidden) return; setTab(state.tab || 'ask'); }, { passive: true });
   if (STUDIO) accounts(w, { figs,
     list: () => convos,

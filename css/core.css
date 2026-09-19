@@ -625,3 +625,9 @@ html{overflow-x:clip}
 @media (max-width:640px){.mzp__dr{grid-template-columns:minmax(0,1fr);gap:.15rem}}
 @keyframes mzpAttUp{50%{opacity:.95}}
 @media (prefers-reduced-motion:reduce){.mzp__att.is-up img{animation:none}}
+/* Unified feed editing, including migrated teaching drafts. */
+.feed-editor{width:min(720px,calc(100% - 32px));max-height:90vh;overflow:auto;border:1px solid #9aa9bb;border-radius:18px;background:#fff;color:#0a203d;padding:clamp(20px,4vw,40px)}
+.feed-editor::backdrop{background:#06172acc;backdrop-filter:blur(4px)}
+.feed-editor form{display:grid;gap:1.2rem}.feed-editor .field{display:grid;gap:.4rem}.feed-editor input,.feed-editor textarea{width:100%;padding:.8rem;border:1px solid #9aa9bb;border-radius:8px;font:inherit;background:#fff;color:#0a203d}.feed-editor .row{flex-wrap:wrap}
+
+.feed-editor h2{color:#0a203d}
