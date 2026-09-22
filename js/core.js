@@ -34,7 +34,7 @@ const KINDS = { news:'News', announcement:'Announcement', photo:'Photos', video:
 const SITES = {
   ccfc:     { label:'CCFC Zambia', short:'CCFC', origin:'https://ccfczambia.org', feed:'/feed', feedLabel:'Church feed', feedWord:'the family',
               kinds:['news','photo','video','announcement'], logo:'/assets/logo/ccfc-mark.png?v=2', dashTitle:'Church dashboard',
-              links: r => [['/account','Account Center'], ['/feed','Church feed'], can.leadership(r) ? ['/leadership','Leadership Hub'] : null, ['/library','Upper Room library'], can.staff(r) ? [ADMIN_ORIGIN + '/?site=ccfc','Admin panel'] : null] },
+              links: r => [['/account','Account Center'], ['/feed','Church feed'], can.leadership(r) ? ['https://portal.ccfczambia.org/leadership','Leadership Hub'] : null, ['/library','Upper Room library'], can.staff(r) ? [ADMIN_ORIGIN + '/?site=ccfc','Admin panel'] : null] },
   koinonia: { label:'Koinonia Experience', short:'Koinonia', origin:'https://koinonia.ccfczambia.org', feed:'/updates', feedLabel:'Conference updates', feedWord:'everyone coming to Koinonia',
               kinds:['news','announcement','video','photo'], logo:'/assets/logo/ccfc-mark.png?v=2', dashTitle:'Koinonia dashboard',
               links: r => [['https://ccfczambia.org/account','Account Center'], ['/updates','Updates'], ['/register',"Register for Koi 26'"], can.staff(r) ? [ADMIN_ORIGIN + '/?site=koinonia','Admin panel'] : null] },
@@ -372,16 +372,8 @@ async function feedAnnouncements(root, site){
   load();
 }
 
-async function leadershipPage(modal){
-  const root = $('#leadership'); if(!root) return; const body = $('.leadership__content',root);
-  if(!session){ body.innerHTML='<p>Sign in with your church leadership account to continue.</p><button class="btn mt-2" data-auth="in">Sign in</button>'; accountUI(modal); return; }
-  if(!can.leadership(role())){ body.innerHTML='<div class="empty"><h2>Leadership access required</h2><p>This page is available to Leaders, Admins and Master Administrators.</p></div>'; return; }
-  const {data,error}=await sb.rpc('leadership_summary');
-  if(error){ body.innerHTML='<div class="empty"><h2>Reports are unavailable</h2><p>The reporting service could not be reached. Please try again later.</p></div>'; return; }
-  if(!can.leadership(role())){ body.textContent='Leadership access required.'; return; }
-  const groups=[['People and belonging',['Total people','Active members','Visitors this month','Visitor follow-up status','Members in Connect Groups']],['Attendance and care',['Connect Group attendance','Sunday attendance','Members needing attendance follow-up','Pastoral-care workload']],['Talent and development',['Talent audits completed','Talent awaiting review','People in training','Active mentorships','Deployment readiness','Leadership pipeline']],['Serving and events',['Ministry staffing gaps','Volunteer engagement','Event registrations']]];
-  body.innerHTML='<p class="sub mb-2">Conference registrations are counted below. Other reports will become available as ministry records are connected; website accounts are not counted as church members.</p>'+groups.map(([title,items])=>'<section class="mb-3"><h2 class="mb-1">'+esc(title)+'</h2><div class="dash__stats">'+items.map(label=>'<div class="stat"><b>'+ (label==='Event registrations' ? esc(data.event_registrations) : 'Not yet tracked')+'</b><span>'+esc(label)+'</span></div>').join('')+'</div></section>').join('')+'<p class="sub">Event registrations: all Koinonia editions. Updated '+esc(fullDate(data.generated_at))+'.</p>';
-}
+/* The Leadership Hub lives in the portal now (portal.ccfczambia.org), beside the data it
+   reports on. The old /leadership address redirects there. */
 
 /* The feed and the library are for people with an account. Their links are already hidden when
    signed out, but someone can still arrive on the page from a bookmark or a shared link, so the
@@ -639,13 +631,13 @@ async function libraryPage(modal){
 const DASH = {
   ccfc:     { eyebrow:'Christ Connect Family Church Zambia', intro:'Everything the church posts, publishes and keeps for its leaders.',
               stats: s => [['Members', s?.users], ['New this month', s?.new_users_30d], ['Feed posts', s?.posts], ['Library items', s?.library]],
-              tabs: r => [can.master(r) ? ['assistant','Mazar Prime'] : null, can.post(r) ? ['posts','Church feed'] : null, can.admin(r) ? ['settings','Site text'] : null, can.library(r) ? ['library','Upper Room library'] : null, can.admin(r) ? ['users','Members and roles'] : null, can.admin(r) ? ['audit','Role changes'] : null, ['roles','Role guide']] },
+              tabs: r => [can.master(r) ? ['assistant','Yuriel Prime'] : null, can.post(r) ? ['posts','Church feed'] : null, can.admin(r) ? ['settings','Site text'] : null, can.library(r) ? ['library','Upper Room library'] : null, can.admin(r) ? ['users','Members and roles'] : null, can.admin(r) ? ['audit','Role changes'] : null, ['roles','Role guide']] },
   koinonia: { eyebrow:'Koinonia Experience', intro:'Conference updates, videos and photos, and everyone who has registered for the next edition.',
               stats: s => [["Registered for Koi 26'", s?.regs_next], ['All registrations', s?.registrations], ['Updates posted', s?.posts], ['Reactions', s?.reactions], ['Comments', s?.comments]],
-              tabs: r => [can.master(r) ? ['assistant','Mazar Prime'] : null, can.moderate(r) ? ['regs','Registrations'] : null, can.admin(r) ? ['settings','Site text'] : null, can.post(r) ? ['posts','Updates and media'] : null, can.admin(r) ? ['users','Members and roles'] : null, can.admin(r) ? ['audit','Role changes'] : null, ['roles','Role guide']] },
+              tabs: r => [can.master(r) ? ['assistant','Yuriel Prime'] : null, can.moderate(r) ? ['regs','Registrations'] : null, can.admin(r) ? ['settings','Site text'] : null, can.post(r) ? ['posts','Updates and media'] : null, can.admin(r) ? ['users','Members and roles'] : null, can.admin(r) ? ['audit','Role changes'] : null, ['roles','Role guide']] },
   worship:  { eyebrow:'Worship Connect', intro:'The team\'s videos and music, who is on the team, and the people asking to join.',
               stats: s => [['New applications', s?.apps_new], ['All applications', s?.applications], ['Team members', s?.team], ['Videos and posts', s?.posts], ['Reactions', s?.reactions]],
-              tabs: r => [can.master(r) ? ['assistant','Mazar Prime'] : null, can.moderate(r) ? ['apps','Applications'] : null, can.admin(r) ? ['settings','Site text'] : null, can.post(r) ? ['posts','Videos and music'] : null, can.post(r) ? ['team','The team'] : null, can.admin(r) ? ['users','Members and roles'] : null, can.admin(r) ? ['audit','Role changes'] : null, ['roles','Role guide']] },
+              tabs: r => [can.master(r) ? ['assistant','Yuriel Prime'] : null, can.moderate(r) ? ['apps','Applications'] : null, can.admin(r) ? ['settings','Site text'] : null, can.post(r) ? ['posts','Videos and music'] : null, can.post(r) ? ['team','The team'] : null, can.admin(r) ? ['users','Members and roles'] : null, can.admin(r) ? ['audit','Role changes'] : null, ['roles','Role guide']] },
 };
 const APP_STATUS = { new:'New', contacted:'Contacted', audition:'Invited to rehearsal', accepted:'Accepted', declined:'Not now' };
 /* Mazar Prime's mark, and where its conversations are kept on this device (cleared on sign out) */
@@ -723,9 +715,9 @@ async function dashboardPage(modal){
     let convos = load(), cur = fresh(); convos.unshift(cur);
     const livePlans = new Set();   /* plans made in this visit can be applied; saved ones are shown as history only */
 
-    panel.innerHTML = `<section class="mzp" data-theme="mazar" aria-label="Mazar Prime">
+    panel.innerHTML = `<section class="mzp" data-theme="mazar" aria-label="Yuriel Prime">
       <canvas class="mzp__sky" aria-hidden="true"></canvas>
-      <aside class="mzp__side" aria-label="Mazar Prime conversations">
+      <aside class="mzp__side" aria-label="Yuriel Prime conversations">
         <button class="mzp__new" type="button">${PI.plus}<span>New conversation</span></button>
         <nav class="mzp__convos" aria-label="Conversations"></nav>
         <div class="mzp__foot"><span class="mzp__k">Engines</span>
@@ -737,8 +729,8 @@ async function dashboardPage(modal){
         <div class="mzp__fig" aria-hidden="true"><canvas></canvas></div>
         <header class="mzp__bar">
           <button class="mzp__btn mzp__rail" type="button" aria-label="Hide conversations" title="Hide conversations" aria-expanded="true">${PI.rail}</button>
-          <span class="mzp__id">${primeMark()}<span><b>Mazar <em>Prime</em></b><small><i class="mzp__live"></i><span class="mzp__status">Ready</span></small></span></span>
-          <span class="mzp__scope" title="Mazar Prime can work on all three sites. This dashboard is its starting point."><i></i>Working from <b>${esc(SITE_NAME[site] || site)}</b></span>
+          <span class="mzp__id">${primeMark()}<span><b>Yuriel <em>Prime</em></b><small><i class="mzp__live"></i><span class="mzp__status">Ready</span></small></span></span>
+          <span class="mzp__scope" title="Yuriel Prime can work on all three sites. This dashboard is its starting point."><i></i>Working from <b>${esc(SITE_NAME[site] || site)}</b></span>
           <span class="mzp__tools"><button class="mzp__btn mzp__newbtn" type="button" aria-label="New conversation" title="New conversation">${PI.plus}</button><button class="mzp__btn mzp__full" type="button" aria-label="Full screen" title="Full screen">${PI.full}</button></span>
         </header>
         <div class="mzp__log" aria-live="polite">
@@ -746,11 +738,11 @@ async function dashboardPage(modal){
             <div class="mzp__stage" aria-hidden="true"></div>
             <span class="mzp__eyebrow">Master Administrator</span>
             <h3>${hello}${first ? ', ' + esc(first) : ''}.</h3>
-            <p>Everything Mazar knows, with the keys to all three sites. I look first, then show you a plan. Nothing changes until you press Apply.</p>
+            <p>Everything Yuriel knows, with the keys to all three sites. I look first, then show you a plan. Nothing changes until you press Apply.</p>
             <div class="mzp__starts">${GROUPS.map(([ic, h, s, xs]) => `<div class="mzp__group"><h4>${ic}${esc(h)}</h4><small>${esc(s)}</small>${xs.map(x => `<button type="button">${esc(x)}</button>`).join('')}</div>`).join('')}</div>
           </div>
         </div>
-        <form class="mz__form mzp__form"><div class="mzp__atts" hidden></div>${EP ? `<button class="mzp__attach" type="button" aria-label="Attach a photo" title="Attach a photo for a page (JPG, PNG or WebP, up to 5 MB)">${PI.clip}</button><input class="mzp__file" type="file" accept="image/jpeg,image/png,image/webp" hidden>` : ''}<textarea name="q" rows="1" placeholder="${EP ? (innerWidth <= 640 ? 'Ask Mazar Prime...' : 'Ask Mazar Prime to change, check or write something...') : 'Mazar Prime is not configured (js/config.js adminEndpoint)'}" aria-label="Instruction for Mazar Prime" maxlength="4000"></textarea><button class="mz__send" type="submit" aria-label="Send">${PI.send}</button></form>
+        <form class="mz__form mzp__form"><div class="mzp__atts" hidden></div>${EP ? `<button class="mzp__attach" type="button" aria-label="Attach a photo" title="Attach a photo for a page (JPG, PNG or WebP, up to 5 MB)">${PI.clip}</button><input class="mzp__file" type="file" accept="image/jpeg,image/png,image/webp" hidden>` : ''}<textarea name="q" rows="1" placeholder="${EP ? (innerWidth <= 640 ? 'Ask Yuriel Prime...' : 'Ask Yuriel Prime to change, check or write something...') : 'Yuriel Prime is not configured (js/config.js adminEndpoint)'}" aria-label="Instruction for Yuriel Prime" maxlength="4000"></textarea><button class="mz__send" type="submit" aria-label="Send">${PI.send}</button></form>
         <p class="mzp__fine"><span>Enter to send. Shift and Enter for a new line.</span><span>Every applied change is logged under your name.</span></p>
       </div></section>`;
 
@@ -819,7 +811,7 @@ async function dashboardPage(modal){
     /* ---- sidebar ---- */
     const paintSide = () => { const nav = $('.mzp__convos', root); const day = t => Math.floor((new Date().setHours(0, 0, 0, 0) - new Date(t).setHours(0, 0, 0, 0)) / 864e5);
       const list = convos.filter(c => c.log.length);
-      nav.innerHTML = list.length ? [['Today', d => d === 0], ['Yesterday', d => d === 1], ['Earlier', d => d > 1]].map(([h, f]) => { const rs = list.filter(c => f(day(c.t))); return rs.length ? `<h5>${h}</h5>` + rs.map(c => `<div class="mzp__convo ${c === cur ? 'is-on' : ''}" data-id="${esc(c.id)}"><button type="button" class="mzp__convo-open"><b>${esc(c.title)}</b><small>${esc(SITE_NAME[c.site] || '')} &middot; ${esc(when(new Date(c.t).toISOString()))}</small></button><button type="button" class="mzp__convo-del" aria-label="Delete conversation">${PI.trash}</button></div>`).join('') : ''; }).join('') : '<p class="mzp__side-empty">Your conversations with Mazar Prime will appear here.</p>'; };
+      nav.innerHTML = list.length ? [['Today', d => d === 0], ['Yesterday', d => d === 1], ['Earlier', d => d > 1]].map(([h, f]) => { const rs = list.filter(c => f(day(c.t))); return rs.length ? `<h5>${h}</h5>` + rs.map(c => `<div class="mzp__convo ${c === cur ? 'is-on' : ''}" data-id="${esc(c.id)}"><button type="button" class="mzp__convo-open"><b>${esc(c.title)}</b><small>${esc(SITE_NAME[c.site] || '')} &middot; ${esc(when(new Date(c.t).toISOString()))}</small></button><button type="button" class="mzp__convo-del" aria-label="Delete conversation">${PI.trash}</button></div>`).join('') : ''; }).join('') : '<p class="mzp__side-empty">Your conversations with Yuriel Prime will appear here.</p>'; };
     const open = c => { cur = c; paintLog(); paintSide(); root.classList.remove('is-side'); if (innerWidth > 900) ta.focus({ preventScroll: true }); };
     const startNew = () => { if (!cur.log.length){ open(cur); return; } convos = convos.filter(c => c.log.length); const c = fresh(); convos.unshift(c); open(c); };
     $('.mzp__convos', root).addEventListener('click', async e => { const row = e.target.closest('.mzp__convo'); if (!row) return; const c = convos.find(x => x.id === row.dataset.id); if (!c) return;
@@ -1073,9 +1065,9 @@ async function accountPage(modal){
       </section>
       <section class="acct__card acct__apps">
         <h2>Connected apps</h2>
-        <div class="acct__app"><span class="acct__app-ico" aria-hidden="true"><svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="17" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M24 12c.8 8.4 3.6 11.2 12 12-8.4.8-11.2 3.6-12 12-.8-8.4-3.6-11.2-12-12 8.4-.8 11.2-3.6 12-12z" fill="currentColor"/></svg></span><div><b>Mazar</b><span class="acct__app-status">Checking...</span></div></div>
+        <div class="acct__app"><span class="acct__app-ico" aria-hidden="true"><svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="17" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M24 12c.8 8.4 3.6 11.2 12 12-8.4.8-11.2 3.6-12 12-.8-8.4-3.6-11.2-12-12 8.4-.8 11.2-3.6 12-12z" fill="currentColor"/></svg></span><div><b>Yuriel</b><span class="acct__app-status">Checking...</span></div></div>
         <div class="acct__app-list"></div>
-        <small class="acct__note">Mazar is the church's AI Bible companion app, with its own accounts. Connecting shows your church name and role there and lets you sign in to Mazar with this account. Your Mazar conversations stay private to you.</small>
+        <small class="acct__note">Yuriel is the church's AI Bible companion app, with its own accounts. Connecting shows your church name and role there and lets you sign in to Yuriel with this account. Your Yuriel conversations stay private to you.</small>
       </section>
       <section class="acct__card acct__meta">
         <h2>Your account</h2>
@@ -1084,17 +1076,17 @@ async function accountPage(modal){
       </section>
     </div>`;
     const setStatus = (f, msg, ok) => { const st = $('.form__status', f); st.textContent = msg; st.className = 'form__status ' + (ok ? 'is-ok' : 'is-err'); };
-    if (new URLSearchParams(location.search).get('connect') === 'mazar' && !$('.acct__connect', root)){ const note = document.createElement('div'); note.className = 'acct__connect'; note.innerHTML = `<b>You're signed in.</b> Go back to Mazar to finish connecting. ${window.opener ? 'This window closes by itself.' : '<a class="link" href="https://mazar.ccfczambia.org/?account=connect">Return to Mazar</a>'}`; app.prepend(note); }
+    if (new URLSearchParams(location.search).get('connect') === 'mazar' && !$('.acct__connect', root)){ const note = document.createElement('div'); note.className = 'acct__connect'; note.innerHTML = `<b>You're signed in.</b> Go back to Yuriel to finish connecting. ${window.opener ? 'This window closes by itself.' : '<a class="link" href="https://yuriel.ccfczambia.org/?account=connect">Return to Yuriel</a>'}`; app.prepend(note); }
     /* Mazar keeps its accounts in its own database (CFG.mazarUrl); its mazar-account function checks this church sign-in and answers for it */
     const mazarFn = async (action) => { const { data: { session: s } } = await sb.auth.getSession(); if (!s || !CFG.mazarUrl) throw new Error('Not available right now.');
       const r = await fetch(CFG.mazarUrl + '/functions/v1/mazar-account', { method:'POST', headers:{ 'Content-Type':'application/json', apikey: CFG.mazarKey }, body: JSON.stringify({ action, ccfc_token: s.access_token }) });
       const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'Not available right now.'); return j; };
     const loadApps = async () => { const box = $('.acct__apps', app); if (!box) return; const st = $('.acct__app-status', box), list = $('.acct__app-list', box);
       let m; try { ({ mazar: m } = await mazarFn('ccfc-apps')); } catch (e){ st.textContent = 'Not available right now.'; return; }
-      if (!m){ st.innerHTML = 'Not connected. <a class="link" href="https://mazar.ccfczambia.org/?account=connect" target="_blank" rel="noopener">Connect in Mazar</a>'; list.innerHTML = ''; return; }
+      if (!m){ st.innerHTML = 'Not connected. <a class="link" href="https://yuriel.ccfczambia.org/?account=connect" target="_blank" rel="noopener">Connect in Yuriel</a>'; list.innerHTML = ''; return; }
       st.textContent = 'Connected';
-      list.innerHTML = `<div class="drow"><div><b>${esc(m.name || 'Your Mazar account')}</b><span>${m.linked_at ? 'Connected ' + esc(when(m.linked_at)) : ''}</span></div><div class="row"><a class="pill" href="https://mazar.ccfczambia.org" target="_blank" rel="noopener">Open Mazar</a><button class="pill pill--danger" data-unlink>Disconnect</button></div></div>`;
-      $$('[data-unlink]', list).forEach(b => b.addEventListener('click', async () => { if (!(await sure({ title: 'Disconnect Mazar from your church account?', body: 'Your Mazar account and conversations stay as they are. You can connect again any time.', ok: 'Disconnect', danger: true, from: b }))) return; try { await mazarFn('ccfc-disconnect'); toast('Disconnected from Mazar.'); loadApps(); } catch (e){ toast(e.message, false); } })); };
+      list.innerHTML = `<div class="drow"><div><b>${esc(m.name || 'Your Yuriel account')}</b><span>${m.linked_at ? 'Connected ' + esc(when(m.linked_at)) : ''}</span></div><div class="row"><a class="pill" href="https://yuriel.ccfczambia.org" target="_blank" rel="noopener">Open Yuriel</a><button class="pill pill--danger" data-unlink>Disconnect</button></div></div>`;
+      $$('[data-unlink]', list).forEach(b => b.addEventListener('click', async () => { if (!(await sure({ title: 'Disconnect Yuriel from your church account?', body: 'Your Yuriel account and conversations stay as they are. You can connect again any time.', ok: 'Disconnect', danger: true, from: b }))) return; try { await mazarFn('ccfc-disconnect'); toast('Disconnected from Yuriel.'); loadApps(); } catch (e){ toast(e.message, false); } })); };
     loadApps();
     const file = $('.acct__camera input', app); const pick = () => file.click();
     $('.acct__pick', app).addEventListener('click', pick); $('.acct__camera', app).addEventListener('click', e => { e.preventDefault(); pick(); });
@@ -1355,7 +1347,7 @@ function pageEditView(){
   mark();
   const bar = document.createElement('div'); bar.className = 'pe-bar'; bar.setAttribute('role', 'region'); bar.setAttribute('aria-label', 'Page editor');
   const off = new URL(location.href); off.searchParams.delete('edit');
-  bar.innerHTML = `<b>Page editor</b><span class="pe-bar__t">${els.length} editable pieces. Click one to copy its key for Mazar Prime.</span><button type="button" class="pe-bar__pick" aria-pressed="true">Picking</button><a class="pe-bar__x" href="${esc('/' + off.pathname.replace(/^\/+/, '') + off.search + off.hash)}">Exit</a>`;   /* one leading slash: never a //other-host address */
+  bar.innerHTML = `<b>Page editor</b><span class="pe-bar__t">${els.length} editable pieces. Click one to copy its key for Yuriel Prime.</span><button type="button" class="pe-bar__pick" aria-pressed="true">Picking</button><a class="pe-bar__x" href="${esc('/' + off.pathname.replace(/^\/+/, '') + off.search + off.hash)}">Exit</a>`;   /* one leading slash: never a //other-host address */
   const badge = document.createElement('div'); badge.className = 'pe-badge'; badge.hidden = true; badge.setAttribute('aria-hidden', 'true');
   document.body.append(bar, badge);
   let cur = null, picking = true;
@@ -1411,7 +1403,7 @@ async function boot(){
   const safe = (what, run) => { try { const r = run(); if (r && r.catch) r.catch(e => console.error('CCFC ' + what, e)); }
     catch (e) { console.error('CCFC ' + what, e); } };
   safe('account bar', () => accountUI(modal));
-  safe('settings', applySettings); safe('leadership', () => leadershipPage(modal)); safe('feed', () => feedPage(modal));
+  safe('settings', applySettings); safe('feed', () => feedPage(modal));
   safe('library', () => libraryPage(modal)); safe('dashboard', () => dashboardPage(modal)); safe('team', teamPage);
   safe('account', () => accountPage(modal));
   if (new URLSearchParams(location.search).get('edit') === '1' && pageEditable() && can.master(role())) pageContent.then(pageEditView, pageEditView);
