@@ -113,6 +113,7 @@ function sure({ title = 'Are you sure?', body = '', ok = 'Confirm', cancel = 'Ca
 }
 const OFFLINE = 'Accounts are not switched on yet. The church team is finishing setup.';
 const ICO = {
+  lock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>',
   heart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-4.4-9-8.4A5 5 0 0 1 12 6a5 5 0 0 1 9 6.6C19 16.6 12 21 12 21z"/></svg>',
   chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1.1-4.2A8 8 0 1 1 21 12z"/></svg>',
   share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M16 6l-4-4-4 4M12 2v13"/></svg>',
@@ -660,9 +661,12 @@ async function dashboardPage(modal){
   const { data: stats } = await sb.rpc('dashboard_stats', { p_site: site });
   statsEl.innerHTML = D.stats(stats).map(([k,v]) => `<div class="stat"><b>${v ?? 0}</b><span>${k}</span></div>`).join('');
   const tabs = D.tabs(r).filter(Boolean);
+  /* the Portal tab (admin panel only) follows portal roles, not website roles: it shows for whoever may manage them */
+  const mine = IS_ADMIN ? (await sb.schema('ms').rpc('my_access')).data : null;
+  if (mine && (mine.permissions || []).includes('users.manage')){ const at = tabs.findIndex(t => t[0] === 'roles'); tabs.splice(at < 0 ? tabs.length : at, 0, ['portal','Portal']); }
   bar.innerHTML = tabs.map(t => `<button class="dash__tab" data-t="${t[0]}">${t[1]}</button>`).join('');
   const show = t => { $$('.dash__tab', bar).forEach(x => x.classList.toggle('is-on', x.dataset.t === t)); history.replaceState(null, '', IS_ADMIN ? `/?site=${site}&tab=${t}` : `/dashboard?tab=${t}`); panel.innerHTML = '<div class="skel"></div>';
-    ({ assistant: assistantTab, settings: settingsTab, posts: postsTab, regs: regsTab, apps: appsTab, team: teamTab, library: libraryTab, users: usersTab, audit: auditTab, roles: rolesTab })[t](); };
+    ({ assistant: assistantTab, settings: settingsTab, posts: postsTab, regs: regsTab, apps: appsTab, team: teamTab, library: libraryTab, users: usersTab, audit: auditTab, portal: portalTab, roles: rolesTab })[t](); };
   $$('.dash__tab', bar).forEach(b => b.addEventListener('click', () => show(b.dataset.t)));
   const csvOf = (name, cols, rows) => { const body = [cols.join(','), ...rows.map(x => cols.map(c => '"' + String(x[c] ?? '').replace(/"/g,'""') + '"').join(','))].join('\n'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([body], { type:'text/csv' })); a.download = name; a.click(); };
 
@@ -1017,6 +1021,65 @@ async function dashboardPage(modal){
       ...(dels||[]).map(a => { const g = a.args || {}, who = g.name ? `${g.name}${g.email ? ` (${g.email})` : ''}` : (g.email || 'user');
         return { at: a.created_at, html: `<div class="drow"><div><b>${esc(who)} <i class="pill pill--danger">${a.ok === false ? 'Not finished' : 'Deleted'}</i></b><span>${a.ok === false ? 'Account deletion tried' : 'Account deleted'} by ${esc(a.actor?.full_name || 'an admin')} &middot; ${esc(when(a.created_at))}</span></div></div>` }; })];
     panel.innerHTML = `<div class="dash__list">${rows.sort((x, y) => new Date(y.at) - new Date(x.at)).slice(0, 100).map(x => x.html).join('') || '<p class="sub">No role changes yet.</p>'}</div>`; }
+  /* Portal roles (the CCFC Portal, portal.ccfczambia.org), separate from website roles. A person may hold several, except
+     Master Admin, which is held on its own and which only another Master Admin can grant, change or remove, never their own.
+     The controls only hide the obvious no's: ms.set_portal_roles and the table rules behind it have the final say. */
+  async function portalTab(){
+    const db = sb.schema('ms'), MASTER = 'master_admin';
+    const { data: R, error } = await db.rpc('portal_roster');
+    if (error || !R){ panel.innerHTML = `<p class="sub">Portal roles could not be loaded. ${esc(error ? error.message : 'Please try again.')}</p>`; return; }
+    const roles = R.roles || [], accounts = R.accounts || [], meMaster = !!(R.me && R.me.is_master), meId = R.me && R.me.account;
+    const byId = Object.fromEntries(accounts.map(u => [u.account, u]));
+    const label = k => (roles.find(x => x.key === k) || {}).name || k;
+    const names = ks => ks && ks.length ? ks.map(label).join(', ') : 'Member';
+    const who = u => u ? (u.name || u.email) : 'a removed account';
+    /* your own row is read-only here, as on the website; a Master Admin's row is for other Master Admins only */
+    const locked = u => u.account === meId || (u.roles.includes(MASTER) && !meMaster);
+    const chips = u => (u.roles.length ? u.roles.map(k => `<span class="pill${k === MASTER ? ' pill--master' : ''}">${esc(label(k))}</span>`).join('') : '<span class="pill pill--quiet">Member</span>')
+      + (u.active === false ? '<span class="pill pill--quiet">Paused</span>' : '');
+    panel.innerHTML = `<p class="sub proles__intro">Roles in the <a href="https://portal.ccfczambia.org" target="_blank" rel="noopener">CCFC Portal</a>. They are separate from website roles, so changing one never changes the other. Every church member can open the portal, and their roles decide what they see there. Anyone can hold several roles except Master Admin, which is held on its own. Only a Master Admin can grant or change Master Admin, and never their own.</p>
+      <div class="dash__toolbar"><input class="dash__search" placeholder="Search by name, email or CCFC ID" aria-label="Search church accounts"><select class="rolesel" aria-label="Filter by portal role"><option value="">Everyone</option><option value="+">With a portal role</option><option value="-">No portal role</option>${roles.map(x => `<option value="${esc(x.key)}">${esc(x.name)}</option>`).join('')}</select></div>
+      <div class="dash__list"></div><div class="plog"></div>`;
+    const list = $('.dash__list', panel), search = $('.dash__search', panel), pf = $('.dash__toolbar .rolesel', panel);
+    const row = u => `<details class="drow drow--exp" data-id="${esc(u.account)}"><summary>${avatar(u.name || u.email, u.avatar_url)}<div><b>${esc(u.name || '(no name)')}</b><span>${esc(u.email)}${ROLES[u.site_role] ? ` &middot; website ${esc(ROLES[u.site_role].short)}` : ''}${u.person_id ? ` &middot; <span class="ref">${esc(u.person_id)}</span>` : ''}</span></div><div class="proles">${chips(u)}</div></summary><div class="drow__body"></div></details>`;
+    const editor = u => locked(u)
+      ? `<p class="proles__lock">${ICO.lock}${u.account !== meId ? 'Only another Master Admin can change a Master Admin.' : u.roles.includes(MASTER) ? 'This is you. A Master Admin cannot change their own role; another Master Admin has to.' : 'This is you. Another administrator changes your portal roles.'}</p>`
+      : `<fieldset class="proles__pick" aria-label="Portal roles for ${esc(who(u))}">${roles.filter(x => x.key !== MASTER || meMaster).map(x => `<label class="proles__opt"><input type="checkbox" value="${esc(x.key)}"${u.roles.includes(x.key) ? ' checked' : ''}><b>${esc(x.name)}</b><small>${esc(x.description || '')}</small></label>`).join('')}</fieldset>
+         <div class="proles__foot"><button class="btn psave" disabled>Save roles</button>${meMaster ? '<small>Master Admin is held on its own, so choosing it clears the other roles.</small>' : ''}</div>`;
+    /* Master Admin, when ticked, clears and holds the others; Save wakes only when something changed */
+    const sync = (d, u) => { const boxes = $$('input', d), m = boxes.find(b => b.value === MASTER);
+      boxes.forEach(b => { if (b === m) return; if (m && m.checked) b.checked = false; b.disabled = !!(m && m.checked); });
+      const save = $('.psave', d); if (save) save.disabled = boxes.filter(b => b.checked).map(b => b.value).sort().join() === u.roles.slice().sort().join(); };
+    let busy = false;
+    async function saveRoles(d, u, btn){
+      if (busy) return;
+      const pick = roles.map(x => x.key).filter(k => $$('input', d).some(b => b.checked && b.value === k));
+      const addM = pick.includes(MASTER) && !u.roles.includes(MASTER), dropM = u.roles.includes(MASTER) && !pick.includes(MASTER);
+      if (addM && !(await sure({ title: `Make ${who(u)} a Master Admin?`, body: `A Master Admin holds every permission in the portal and is locked: only another Master Admin can change their roles, and they can never change their own.${u.roles.length ? ` Their other portal roles (${names(u.roles)}) are replaced.` : ''}`, ok: 'Make Master Admin', from: btn }))) return;
+      if (dropM && !(await sure({ title: `Remove Master Admin from ${who(u)}?`, body: pick.length ? `They will hold ${names(pick)} in the portal instead.` : 'They will be a Member in the portal, with no portal role.', ok: 'Remove Master Admin', danger: true, from: btn }))) return;
+      busy = true; btn.disabled = true; btn.textContent = 'Saving...';
+      const { error: e } = await db.rpc('set_portal_roles', { p_account: u.account, p_roles: pick });
+      busy = false;
+      if (e){ toast(e.message, false); btn.textContent = 'Save roles'; sync(d, u); return; }
+      u.roles = pick; if (u.active == null) u.active = true;
+      toast(pick.length ? `${who(u)} now holds ${names(pick)} in the portal.` : `${who(u)} no longer holds a portal role.`);
+      render(); const again = $$('details.drow', list).find(x => x.dataset.id === u.account); if (again) again.open = true; log();
+    }
+    const render = () => { const qq = search.value.trim().toLowerCase(), f = pf.value;
+      const shown = accounts.filter(u => (!qq || `${u.name} ${u.email} ${u.person_id || ''}`.toLowerCase().includes(qq)) && (!f || (f === '+' ? u.roles.length > 0 : f === '-' ? !u.roles.length : u.roles.includes(f))));
+      list.innerHTML = shown.map(row).join('') || '<p class="sub proles__none">Nobody matches.</p>'; };
+    /* each row builds its editor the first time it opens ('toggle' does not bubble, so listen while it travels down) */
+    list.addEventListener('toggle', ev => { const d = ev.target; if (!d.open || !d.matches || !d.matches('details.drow')) return;
+      const u = byId[d.dataset.id], body = $('.drow__body', d); if (!u || body.dataset.ready) return; body.dataset.ready = '1'; body.innerHTML = editor(u);
+      $$('input', body).forEach(b => b.addEventListener('change', () => sync(d, u))); sync(d, u);
+      const save = $('.psave', body); if (save) save.addEventListener('click', () => saveRoles(d, u, save)); }, true);
+    async function log(){ const box = $('.plog', panel); if (!box) return;
+      const { data: rows, error: e } = await db.from('audit_logs').select('at, actor_auth_id, entity_key, detail').eq('action', 'portal.roles').order('audit_key', { ascending:false }).limit(25);
+      if (e || !rows || !rows.length){ box.innerHTML = ''; return; }
+      box.innerHTML = `<h3 class="plog__title">Recent portal role changes</h3><div class="dash__list">${rows.map(a => { const g = a.detail || {};
+        return `<div class="drow"><div><b>${esc(who(byId[a.entity_key]))}</b><span>${esc(names(g.from))} to ${esc(names(g.to))} by ${esc(who(byId[a.actor_auth_id]))} &middot; ${esc(when(a.at))}</span></div></div>`; }).join('')}</div>`; }
+    search.addEventListener('input', render); pf.addEventListener('change', render); render(); log();
+  }
   function rolesTab(){ panel.innerHTML = `<div class="values">${Object.values(ROLES).map(x => `<div class="value"><h3>${esc(x.label)}</h3><p>${esc(x.desc)}</p></div>`).join('')}</div>`; }
   /* open the first tab last, once every helper above exists */
   const want = q.get('tab') === 'blogs' ? 'posts' : q.get('tab'); show(tabs.find(t => t[0] === want) ? want : tabs[0][0]);
