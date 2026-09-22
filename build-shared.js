@@ -74,8 +74,8 @@ function lint(p, title, desc) {
 function mazarMark(id = 'mzm') {
   return `<svg class="mz-mark" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><defs><linearGradient id="${id}" x1="8" y1="6" x2="40" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="var(--mz-light,#FFF7DC)"/><stop offset=".55" stop-color="var(--mz-glow,#EBC872)"/><stop offset="1" stop-color="var(--mz-glow-2,#B98A3E)"/></linearGradient></defs><path d="M24 6.5a17.5 17.5 0 1 1-12.4 5.1" fill="none" stroke="url(#${id})" stroke-width="1.6" stroke-linecap="round"/><path d="M24 2v6M24 40v6" stroke="url(#${id})" stroke-width="1.2" stroke-linecap="round" opacity=".8"/><path d="M24 12c.8 8.4 3.6 11.2 12 12-8.4.8-11.2 3.6-12 12-.8-8.4-3.6-11.2-12-12 8.4-.8 11.2-3.6 12-12z" fill="url(#${id})"/></svg>`;
 }
-const mazarNav = () => `<button class="nav__mazar" type="button" data-mazar aria-label="Open Mazar, the AI Bible companion">${mazarMark('mzm-nav')}<span>Mazar</span></button>`;
-const mazarMenu = () => `<button class="mzq" type="button" data-mazar>${mazarMark('mzm-menu')}<span><b>Ask Mazar</b><small>AI Bible companion, prayer and small tasks</small></span></button>`;
+const mazarNav = () => `<button class="nav__mazar" type="button" data-mazar aria-label="Open Yuriel, the AI Bible companion">${mazarMark('mzm-nav')}<span>Yuriel</span></button>`;
+const mazarMenu = () => `<button class="mzq" type="button" data-mazar>${mazarMark('mzm-menu')}<span><b>Ask Yuriel</b><small>AI Bible companion, prayer and small tasks</small></span></button>`;
 
 /* ================================================================ PAGE EDITOR
    Master Admins change the static pages through Mazar Prime (table public.page_content, one row per changed slot).
