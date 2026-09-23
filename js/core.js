@@ -664,8 +664,18 @@ async function dashboardPage(modal){
   /* the Portal tab (admin panel only) follows portal roles, not website roles: it shows for whoever may manage them */
   const mine = IS_ADMIN ? (await sb.schema('ms').rpc('my_access')).data : null;
   if (mine && (mine.permissions || []).includes('users.manage')){ const at = tabs.findIndex(t => t[0] === 'roles'); tabs.splice(at < 0 ? tabs.length : at, 0, ['portal','Portal']); }
+  /* and as its own pill in the admin panel's header, beside the three sites */
+  const portalPill = IS_ADMIN ? $('.adm-sites [data-portal]') : null, sitePill = IS_ADMIN ? $(`.adm-sites [data-site="${site}"]`) : null;
+  if (portalPill && tabs.some(t => t[0] === 'portal')){
+    portalPill.hidden = false; portalPill.href = `/?site=${site}&tab=portal`;
+    portalPill.addEventListener('click', e => { e.preventDefault(); show('portal'); });
+  }
   bar.innerHTML = tabs.map(t => `<button class="dash__tab" data-t="${t[0]}">${t[1]}</button>`).join('');
   const show = t => { $$('.dash__tab', bar).forEach(x => x.classList.toggle('is-on', x.dataset.t === t)); history.replaceState(null, '', IS_ADMIN ? `/?site=${site}&tab=${t}` : `/dashboard?tab=${t}`); panel.innerHTML = '<div class="skel"></div>';
+    if (portalPill){ const on = t === 'portal';
+      portalPill[on ? 'setAttribute' : 'removeAttribute']('aria-current', 'page');
+      if (sitePill) sitePill[on ? 'removeAttribute' : 'setAttribute']('aria-current', 'page');
+      const open = $('.adm-open'); if (open) open.href = on ? 'https://portal.ccfczambia.org' : SITE.origin; }
     ({ assistant: assistantTab, settings: settingsTab, posts: postsTab, regs: regsTab, apps: appsTab, team: teamTab, library: libraryTab, users: usersTab, audit: auditTab, portal: portalTab, roles: rolesTab })[t](); };
   $$('.dash__tab', bar).forEach(b => b.addEventListener('click', () => show(b.dataset.t)));
   const csvOf = (name, cols, rows) => { const body = [cols.join(','), ...rows.map(x => cols.map(c => '"' + String(x[c] ?? '').replace(/"/g,'""') + '"').join(','))].join('\n'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([body], { type:'text/csv' })); a.download = name; a.click(); };
