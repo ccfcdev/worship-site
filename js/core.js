@@ -661,12 +661,12 @@ async function dashboardPage(modal){
   const { data: stats } = await sb.rpc('dashboard_stats', { p_site: site });
   statsEl.innerHTML = D.stats(stats).map(([k,v]) => `<div class="stat"><b>${v ?? 0}</b><span>${k}</span></div>`).join('');
   const tabs = D.tabs(r).filter(Boolean);
-  /* the Portal tab (admin panel only) follows portal roles, not website roles: it shows for whoever may manage them */
+  /* The portal is not one of this dashboard's sections, so it is not in the tab list: it sits in the top bar
+     beside the three sites. It follows portal roles, not website roles, so it shows for whoever may manage them. */
   const mine = IS_ADMIN ? (await sb.schema('ms').rpc('my_access')).data : null;
-  if (mine && (mine.permissions || []).includes('users.manage')){ const at = tabs.findIndex(t => t[0] === 'roles'); tabs.splice(at < 0 ? tabs.length : at, 0, ['portal','Portal']); }
-  /* and as its own pill in the admin panel's header, beside the three sites */
+  const mayPortal = !!(mine && (mine.permissions || []).includes('users.manage'));
   const portalPill = IS_ADMIN ? $('.adm-sites [data-portal]') : null, sitePill = IS_ADMIN ? $(`.adm-sites [data-site="${site}"]`) : null;
-  if (portalPill && tabs.some(t => t[0] === 'portal')){
+  if (portalPill && mayPortal){
     portalPill.hidden = false; portalPill.href = `/?site=${site}&tab=portal`;
     portalPill.addEventListener('click', e => { e.preventDefault(); show('portal'); });
   }
@@ -1092,7 +1092,8 @@ async function dashboardPage(modal){
   }
   function rolesTab(){ panel.innerHTML = `<div class="values">${Object.values(ROLES).map(x => `<div class="value"><h3>${esc(x.label)}</h3><p>${esc(x.desc)}</p></div>`).join('')}</div>`; }
   /* open the first tab last, once every helper above exists */
-  const want = q.get('tab') === 'blogs' ? 'posts' : q.get('tab'); show(tabs.find(t => t[0] === want) ? want : tabs[0][0]);
+  const want = q.get('tab') === 'blogs' ? 'posts' : q.get('tab');
+  show(want === 'portal' && mayPortal ? 'portal' : (tabs.find(t => t[0] === want) ? want : tabs[0][0]));   /* ?tab=portal still opens it, from a link or a reload */
 }
 
 
