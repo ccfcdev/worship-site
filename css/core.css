@@ -655,3 +655,32 @@ html{overflow-x:clip}
 .feed-editor form{display:grid;gap:1.2rem}.feed-editor .field{display:grid;gap:.4rem}.feed-editor input,.feed-editor textarea{width:100%;padding:.8rem;border:1px solid #9aa9bb;border-radius:8px;font:inherit;background:#fff;color:#0a203d}.feed-editor .row{flex-wrap:wrap}
 
 .feed-editor h2{color:#0a203d}
+
+/* ---- guided tour for new accounts (Tour in core.js): a spotlight on one thing at a time, and a card that says what it is.
+   Takes each site's own colours through the --k-* tokens, like the "Are you sure?" dialog. On phones the card docks at the bottom. */
+.tour{position:fixed;inset:0;z-index:2147483000;opacity:0;transition:opacity .2s ease}
+.tour.is-in{opacity:1}
+.tour.is-center{background:rgba(8,6,40,.55);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+.tour__hole{position:fixed;border-radius:14px;box-shadow:0 0 0 9999px rgba(8,6,40,.55),0 0 0 2px var(--k-accent);pointer-events:none;transition:top .28s ease,left .28s ease,width .28s ease,height .28s ease}
+.tour__card{position:fixed;width:min(360px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow:auto;padding:1.15rem 1.2rem 1rem;background:var(--k-panel);color:var(--k-ink);border:1px solid var(--k-line);border-radius:18px;box-shadow:0 30px 80px -24px rgba(0,0,0,.55)}
+.tour.is-center .tour__card{top:50%;left:50%;transform:translate(-50%,-50%);width:min(420px,calc(100vw - 24px))}
+.tour.is-sheet .tour__card{top:auto;left:12px;right:12px;bottom:12px;width:auto}
+.tour__count{margin:0 0 .3rem;font-size:.72rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--k-accent)}
+.tour__count:empty{display:none}
+.tour__title{margin:0 0 .4rem;font-family:var(--font-display);font-size:1.12rem;font-weight:650;line-height:1.25;letter-spacing:-.01em;text-transform:none;color:var(--k-head);font-variation-settings:normal}
+.tour__title::after{content:none;display:none}
+.tour[data-site="koinonia"] .tour__title{font-family:var(--font-body);font-weight:700}
+.tour__body{font-size:.92rem;line-height:1.55;color:var(--k-muted)}
+.tour__body p{margin:0 0 .5rem}
+.tour__body p:last-child{margin:0}
+.tour__body b{color:var(--k-ink)}
+.tour__body .tour__role{display:grid;gap:.2rem;margin:.1rem 0 0;padding:.6rem .75rem;border:1px solid var(--k-line);border-radius:12px;background:color-mix(in srgb,var(--k-accent) 6%,transparent);color:var(--k-ink)}
+.tour__role b{font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--k-accent)}
+.tour__btns{display:flex;align-items:center;gap:.5rem;margin-top:1rem}
+.tour__gap{flex:1}
+.tour .tour__btns .btn{padding:.6rem 1.05rem;font-size:.88rem;justify-content:center;cursor:pointer}
+.tour__skip,.tour__off{background:none;border:0;padding:.4rem .15rem;font:inherit;font-size:.86rem;color:var(--k-muted);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.tour__skip:hover,.tour__off:hover{color:var(--k-ink)}
+.tour__off{display:block;margin:.55rem 0 0;font-size:.78rem}
+.tour button:focus-visible{outline:2px solid var(--k-accent);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.tour,.tour__hole{transition:none}}

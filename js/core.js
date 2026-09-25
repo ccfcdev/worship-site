@@ -676,7 +676,8 @@ async function dashboardPage(modal){
       portalPill[on ? 'setAttribute' : 'removeAttribute']('aria-current', 'page');
       if (sitePill) sitePill[on ? 'removeAttribute' : 'setAttribute']('aria-current', 'page');
       const open = $('.adm-open'); if (open) open.href = on ? 'https://portal.ccfczambia.org' : SITE.origin; }
-    ({ assistant: assistantTab, settings: settingsTab, posts: postsTab, regs: regsTab, apps: appsTab, team: teamTab, library: libraryTab, users: usersTab, audit: auditTab, portal: portalTab, roles: rolesTab })[t](); };
+    const opened = ({ assistant: assistantTab, settings: settingsTab, posts: postsTab, regs: regsTab, apps: appsTab, team: teamTab, library: libraryTab, users: usersTab, audit: auditTab, portal: portalTab, roles: rolesTab })[t]();
+    Promise.resolve(opened).finally(() => Tour.page(t)); };
   $$('.dash__tab', bar).forEach(b => b.addEventListener('click', () => show(b.dataset.t)));
   const csvOf = (name, cols, rows) => { const body = [cols.join(','), ...rows.map(x => cols.map(c => '"' + String(x[c] ?? '').replace(/"/g,'""') + '"').join(','))].join('\n'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([body], { type:'text/csv' })); a.download = name; a.click(); };
 
@@ -1146,7 +1147,7 @@ async function accountPage(modal){
       <section class="acct__card acct__meta">
         <h2>Your account</h2>
         <dl class="drow__dl"><dt>Role</dt><dd>${esc(ROLES[role()||'member'].label)}: ${esc(ROLES[role()||'member'].desc)}</dd><dt>Signs in with</dt><dd>${esc(providers.map(p => p === 'email' ? 'Email and password' : p[0].toUpperCase() + p.slice(1)).join(', '))}</dd><dt>Member since</dt><dd>${esc(fullDate(profile.created_at))}</dd><dt>Works on</dt><dd>ccfczambia.org, koinonia.ccfczambia.org, worship.ccfczambia.org</dd></dl>
-        <div class="row mt-2"><button class="btn btn--ghost nav__signout">Sign out</button><a class="link" href="/privacy">Privacy policy</a></div>
+        <div class="row mt-2"><button class="btn btn--ghost nav__signout">Sign out</button><button class="btn btn--ghost acct__tour" type="button">Show me around again</button><a class="link" href="/privacy">Privacy policy</a></div>
       </section>
     </div>`;
     const setStatus = (f, msg, ok) => { const st = $('.form__status', f); st.textContent = msg; st.className = 'form__status ' + (ok ? 'is-ok' : 'is-err'); };
@@ -1185,6 +1186,7 @@ async function accountPage(modal){
       if (p1.length < 8){ setStatus(f, 'Use at least 8 characters.', false); return; } if (p1 !== p2){ setStatus(f, 'The two passwords do not match.', false); return; }
       const { error } = await sb.auth.updateUser({ password: p1 }); if (error){ setStatus(f, friendly(error), false); return; } f.reset(); setStatus(f, 'Password changed.', true); });
     $('.nav__signout', app).addEventListener('click', async () => { clearPrime(); await sb.auth.signOut({ scope: 'local' }); location.href = '/'; });
+    $('.acct__tour', app).addEventListener('click', () => Tour.replay());
   };
   render();
 }
@@ -1447,6 +1449,157 @@ function pageEditView(){
 }
 
 /* ================================================================ BOOT */
+/* ================================================================ TOUR
+   A short guided tour for new accounts. The first page someone opens on each site says what their role
+   gives them there; each page with something to learn (the feed, the library, Account Center, the
+   registration and join forms, each admin tab) gets its own few steps the first time it is opened, and
+   pages with nothing account-specific stay quiet. Skip ends the tour on this page; "Turn off tips" ends it
+   on every page. What has been seen is kept per account in a cookie on the shared domain, so it follows
+   the person between the church sites. Accounts made before the tour shipped only see it after asking for
+   it in Account Center ("Show me around again"). Every step's wording comes from the same ROLES, can and
+   SITES the rest of the engine uses, so the tour can never describe access the account does not have. */
+const TOUR_SINCE = '2026-09-25T00:00:00Z';
+const Tour = (() => {
+  const P = IS_ADMIN ? 'a' : ({ ccfc:'c', koinonia:'k', worship:'w' })[SITE_KEY] || 'c';
+  const key = () => 'ccfc-tour-' + String(session?.user?.id || '').slice(0, 8);
+  const read = () => { let raw = null; try { raw = sharedDomain ? cookieStore.getItem(key()) : localStorage.getItem(key()); } catch (_) {}
+    try { const v = JSON.parse(raw || '{}'); return { s: Array.isArray(v.s) ? v.s : [], o: !!v.o, r: !!v.r }; } catch (_) { return { s: [], o: false, r: false }; } };
+  const write = v => { const raw = JSON.stringify({ s: v.s.slice(-60), o: v.o ? 1 : 0, r: v.r ? 1 : 0 });
+    try { if (sharedDomain) cookieStore.setItem(key(), raw); else localStorage.setItem(key(), raw); } catch (_) {} };
+  const eligible = () => {
+    if (!ready || !session || !profile || window.top !== window) return false;
+    const q = new URLSearchParams(location.search); if (q.has('cap') || q.get('edit') === '1') return false;
+    const v = read(); if (v.o) return false;
+    return v.r || new Date(session.user.created_at || 0) >= new Date(TOUR_SINCE); };
+  const r = () => role() || 'member';
+  const and = xs => xs.length < 2 ? (xs[0] || '') : xs.slice(0, -1).join(', ') + ' and ' + xs[xs.length - 1];
+  const first = () => String(profile?.full_name || '').trim().split(/\s+/)[0] || '';
+  const ACCOUNT = '.nav__account .nav__avatar, .nav__menubtn, .nav__burger', YURIEL = '.nav__mazar, .mz__fab';
+  const personal = 'These hold people\'s personal details: open them when there is a reason to.';
+  const roleCard = rr => `<p class="tour__role"><b>${esc(ROLES[rr].label)}</b>${esc(ROLES[rr].desc)}</p>`;   /* the role guide's own wording */
+
+  const welcome = () => {
+    const rr = r(), links = IS_ADMIN ? [] : SITE.links(rr).filter(Boolean).map(([, l]) => l);
+    if (IS_ADMIN) return [
+      { title: 'Welcome to the admin panel', body: `<p>Your role here:</p>${roleCard(rr)}` },
+      { sel: '.adm-sites', title: 'One site at a time', body: '<p>Switch between the church, Koinonia and Worship Connect here. The tabs change with the site.</p>' },
+      { sel: '.dash__tabs', title: 'Your tabs', body: '<p>Only what your role can use appears here. Each tab shows you around the first time you open it.</p>' } ];
+    return [
+      { title: first() ? `Welcome, ${first()}` : 'Welcome', body: `<p>You are signed in to ${esc(SITE.label)}. Your role:</p>${roleCard(rr)}` },
+      { sel: ACCOUNT, title: 'Your account menu', body: `<p>Everything your account opens on this site is here: ${esc(and(links))}.</p>` },
+      { sel: YURIEL, title: 'Ask Yuriel', body: '<p>The church\'s AI Bible companion. Ask about the Bible or anything on this site. It can prepare a form or a calendar entry for you, but you always press the final button.</p>' } ];
+  };
+  const PAGES = {
+    feed: () => [
+      { sel: '#feed .feed__filters', title: SITE.feedLabel, body: `<p>Everything ${esc(SITE.feedWord)} shares, newest first. Filter by kind here.</p>` },
+      { sel: '#feed .feed__list', title: 'Like and comment', body: `<p>Tap the heart to like a post, and open the comments to join in. ${can.moderate(r()) ? 'Your role can also remove a comment that is not right for the family.' : 'Comments are looked after by the church\'s leaders.'}</p>` },
+      can.post(r(), SITE_KEY) ? { sel: '#feed .feed__composer', title: 'You can post here', body: `<p>Your role can post to ${esc(SITE.feedLabel)}. Everyone signed in sees what you post.</p>` } : null ],
+    library: () => [
+      { sel: '#library .lib__search', title: 'The Upper Room library', body: '<p>Books, notes and slides the church shares with its members. Search by title here.</p>' },
+      { sel: '#library .lib__chips', title: 'Filter by kind', body: '<p>Narrow the shelf to one kind of material.</p>' },
+      can.library(r()) ? { sel: '#library .lib__add', title: 'You can add material', body: '<p>Your role can upload to the library. Everyone signed in can open what you add.</p>' } : null ],
+    account: () => [
+      { sel: '#account .acct__photo', title: 'Your photo', body: '<p>Other members see your name, photo and role, and nothing else.</p>' },
+      { sel: '#account .acct__form', title: 'Your details', body: '<p>Your name and phone number. Only the church\'s administrators can see your phone number and email address.</p>' },
+      { sel: '#account .acct__apps', title: 'Connected apps', body: '<p>Connect Yuriel to sign in there with this account. Your Yuriel conversations stay private to you.</p>' },
+      { sel: '#account .acct__meta', title: 'Your role', body: '<p>What your role can do and how you sign in. <b>Show me around again</b> brings this tour back whenever you want it.</p>' } ],
+    register: () => [
+      { sel: 'form.reg:not(.join)', title: "Register for Koi 26'", body: '<p>One form per person. You get a registration number and a confirmation email straight away, with the delegate fee that applies to you. The email confirms your registration, not payment.</p>' },
+      { sel: YURIEL, title: 'Yuriel can fill it in', body: '<p>Ask Yuriel to register you and it fills in this form for you to check. You always press submit yourself.</p>' } ],
+    join: () => [
+      { sel: 'form.join', title: 'Join Worship Connect', body: '<p>Tell the team about yourself and your gifts. The team\'s leaders read every application and get in touch.</p>' } ],
+    yuriel: () => [
+      { sel: '#mazar-page', title: 'Yuriel', body: '<p>Ask anything about the Bible or the church, open a passage in the Bible tab, or ask it to prepare a small job. For your conversations on every device, use yuriel.ccfczambia.org.</p>' } ],
+    /* the admin panel's tabs, one tour each, whichever site they are opened on */
+    assistant: () => [ { sel: '.dash__tab.is-on', title: 'Yuriel Prime', body: '<p>Ask it to change, check or write something. It plans first, shows exactly what would change, and does nothing until you press <b>Apply</b>. Never paste anybody\'s personal details into it.</p>' } ],
+    posts: () => [ { sel: '.dash__panel .feed__composer', title: 'Post to this site', body: '<p>Write news or an announcement, or add photos and videos. Everyone signed in sees it in the site\'s feed. Below, edit, pin or remove what has been posted.</p>' } ],
+    settings: () => [ { sel: '.dash__tab.is-on', title: 'Site text', body: '<p>Short texts the office changes often, like the service note. A change shows on the site straight away, and Yuriel answers from it too.</p>' } ],
+    regs: () => [ { sel: '.dash__tab.is-on', title: 'Registrations', body: `<p>Everyone registered for Koinonia, each with their registration number. Deleting a registration here also removes its copy in Google Drive. ${personal}</p>` } ],
+    apps: () => [ { sel: '.dash__tab.is-on', title: 'Applications', body: `<p>People asking to join Worship Connect. Move each one on as you get in touch. ${personal}</p>` } ],
+    team: () => [ { sel: '.dash__tab.is-on', title: 'The team', body: '<p>Who appears on the public team page, and their roles in the team.</p>' } ],
+    library_tab: () => [ { sel: '.dash__tab.is-on', title: 'Upper Room library', body: '<p>Add, edit and remove material. Everyone signed in can open what is here.</p>' } ],
+    users: () => [ { sel: '.dash__tab.is-on', title: 'Members and roles', body: `<p>Everyone with an account and the role they hold.${can.master(r()) ? '' : ' Your role can change any role except an Admin\'s.'} Every change is written to Role changes. ${personal}</p>` } ],
+    audit: () => [ { sel: '.dash__tab.is-on', title: 'Role changes', body: '<p>Every role change: who made it, and when.</p>' } ],
+    roles: () => [ { sel: '.dash__tab.is-on', title: 'Role guide', body: '<p>What each role can do. When someone asks what they are allowed to do, this is the answer.</p>' } ],
+  };
+  /* which of the pages above this is, from what it contains */
+  const pageOf = () => $('#feed') ? 'feed' : $('#library') ? 'library' : $('#account') ? 'account' : $('form.join') ? 'join'
+    : $('form.reg') ? 'register' : $('#mazar-page') ? 'yuriel' : null;
+
+  const visible = el => { if (!el || !el.getClientRects().length) return false; const b = el.getBoundingClientRect(), cs = getComputedStyle(el);
+    return b.width > 0 && b.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none'; };
+  const pick = sel => { for (const s of sel.split(',')) { const el = $$(s.trim()).find(visible); if (el) return el; } return null; };
+  const later = ms => new Promise(res => setTimeout(res, ms));
+  const blocked = () => $$('.consent, .auth.is-open, .sure, .tour').some(visible);   /* never on top of the cookie choice, sign-in or a confirmation */
+  async function whenClear(){ for (let i = 0; i < 400 && blocked(); i++) await later(600); return !blocked(); }
+  async function find(sel){ for (let i = 0; i < 32; i++) { const el = pick(sel); if (el) return el; await later(250); } return null; }
+
+  let busy = false;
+  async function run(keys, steps){
+    steps = steps.filter(Boolean); if (!steps.length || busy) return; busy = true;
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches, back = document.activeElement;
+    const root = document.createElement('div'); root.className = 'tour'; root.dataset.site = SITE_KEY;
+    root.innerHTML = `<div class="tour__hole" hidden></div><div class="tour__card" role="dialog" aria-modal="true" aria-labelledby="tour-t" aria-describedby="tour-b">
+      <p class="tour__count" aria-hidden="true"></p><h2 class="tour__title" id="tour-t" aria-live="polite"></h2><div class="tour__body" id="tour-b"></div>
+      <div class="tour__btns"><button type="button" class="tour__skip">Skip</button><span class="tour__gap"></span><button type="button" class="btn btn--ghost tour__back">Back</button><button type="button" class="btn tour__next">Next</button></div>
+      <button type="button" class="tour__off">Turn off tips on every page</button></div>`;
+    document.body.appendChild(root);
+    const hole = $('.tour__hole', root), card = $('.tour__card', root), nextB = $('.tour__next', root), backB = $('.tour__back', root);
+    let i = -1, el = null, frame = 0, moving = false;   /* the controls wait while a step is being found and drawn */
+    const place = () => {
+      const vw = innerWidth, vh = innerHeight, sheet = vw < 640;
+      root.classList.toggle('is-center', !el); root.classList.toggle('is-sheet', !!el && sheet);
+      if (!el){ hole.hidden = true; card.style.top = card.style.left = ''; return; }
+      const b = el.getBoundingClientRect(), pad = 8, top = Math.max(b.top - pad, 6), bottom = Math.min(b.bottom + pad, vh - 6);
+      hole.hidden = false; Object.assign(hole.style, { top: top + 'px', left: (b.left - pad) + 'px', width: (b.width + pad * 2) + 'px', height: Math.max(bottom - top, 24) + 'px' });
+      if (sheet){ card.style.top = card.style.left = ''; return; }
+      const cw = card.offsetWidth, ch = card.offsetHeight, gap = 14;
+      let y = bottom + gap; if (y + ch > vh - 12) y = top - gap - ch; if (y < 12) y = Math.max(12, vh - ch - 12);
+      card.style.top = y + 'px'; card.style.left = Math.max(12, Math.min(vw - cw - 12, b.left + b.width / 2 - cw / 2)) + 'px'; };
+    const onMove = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(place); };
+    const close = how => {
+      removeEventListener('resize', onMove); removeEventListener('scroll', onMove, true); removeEventListener('keydown', onKey, true);
+      const v = read(); if (how === 'off') v.o = true; else keys.forEach(k => { if (!v.s.includes(k)) v.s.push(k); }); write(v);
+      root.remove(); busy = false; if (back && back.focus && document.contains(back)) back.focus({ preventScroll: true }); };
+    const go = async n => {
+      if (moving) return; if (n < 0) n = 0; if (n >= steps.length) return close('done');
+      moving = true; root.setAttribute('aria-busy', 'true');
+      const s = steps[n];
+      el = s.sel ? await find(s.sel) : null;   /* a slow page that never drew the target still gets the words, centred, rather than losing the step */
+      i = n;
+      if (el){ const nav = el.closest('.nav'); if (nav) nav.classList.remove('is-hidden');
+        if (!el.closest('.nav, .mz__fab')) el.scrollIntoView({ block: 'center', behavior: reduce ? 'auto' : 'smooth' }); await later(reduce ? 0 : 320); }
+      $('.tour__count', root).textContent = steps.length > 1 ? `${i + 1} of ${steps.length}` : '';
+      $('.tour__title', root).textContent = s.title; $('.tour__body', root).innerHTML = s.body;
+      backB.hidden = i === 0; nextB.textContent = i === steps.length - 1 ? 'Done' : 'Next';
+      place(); moving = false; root.removeAttribute('aria-busy'); requestAnimationFrame(() => { root.classList.add('is-in'); nextB.focus({ preventScroll: true }); }); };
+    const onKey = e => {
+      if (e.key === 'Escape'){ e.preventDefault(); close('skip'); return; }
+      if (moving) return;
+      if (e.key === 'ArrowRight'){ e.preventDefault(); go(i + 1); return; }
+      if (e.key === 'ArrowLeft' && i > 0){ e.preventDefault(); go(i - 1); return; }
+      if (e.key === 'Tab'){ const f = $$('button:not([hidden])', card); const at = f.indexOf(document.activeElement);
+        e.preventDefault(); f[(at + (e.shiftKey ? -1 : 1) + f.length) % f.length].focus(); } };
+    nextB.addEventListener('click', () => go(i + 1)); backB.addEventListener('click', () => go(i - 1));
+    $('.tour__skip', root).addEventListener('click', () => close('skip')); $('.tour__off', root).addEventListener('click', () => close('off'));
+    addEventListener('resize', onMove); addEventListener('scroll', onMove, true); addEventListener('keydown', onKey, true);
+    go(0);
+  }
+  /* A page, or an admin tab, was opened: show its tour if this account has not seen it, after the site's welcome if that is new too. */
+  async function page(name){
+    if (!eligible() || busy || !(await whenClear()) || !eligible()) return;
+    const seen = read().s, keys = [], steps = [];
+    if (!seen.includes(P + ':welcome')){ keys.push(P + ':welcome'); steps.push(...welcome()); }
+    const tab = name === 'library' && IS_ADMIN ? 'library_tab' : name;
+    if (name && PAGES[tab] && !seen.includes(P + ':' + name)){ keys.push(P + ':' + name); steps.push(...PAGES[tab]()); }
+    if (keys.length) run(keys, steps); }
+  return {
+    start(){ if (IS_ADMIN) return; later(900).then(() => page(pageOf())); },   /* the admin panel starts its tour from each tab as it opens */
+    page,
+    replay(){ write({ s: [], o: false, r: true }); location.reload(); },
+  };
+})();
+
 async function boot(){
   Consent.init();
   const pageContent = applyPageContent();   /* starts straight away; the ?edit=1 view waits for the sign-in below */
@@ -1480,6 +1633,7 @@ async function boot(){
   safe('settings', applySettings); safe('feed', () => feedPage(modal));
   safe('library', () => libraryPage(modal)); safe('dashboard', () => dashboardPage(modal)); safe('team', teamPage);
   safe('account', () => accountPage(modal));
+  safe('tour', () => Tour.start());
   if (new URLSearchParams(location.search).get('edit') === '1' && pageEditable() && can.master(role())) pageContent.then(pageEditView, pageEditView);
   if (new URLSearchParams(location.search).get('signin')) modal.open('in');
 }
