@@ -293,8 +293,8 @@ p{margin:0}
 /* phones get the sharp header photo instead of the video's still frame (site.js never plays the video under 768px);
    the home copy fills most of a phone screen, so the shade climbs higher there and the faces stay clear at the top */
 @media (max-width:767px){.hero__media video{display:none}
-  .hero:not(.hero--short) .hero__scrim{background:linear-gradient(to top,rgba(10,10,11,.97) 0%,rgba(10,10,11,.86) 52%,rgba(10,10,11,.45) 70%,rgba(10,10,11,.18) 100%),radial-gradient(55% 45% at 75% 20%,rgba(231,184,74,.16),transparent 70%)}
-  .hero:not(.hero--short) p{text-shadow:0 1px 12px rgba(10,10,11,.85)}}
+  .hero:not(.hero--short) .hero__scrim{background:linear-gradient(to top,rgba(10,10,11,.97) 0%,rgba(10,10,11,.88) 56%,rgba(10,10,11,.5) 74%,rgba(10,10,11,.2) 100%),radial-gradient(55% 45% at 75% 20%,rgba(231,184,74,.16),transparent 70%)}
+  .hero:not(.hero--short) p{color:var(--white);text-shadow:0 1px 12px rgba(10,10,11,.85)}}
 /* team page: All / Worshipers / Media */
 .team__tabs{margin-bottom:2rem}
 .tabs__btn{transition:background .25s,color .25s}
