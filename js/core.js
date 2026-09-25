@@ -949,20 +949,24 @@ async function dashboardPage(modal){
   async function teamTab(){
     const load = async () => (await sb.from('team_members').select('*').eq('site','worship').order('sort').order('created_at')).data || [];
     let members = await load(); let editing = null;
+    /* the Worshipers / Media choice appears once the team column exists (migration 20260925190000), so a late migration never breaks saving */
+    const hasTeam = () => !members.length || members.some(m => Object.hasOwn(m, 'team'));
     const formHtml = m => `<form class="cmp teamform" novalidate><div class="cmp__head"><b>${m ? 'Edit ' + esc(m.name) : 'Add a team member'}</b></div>
       <div class="compose__row"><label class="field"><span>Name</span><input name="name" required value="${esc(m?.name||'')}"></label><label class="field"><span>Role on the team</span><input name="role" required placeholder="Lead vocals, Keys, Sound..." value="${esc(m?.role||'')}"></label></div>
+      ${hasTeam() ? `<label class="field"><span>Tab on the team page</span><select name="team"><option value="worshipers"${m?.team === 'media' ? '' : ' selected'}>Worshipers (vocals and band)</option><option value="media"${m?.team === 'media' ? ' selected' : ''}>Media (sound, cameras, lyrics)</option></select></label>` : ''}
       <label class="field"><span>A line about them (optional)</span><input name="bio" maxlength="200" value="${esc(m?.bio||'')}"></label>
       <div class="compose__row"><label class="field"><span>Photo</span><input name="photo" type="file" accept="image/*"></label><label class="field cmp__pin"><input type="checkbox" name="active" ${!m || m.active ? 'checked' : ''}> Show on the public team page</label></div>
       <div class="row"><button class="btn" type="submit">${m ? 'Save' : 'Add to the team'}</button>${m ? '<button class="btn btn--ghost cancel" type="button">Cancel</button>' : ''}<span class="cmp__status"></span></div></form>`;
     const render = () => { panel.innerHTML = `<div class="team__editor">${formHtml(editing)}</div><h3 class="mt-3 mb-1">The team as shown on the site</h3><div class="dash__list team__list"></div>`;
       const list = $('.team__list', panel);
-      list.innerHTML = members.map((m, i) => `<div class="drow ${m.active ? '' : 'is-off'}" data-id="${m.id}">${m.photo_url ? `<img class="drow__thumb" src="${esc(m.photo_url)}" alt="">` : avatar(m.name)}<div><b>${esc(m.name)}${m.active ? '' : ' <i class="pill">Hidden</i>'}</b><span>${esc(m.role)}${m.bio ? ' &middot; ' + esc(m.bio) : ''}</span></div>
+      list.innerHTML = members.map((m, i) => `<div class="drow ${m.active ? '' : 'is-off'}" data-id="${m.id}">${m.photo_url ? `<img class="drow__thumb" src="${esc(m.photo_url)}" alt="">` : avatar(m.name)}<div><b>${esc(m.name)}${m.active ? '' : ' <i class="pill">Hidden</i>'}${m.team === 'media' ? ' <i class="pill">Media</i>' : ''}</b><span>${esc(m.role)}${m.bio ? ' &middot; ' + esc(m.bio) : ''}</span></div>
         <div class="row"><button class="pill up" ${i ? '' : 'disabled'} aria-label="Move up">${ICO.up}</button><button class="pill down" ${i === members.length - 1 ? 'disabled' : ''} aria-label="Move down">${ICO.down}</button><button class="pill edit">Edit</button><button class="pill pill--danger del">Remove</button></div></div>`).join('') || '<p class="sub">No team members yet. Add the first one above.</p>';
       const f = $('.teamform', panel), status = $('.cmp__status', f);
       f.addEventListener('submit', async e => { e.preventDefault(); const name = f.name.value.trim(), rl = f.role.value.trim(); if (!name || !rl){ status.textContent = 'Name and role are needed.'; status.className = 'cmp__status is-err'; return; }
         status.className = 'cmp__status'; status.textContent = 'Saving...';
         try { let photo_url = editing?.photo_url || null; if (f.photo.files[0]) photo_url = (await uploadTo('feed', f.photo.files[0], 'team')).url;
           const row = { site:'worship', name, role: rl, bio: f.bio.value.trim(), photo_url, active: f.active.checked };
+          if (f.team) row.team = f.team.value;
           const { error } = editing ? await sb.from('team_members').update(row).eq('id', editing.id) : await sb.from('team_members').insert({ ...row, sort: members.length, created_by: profile.id }); if (error) throw error;
           editing = null; members = await load(); render(); toast('Team updated.'); } catch (err){ status.textContent = friendly(err); status.className = 'cmp__status is-err'; } });
       $('.cancel', f)?.addEventListener('click', () => { editing = null; render(); });
@@ -1192,13 +1196,43 @@ async function accountPage(modal){
 }
 
 /* ================================================================ PUBLIC TEAM PAGE (Worship Connect) */
+/* The Worship Connect team page. Members sit under three tabs, All, Worshipers and Media, by the team each
+   was given in the admin panel. The query asks for that column and falls back without it, so the page still
+   works if the column has not been added yet; everyone then counts as a worshiper. The tabs come up at once on
+   the page's own placeholder tiles (what shows when there are no profiles or the database is unreachable) and
+   filter again when the profiles arrive, so the bar never pops in above a grid that is already on screen. */
 async function teamPage(){
-  const root = $('#team'); if (!root || !ready) return; const grid = $('.team__grid', root); if (!grid) return;
-  const { data } = await sb.from('team_members').select('name, role, bio, photo_url').eq('site','worship').eq('active', true).order('sort');
-  if (!data?.length) return;   /* keep the static fallback */
-  grid.innerHTML = data.map(m => `<div class="tm">${m.photo_url ? `<div class="ph"><img src="${esc(m.photo_url)}" alt="${esc(m.name)}" loading="lazy"></div>` : `<div class="ph tm__mono">${esc(initials(m.name))}</div>`}<b>${esc(m.name)}</b><span>${esc(m.role)}</span>${m.bio ? `<p>${esc(m.bio)}</p>` : ''}</div>`).join('');
-  const lb = lightbox(); const imgs = data.filter(m => m.photo_url).map(m => ({ url:m.photo_url, alt:m.name }));
-  $$('.tm .ph img', grid).forEach((im, i) => im.addEventListener('click', () => lb.open(imgs, i)));
+  const root = $('#team'); if (!root) return; const grid = $('.team__grid', root); if (!grid) return;
+  const tabs = teamTabs(root, grid, ready); if (!ready) return;
+  const q = cols => sb.from('team_members').select(cols).eq('site','worship').eq('active', true).order('sort');
+  try {
+    let { data, error } = await q('name, role, bio, photo_url, team');
+    if (error) ({ data } = await q('name, role, bio, photo_url'));
+    if (!data?.length) return;   /* keep the placeholder tiles */
+    grid.innerHTML = data.map(m => `<div class="tm" data-team="${m.team === 'media' ? 'media' : 'worshipers'}">${m.photo_url ? `<div class="ph"><img src="${esc(m.photo_url)}" alt="${esc(m.name)}" loading="lazy"></div>` : `<div class="ph tm__mono">${esc(initials(m.name))}</div>`}<b>${esc(m.name)}</b><span>${esc(m.role)}</span>${m.bio ? `<p>${esc(m.bio)}</p>` : ''}</div>`).join('');
+    const lb = lightbox(); const imgs = data.filter(m => m.photo_url).map(m => ({ url:m.photo_url, alt:m.name }));
+    $$('.tm .ph img', grid).forEach((im, i) => im.addEventListener('click', () => lb.open(imgs, i)));
+  } finally { tabs?.settle(); }
+}
+/* the tab bar is ARIA tabs: arrow keys, Home and End move between them; ?team=media opens on that tab */
+function teamTabs(root, grid, loading){
+  const bar = $('.team__tabs', root), empty = $('.team__empty', root); if (!bar) return null;
+  const tabs = $$('[role="tab"]', bar); bar.hidden = false; let cur = 'all', settled = !loading;   /* no "on their way" note while the profiles are still loading */
+  const show = (t, focus) => { cur = t;
+    tabs.forEach(b => { const on = b.dataset.team === t; b.setAttribute('aria-selected', on); b.classList.toggle('is-on', on); b.tabIndex = on ? 0 : -1; if (on){ grid.setAttribute('aria-labelledby', b.id); if (focus) b.focus(); } });
+    let n = 0; $$('.tm', grid).forEach(el => { const hit = t === 'all' || el.dataset.team === t; el.hidden = !hit; if (hit) n++; });
+    if (empty){ empty.hidden = n > 0 || !settled; const tab = tabs.find(b => b.dataset.team === t); $('p', empty).innerHTML = (tab && tab.dataset.empty) || 'No one here yet.'; }
+    const u = new URL(location.href); if (t === 'all') u.searchParams.delete('team'); else u.searchParams.set('team', t);
+    history.replaceState(null, '', u.pathname + u.search + u.hash); };
+  tabs.forEach((b, i) => {
+    b.addEventListener('click', () => show(b.dataset.team));
+    b.addEventListener('keydown', e => {
+      const step = { ArrowRight: 1, ArrowLeft: -1 }[e.key], edge = { Home: 0, End: tabs.length - 1 }[e.key];
+      if (step === undefined && edge === undefined) return; e.preventDefault();
+      show(tabs[edge !== undefined ? edge : (i + step + tabs.length) % tabs.length].dataset.team, true); }); });
+  const want = new URLSearchParams(location.search).get('team');
+  show(tabs.some(b => b.dataset.team === want) ? want : 'all');
+  return { settle: () => { settled = true; show(cur); } };
 }
 
 
