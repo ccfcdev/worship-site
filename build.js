@@ -10,7 +10,16 @@ function loadSettings(defaults){ try { const out = require('child_process').exec
 const S = loadSettings({ latest:'Koinonia 25 worship sets', rehearsal:'Ask us for the weekly slot' });
 const WA = '260573762913', MAIN = 'https://ccfczambia.org', KOI = 'https://koinonia.ccfczambia.org', YT = 'https://www.youtube.com/@christconnectfamilychurchz7833';
 const ICON = { back: '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>', arrow: '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>', play: '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>' };
-const img = (n, alt, sizes='(min-width:900px) 50vw, 100vw', eager=false) => `<img src="assets/img/${n}-1280.webp" srcset="assets/img/${n}-800.webp 800w, assets/img/${n}-1280.webp 1280w" sizes="${sizes}" alt="${alt}" ${eager ? 'fetchpriority="high"' : 'loading="lazy" decoding="async"'}>`;
+/* every photo ships 800 and 1280 wide; the sharper ones also 1920 and 2560, which join the srcset when the file is there */
+const imgW = n => [800, 1280, 1920, 2560].filter(w => w <= 1280 || fs.existsSync(path.join(__dirname, 'assets/img', `${n}-${w}.webp`)));
+const img = (n, alt, sizes='(min-width:900px) 50vw, 100vw', eager=false) => `<img src="assets/img/${n}-1280.webp" srcset="${imgW(n).map(w => `assets/img/${n}-${w}.webp ${w}w`).join(', ')}" sizes="${sizes}" alt="${alt}" ${eager ? 'fetchpriority="high"' : 'loading="lazy" decoding="async"'}>`;
+/* A portrait screen crops a landscape header photo, so it shows wider than the screen: ask for a wider file there,
+   capped so a phone stops at the 1920 file instead of pulling the 2560 one over mobile data. */
+const HERO = '(orientation:portrait) 75vh, 100vw';
+/* On phones the home header is this photo (the video only plays on wider screens, see site.css); everywhere else it
+   sits under the video, so the smallest file will do. */
+const HERO_HOME = '(max-width:767px) 75vh, 1px';
+const TILE = '(min-width:800px) 25vw, 50vw';
 
 /* Every Worship Connect video on the church channel (add new ones here; the Media team can also post to the Worship feed) */
 const VIDEOS = [
@@ -52,7 +61,7 @@ function layout(p){
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-${SEO.headTags({ origin: ORIGIN, file: p.file, title: WSEO[p.file][0], desc: WSEO[p.file][1], noindex: p.noindex, ogImage: 'assets/og/' + (CARD[p.file] || 'default') + '.jpg', ogAlt: WSEO[p.file][0].split(' | ')[0] + ', Worship Connect, CCFC Zambia', siteName: 'Worship Connect', themeColor: '#0A0A0B', preloadImage: p.file === 'index.html' ? '/assets/img/hero-poster-v2.webp' : null })}
+${SEO.headTags({ origin: ORIGIN, file: p.file, title: WSEO[p.file][0], desc: WSEO[p.file][1], noindex: p.noindex, ogImage: 'assets/og/' + (CARD[p.file] || 'default') + '.jpg', ogAlt: WSEO[p.file][0].split(' | ')[0] + ', Worship Connect, CCFC Zambia', siteName: 'Worship Connect', themeColor: '#0A0A0B', preloadImage: p.file === 'index.html' ? '/assets/img/hero-poster-v2.webp' : null, preloadMedia: '(min-width:768px)' })}
 <link rel="preload" href="assets/fonts/BricolageGrotesque-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/fonts.css?v=${V.fonts}"><link rel="stylesheet" href="css/site.css?v=${V.css}"><link rel="stylesheet" href="css/core.css?v=${V.core}"><link rel="stylesheet" href="css/mazar.css?v=${V.mzcss}">
 <script type="application/ld+json">${JSON.stringify({'@context':'https://schema.org','@type':'MusicGroup',name:'Worship Connect',description:'Praise and worship team of Christ Connect Family Church Zambia',url:ORIGIN + '/',genre:'Gospel',foundingLocation:{'@type':'Place',name:'Lusaka, Zambia'},sameAs:[YT],memberOf:{'@type':'Church',name:'Christ Connect Family Church Zambia',url:'https://ccfczambia.org/'}})}</script>${p.jsonld ? `<script type="application/ld+json">${JSON.stringify(p.jsonld)}</script>` : ''}
@@ -86,11 +95,11 @@ ${SEO.headTags({ origin: ORIGIN, file: p.file, title: WSEO[p.file][0], desc: WSE
 }
 const vcard = v => `<div class="vcard"><a href="https://www.youtube.com/watch?v=${v.id}" class="vcard__main" data-lb="${v.id}" data-title="${v.t}" aria-label="Play: ${v.t}"><div class="ph">${img(v.img,'','(min-width:800px) 50vw, 100vw')}</div><span class="vcard__play" aria-hidden="true">${ICON.play}</span><div class="vcard__meta"><b>${v.t}</b><span>${v.where} &middot; ${v.when} &middot; ${v.dur}</span></div></a>
   <div class="vcard__songs" aria-label="Songs in this set">${v.songs.map(([s,t]) => `<a href="https://www.youtube.com/watch?v=${v.id}&t=${t}s" data-lb="${v.id}" data-start="${t}" data-title="${s}, from ${v.t}"><i>${mmss(t)}</i>${s}</a>`).join('')}</div></div>`;
-const closeBlock = () => `<section class="close"><div class="bg">${img('p-band','','100vw')}</div><div class="wrap"><h2 data-split>Can you sing,<br>play or mix?</h2><p>Worship Connect is always growing. Vocalists, keys, guitar, bass, drums, sound and media: if God has given you a gift, bring it.</p><div class="row"><a class="btn" href="join.html">Join the team ${ICON.arrow}</a><a class="btn btn--ghost" href="${YT}" target="_blank" rel="noopener">Subscribe on YouTube</a></div></div></section>`;
+const closeBlock = () => `<section class="close"><div class="bg">${img('p-singer-blue','','60vw')}</div><div class="wrap"><h2 data-split>Can you sing,<br>play or mix?</h2><p>Worship Connect is always growing. Vocalists, keys, guitar, bass, drums, sound and media: if God has given you a gift, bring it.</p><div class="row"><a class="btn" href="join.html">Join the team ${ICON.arrow}</a><a class="btn btn--ghost" href="${YT}" target="_blank" rel="noopener">Subscribe on YouTube</a></div></div></section>`;
 
 const home = { file:'index.html', title:'Home', og:'worship-1', desc:'Worship Connect, the praise and worship team of Christ Connect Family Church Zambia. Watch every set, learn the songs, join the team.',
   body:`
-<section class="hero"><div class="hero__media">${img('worship-1','Worship Connect leading praise at Koinonia 25','100vw',true)}<video data-src720="assets/img/hero-720.mp4" data-src="assets/img/hero-1080-v2.mp4" data-src4k="assets/img/hero-4k.mp4" poster="assets/img/hero-poster-v2.webp" muted loop playsinline autoplay preload="metadata" aria-hidden="true"></video></div><div class="hero__scrim"></div>
+<section class="hero"><div class="hero__media">${img('k25-choir','Worship Connect leading praise at Koinonia 25',HERO_HOME,true)}<video data-src720="assets/img/hero-720.mp4" data-src="assets/img/hero-1080-v2.mp4" data-src4k="assets/img/hero-4k.mp4" poster="assets/img/hero-poster-v2.webp" muted loop playsinline autoplay preload="metadata" aria-hidden="true"></video></div><div class="hero__scrim"></div>
   <div class="wrap"><div class="hero__copy">
     <h1 class="wordmark">WORSHIP<br><em>CONNECT</em></h1>
     <p>The praise and worship team of Christ Connect Family Church Zambia. Songs in English, Bemba and Nyanja, sung so the whole family can lift one voice.</p>
@@ -101,13 +110,13 @@ const home = { file:'index.html', title:'Home', og:'worship-1', desc:'Worship Co
 <section class="sec"><div class="wrap"><h2 class="mb-2" data-split>Latest sets</h2><div class="vgrid" data-rv-stagger>${VIDEOS.map(vcard).join('')}</div><div class="row mt-2" data-rv><a class="link" href="videos.html">All videos ${ICON.arrow}</a></div></div></section>
 <section class="sec" style="padding-top:0"><div class="wrap"><h2 data-split>Songs we sing</h2><p class="lede mt-1 mb-2" data-rv>The songs from our recorded sets, so you can learn them before Sunday. Tap a song and the set plays from where that song starts.</p>
   <div class="songs" data-rv-stagger>${SONGS.map(([s,k,id,t]) => `<a class="song" href="https://www.youtube.com/watch?v=${id}&t=${t}s" data-lb="${id}" data-start="${t}" data-title="${s}"><div><b>${s}</b><span>${k} &middot; starts at ${mmss(t)}</span></div><span class="pill">${ICON.play} Play</span></a>`).join('')}</div></div></section>
-<section class="sec" style="padding-top:0"><div class="wrap"><div class="teamgrid" data-rv-stagger><div class="ph">${img('p-singer','A lead singer on a Sunday','50vw')}</div><div class="ph">${img('p-bass','Bass','25vw')}</div><div class="ph">${img('p-keys2','Keys','25vw')}</div><div class="ph">${img('p-drums','Drums','25vw')}</div><div class="ph">${img('p-mics','Vocalists at the mics','25vw')}</div></div></div></section>
+<section class="sec" style="padding-top:0"><div class="wrap"><div class="teamgrid" data-rv-stagger><div class="ph">${img('k25-bass','Singing and on bass at Koinonia 25','50vw')}</div><div class="ph">${img('k25-keys','At the keys during worship at Koinonia 25',TILE)}</div><div class="ph">${img('k25-guitar','On guitar at Koinonia 25',TILE)}</div><div class="ph">${img('p-drums','On drums on a Sunday',TILE)}</div><div class="ph">${img('p-duo','Vocalists worshipping at the mics',TILE)}</div></div></div></section>
 <section class="sec" style="padding-top:0"><div class="wrap"><h2 class="mb-2" data-split>Who is on the team</h2><div class="roles" data-rv-stagger><div class="role"><b>Vocals</b><span>Lead singers and the choir, in three languages</span></div><div class="role"><b>Band</b><span>Keys, guitars, bass and drums</span></div><div class="role"><b>Sound</b><span>Front of house, monitors and recording</span></div><div class="role"><b>Media</b><span>Lyrics, cameras and the videos you watch here</span></div></div></div></section>
 ${closeBlock()}` };
 
 const videos = { file:'videos.html', title:'Videos', og:'worship-2', desc:'Every Worship Connect video: praise sets, worship sets and live recordings from CCFC Zambia gatherings.',
   body:`
-<section class="hero hero--short"><div class="hero__media">${img('worship-2','','100vw',true)}</div><div class="hero__scrim"></div><div class="wrap"><div class="hero__copy"><h1 class="wordmark" style="font-size:clamp(2.6rem,8vw,6.5rem)">Every <em>set.</em></h1><p>Praise and worship recordings from our gatherings. New sets land here and on the church YouTube channel.</p></div></div></section>
+<section class="hero hero--short"><div class="hero__media">${img('k25-stage','',HERO,true)}</div><div class="hero__scrim"></div><div class="wrap"><div class="hero__copy"><h1 class="wordmark" style="font-size:clamp(2.6rem,8vw,6.5rem)">Every <em>set.</em></h1><p>Praise and worship recordings from our gatherings. New sets land here and on the church YouTube channel.</p></div></div></section>
 <section class="sec"><div class="wrap tabs"><div class="tabs__bar" role="tablist"><button class="tabs__btn is-on" role="tab">All</button><button class="tabs__btn" role="tab">Praise</button><button class="tabs__btn" role="tab">Worship</button></div>
   <div class="tabs__panel"><div class="vgrid vgrid--3" data-rv-stagger>${VIDEOS.map(vcard).join('')}</div></div>
   <div class="tabs__panel" hidden><div class="vgrid vgrid--3">${VIDEOS.filter(v => v.kind==='Praise set').map(vcard).join('')}</div></div>
@@ -117,7 +126,7 @@ ${closeBlock()}` };
 
 const join = { jsonld: { '@context':'https://schema.org', '@type':'FAQPage', mainEntity: JOINFAQ.map(([q, a]) => ({ '@type':'Question', name:q, acceptedAnswer:{ '@type':'Answer', text:a } })) }, file:'join.html', title:'Join the team', og:'worship-3', desc:'Join Worship Connect: vocalists, musicians, sound and media. Tell us your gift and we will invite you to the next rehearsal.',
   body:`
-<section class="hero hero--short"><div class="hero__media">${img('p-mics','','100vw',true)}</div><div class="hero__scrim"></div><div class="wrap"><div class="hero__copy"><h1 class="wordmark" style="font-size:clamp(2.6rem,8vw,6.5rem)">Bring your <em>gift.</em></h1><p>We audition gently and rehearse seriously. Tell us what you do and a team leader will message you about the next rehearsal.</p></div></div></section>
+<section class="hero hero--short"><div class="hero__media">${img('p-singers','',HERO,true)}</div><div class="hero__scrim"></div><div class="wrap"><div class="hero__copy"><h1 class="wordmark" style="font-size:clamp(2.6rem,8vw,6.5rem)">Bring your <em>gift.</em></h1><p>We audition gently and rehearse seriously. Tell us what you do and a team leader will message you about the next rehearsal.</p></div></div></section>
 <section class="sec"><div class="wrap reg__grid">
   <div><h2 data-split>How it works</h2><div class="details mt-2" data-rv-stagger><div class="detail"><b>1. Apply</b><p>Send the form. The team sees it on their dashboard and replies on WhatsApp.</p></div><div class="detail"><b>2. Rehearsal</b><p>Come and sing or play with the team at a weekly rehearsal.</p></div><div class="detail"><b>3. Serve</b><p>Join the rota for Sundays, Koinonia and outreach missions.</p></div><div class="detail"><b>Who</b><p>Members and friends of CCFC who love Jesus and can commit to rehearsals.</p></div></div></div>
   <form class="reg join" data-wa="${WA}" novalidate data-rv="fade">
@@ -135,7 +144,7 @@ ${closeBlock()}` };
 
 const latest = { file:'latest.html', title:'Latest', og:'worship-2', desc:'The latest from Worship Connect: new sets, songs, rehearsal news and photos from Sunday, posted by the team.',
   body:`
-<section class="hero hero--short"><div class="hero__media">${img('worship-2','','100vw',true)}</div><div class="hero__scrim"></div><div class="wrap"><div class="hero__copy"><span class="pill pill--orange">From the team</span><h1 class="wordmark mt-1" style="font-size:clamp(2.6rem,8vw,6.5rem)">The <em>latest.</em></h1><p>New sets, songs we are learning, rehearsal news and photos from Sunday. Sign in to react and comment.</p></div></div></section>
+<section class="hero hero--short"><div class="hero__media">${img('p-band2','',HERO,true)}</div><div class="hero__scrim"></div><div class="wrap"><div class="hero__copy"><span class="pill pill--orange">From the team</span><h1 class="wordmark mt-1" style="font-size:clamp(2.6rem,8vw,6.5rem)">The <em>latest.</em></h1><p>New sets, songs we are learning, rehearsal news and photos from Sunday. Sign in to react and comment.</p></div></div></section>
 <section class="sec" id="feed" data-site="worship" style="padding-top:clamp(40px,6vw,70px)"><div class="wrap"><div class="feed__grid">
   <div><div class="feed__filters mb-2"></div><div class="feed__composer"></div><div class="feed__list mt-2"></div></div>
   <aside class="feed__side">
@@ -146,13 +155,21 @@ const latest = { file:'latest.html', title:'Latest', og:'worship-2', desc:'The l
 ${closeBlock()}` };
 const team = { file:'team.html', title:'The team', og:'worship-3', desc:'Meet Worship Connect: the vocalists, musicians, sound and media people who lead praise and worship at Christ Connect Family Church Zambia.',
   body:`
-<section class="hero hero--short"><div class="hero__media">${img('p-singer','','100vw',true)}</div><div class="hero__scrim"></div><div class="wrap"><div class="hero__copy"><h1 class="wordmark" style="font-size:clamp(2.6rem,8vw,6.5rem)">The <em>team.</em></h1><p>One voice, many gifts. Vocalists and the choir, the band, sound and media.</p></div></div></section>
-<section class="sec" id="team"><div class="wrap"><div class="team__grid" data-rv-stagger>
-  <div class="tm"><div class="ph">${img('p-singer','Lead vocals','25vw')}</div><b>Vocals</b><span>Lead singers and the choir</span><p>In English, Bemba and Nyanja.</p></div>
-  <div class="tm"><div class="ph">${img('p-keys2','Keys','25vw')}</div><b>Keys</b><span>Band</span></div>
-  <div class="tm"><div class="ph">${img('p-bass','Bass','25vw')}</div><b>Bass and guitars</b><span>Band</span></div>
-  <div class="tm"><div class="ph">${img('p-drums','Drums','25vw')}</div><b>Drums</b><span>Band</span></div>
-</div><p class="sub mt-3" data-rv>Individual profiles are added by the team from their dashboard.</p></div></section>
+<section class="hero hero--short"><div class="hero__media">${img('p-choir','',HERO,true)}</div><div class="hero__scrim"></div><div class="wrap"><div class="hero__copy"><h1 class="wordmark" style="font-size:clamp(2.6rem,8vw,6.5rem)">The <em>team.</em></h1><p>One voice, many gifts. Vocalists and the choir, the band, sound and media.</p></div></div></section>
+<section class="sec" id="team"><div class="wrap">
+<div class="tabs__bar team__tabs" role="tablist" aria-label="Show the team" hidden>
+  <button class="tabs__btn is-on" type="button" role="tab" id="team-tab-all" data-team="all" aria-selected="true" aria-controls="team-grid">All</button>
+  <button class="tabs__btn" type="button" role="tab" id="team-tab-worshipers" data-team="worshipers" aria-selected="false" aria-controls="team-grid" tabindex="-1">Worshipers</button>
+  <button class="tabs__btn" type="button" role="tab" id="team-tab-media" data-team="media" aria-selected="false" aria-controls="team-grid" tabindex="-1" data-empty="The media team's profiles are on their way. Sound, cameras, lyrics or livestream? &lt;a class=&quot;link&quot; href=&quot;/join&quot;&gt;Join the team&lt;/a&gt;">Media</button>
+</div>
+<div class="team__grid" id="team-grid" role="tabpanel" aria-labelledby="team-tab-all" data-rv-stagger>
+  <div class="tm" data-team="worshipers"><div class="ph">${img('p-duo','Vocalists worshipping at the mics',TILE)}</div><b>Vocals</b><span>Lead singers and the choir</span><p>In English, Bemba and Nyanja.</p></div>
+  <div class="tm" data-team="worshipers"><div class="ph">${img('k25-keys','At the keys',TILE)}</div><b>Keys</b><span>Band</span></div>
+  <div class="tm" data-team="worshipers"><div class="ph">${img('k25-bass','On bass',TILE)}</div><b>Bass and guitars</b><span>Band</span></div>
+  <div class="tm" data-team="worshipers"><div class="ph">${img('p-drums','On drums',TILE)}</div><b>Drums</b><span>Band</span></div>
+</div>
+<div class="team__empty" hidden><p></p></div>
+<p class="sub mt-3" data-rv>Individual profiles are added by the team from their dashboard.</p></div></section>
 ${closeBlock()}` };
 const dashboard = { file:'dashboard.html', title:'Dashboard', og:'worship-1', desc:'Worship Connect team dashboard.', noindex:true, body:`
 <section class="sec" id="dashboard" style="padding-top:calc(var(--nav-h) + clamp(40px,6vw,80px))"><div class="wrap">

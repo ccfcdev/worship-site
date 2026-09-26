@@ -290,6 +290,18 @@ p{margin:0}
 .tabs__bar{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1.6rem}
 .tabs__btn{padding:.65rem 1.1rem;border-radius:var(--pill);font-weight:600;font-size:.9rem;background:rgba(255,255,255,.08)}
 .tabs__btn.is-on{background:var(--gold);color:#141208}
+/* phones get the sharp header photo instead of the video's still frame (site.js never plays the video under 768px);
+   the home copy fills most of a phone screen, so the shade climbs higher there and the faces stay clear at the top */
+@media (max-width:767px){.hero__media video{display:none}
+  .hero:not(.hero--short) .hero__scrim{background:linear-gradient(to top,rgba(10,10,11,.97) 0%,rgba(10,10,11,.88) 56%,rgba(10,10,11,.5) 74%,rgba(10,10,11,.2) 100%),radial-gradient(55% 45% at 75% 20%,rgba(231,184,74,.16),transparent 70%)}
+  .hero:not(.hero--short) p{color:var(--white);text-shadow:0 1px 12px rgba(10,10,11,.85)}}
+/* team page: All / Worshipers / Media */
+.team__tabs{margin-bottom:2rem}
+.tabs__btn{transition:background .25s,color .25s}
+.tabs__btn:not(.is-on):hover{background:rgba(255,255,255,.14)}
+.tabs__btn:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+.team__empty{padding:clamp(28px,5vw,48px);border:1px dashed var(--line);border-radius:14px;background:rgba(247,243,234,.03);max-width:62ch}
+.team__empty p{color:var(--muted);line-height:1.6}
 .vgrid--3{grid-template-columns:1fr}
 @media (min-width:700px){.vgrid--3{grid-template-columns:repeat(2,1fr)}}
 @media (min-width:1100px){.vgrid--3{grid-template-columns:repeat(3,1fr)}}
