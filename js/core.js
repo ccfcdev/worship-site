@@ -127,6 +127,9 @@ const ICO = {
   arrow: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
   up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>',
   down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>',
+  swap: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h14l-4-4M20 16H6l4 4"/></svg>',
+  edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>',
 };
 
 let sb = null, session = null, profile = null;
@@ -948,32 +951,95 @@ async function dashboardPage(modal){
   }
   async function teamTab(){
     const load = async () => (await sb.from('team_members').select('*').eq('site','worship').order('sort').order('created_at')).data || [];
-    let members = await load(); let editing = null;
+    let members = await load(), editing = null, view = 'all', blob = null;
     /* the Worshipers / Media choice appears once the team column exists (migration 20260925190000), so a late migration never breaks saving */
     const hasTeam = () => !members.length || members.some(m => Object.hasOwn(m, 'team'));
-    const formHtml = m => `<form class="cmp teamform" novalidate><div class="cmp__head"><b>${m ? 'Edit ' + esc(m.name) : 'Add a team member'}</b></div>
-      <div class="compose__row"><label class="field"><span>Name</span><input name="name" required value="${esc(m?.name||'')}"></label><label class="field"><span>Role on the team</span><input name="role" required placeholder="Lead vocals, Keys, Sound..." value="${esc(m?.role||'')}"></label></div>
-      ${hasTeam() ? `<label class="field"><span>Tab on the team page</span><select name="team"><option value="worshipers"${m?.team === 'media' ? '' : ' selected'}>Worshipers (vocals and band)</option><option value="media"${m?.team === 'media' ? ' selected' : ''}>Media (sound, cameras, lyrics)</option></select></label>` : ''}
-      <label class="field"><span>A line about them (optional)</span><input name="bio" maxlength="200" value="${esc(m?.bio||'')}"></label>
-      <div class="compose__row"><label class="field"><span>Photo</span><input name="photo" type="file" accept="image/*"></label><label class="field cmp__pin"><input type="checkbox" name="active" ${!m || m.active ? 'checked' : ''}> Show on the public team page</label></div>
-      <div class="row"><button class="btn" type="submit">${m ? 'Save' : 'Add to the team'}</button>${m ? '<button class="btn btn--ghost cancel" type="button">Cancel</button>' : ''}<span class="cmp__status"></span></div></form>`;
-    const render = () => { panel.innerHTML = `<div class="team__editor">${formHtml(editing)}</div><h3 class="mt-3 mb-1">The team as shown on the site</h3><div class="dash__list team__list"></div>`;
-      const list = $('.team__list', panel);
-      list.innerHTML = members.map((m, i) => `<div class="drow ${m.active ? '' : 'is-off'}" data-id="${m.id}">${m.photo_url ? `<img class="drow__thumb" src="${esc(m.photo_url)}" alt="">` : avatar(m.name)}<div><b>${esc(m.name)}${m.active ? '' : ' <i class="pill">Hidden</i>'}${m.team === 'media' ? ' <i class="pill">Media</i>' : ''}</b><span>${esc(m.role)}${m.bio ? ' &middot; ' + esc(m.bio) : ''}</span></div>
-        <div class="row"><button class="pill up" ${i ? '' : 'disabled'} aria-label="Move up">${ICO.up}</button><button class="pill down" ${i === members.length - 1 ? 'disabled' : ''} aria-label="Move down">${ICO.down}</button><button class="pill edit">Edit</button><button class="pill pill--danger del">Remove</button></div></div>`).join('') || '<p class="sub">No team members yet. Add the first one above.</p>';
-      const f = $('.teamform', panel), status = $('.cmp__status', f);
-      f.addEventListener('submit', async e => { e.preventDefault(); const name = f.name.value.trim(), rl = f.role.value.trim(); if (!name || !rl){ status.textContent = 'Name and role are needed.'; status.className = 'cmp__status is-err'; return; }
-        status.className = 'cmp__status'; status.textContent = 'Saving...';
-        try { let photo_url = editing?.photo_url || null; if (f.photo.files[0]) photo_url = (await uploadTo('feed', f.photo.files[0], 'team')).url;
+    const TABS = { worshipers: ['Worshipers', 'Vocals and band'], media: ['Media', 'Sound, cameras, lyrics'] };
+    const tabOf = m => m.team === 'media' ? 'media' : 'worshipers', byId = id => members.find(m => m.id === id);
+    const inView = () => view === 'all' ? members : members.filter(m => tabOf(m) === view);
+    /* the form, with the member's tile beside it as the dark team page will show it */
+    const formHtml = m => `<form class="cmp teamform" novalidate><div class="cmp__head"><div><b>${m ? 'Edit ' + esc(m.name) : 'Add a team member'}</b><span>${m ? 'Changes show on the team page as soon as you save.' : 'They appear on the Worship Connect team page when you save.'}</span></div></div>
+      <div class="teamform__grid">
+        <div class="teamform__side"><span class="teamform__eyebrow">On the team page</span>
+          <div class="tm-prev" aria-hidden="true"><div class="tm-prev__ph"></div><b class="tm-prev__name"></b><span class="tm-prev__role"></span><p class="tm-prev__bio"></p></div>
+          <div class="teamform__photo"><label class="btn btn--ghost teamform__pick">${ICO.image}<span>Upload photo</span><input name="photo" type="file" accept="image/*"></label><button class="teamform__unphoto" type="button" hidden>Remove photo</button></div>
+          <small class="teamform__note">Portrait photos fill the tile best. You can also drop a photo on the tile.</small></div>
+        <div class="teamform__fields">
+          <div class="compose__row"><label class="field"><span>Name</span><input name="name" required autocomplete="off" value="${esc(m?.name||'')}"></label><label class="field"><span>Role on the team</span><input name="role" required autocomplete="off" placeholder="Lead vocals, Keys, Sound..." value="${esc(m?.role||'')}"></label></div>
+          ${hasTeam() ? `<fieldset class="teamform__tab"><legend>Tab on the team page</legend><div class="teamform__segs">${Object.entries(TABS).map(([k, [t, d]]) => `<label class="seg"><input type="radio" name="team" value="${k}"${(m ? tabOf(m) : 'worshipers') === k ? ' checked' : ''}><span><b>${t}</b><small>${d}</small></span></label>`).join('')}</div></fieldset>` : ''}
+          <label class="field"><span>A line about them <em>optional</em></span><input name="bio" maxlength="200" autocomplete="off" value="${esc(m?.bio||'')}"><small class="teamform__count" aria-hidden="true"></small></label>
+          <label class="teamform__switch"><input type="checkbox" role="switch" name="active"${!m || m.active ? ' checked' : ''}><span><b>Show on the public team page</b><small>Off keeps them here without showing them on the site.</small></span></label>
+        </div></div>
+      <div class="row teamform__bar"><button class="btn" type="submit">${m ? 'Save changes' : 'Add to the team'}</button>${m ? '<button class="btn btn--ghost cancel" type="button">Cancel</button>' : ''}<span class="cmp__status" role="status"></span></div></form>`;
+    const headHtml = () => `<div class="team__head"><div><h3>The team on the site</h3><p class="sub">The order here is the order on the team page.</p></div>${hasTeam() && members.length ? `<div class="team__filters" role="group" aria-label="Show">${[['all', 'All', members.length], ...Object.entries(TABS).map(([k, [t]]) => [k, t, members.filter(m => tabOf(m) === k).length])].map(([k, t, n]) => `<button class="chip${view === k ? ' is-on' : ''}" type="button" data-v="${k}" aria-pressed="${view === k}">${t} <i>${n}</i></button>`).join('')}</div>` : ''}</div>`;
+    const rowHtml = (m, i, rows) => { const t = tabOf(m), to = t === 'media' ? 'worshipers' : 'media';
+      return `<div class="drow team__row${m.active ? '' : ' is-off'}" data-id="${m.id}">${m.photo_url ? `<img class="drow__thumb" src="${esc(m.photo_url)}" alt="" loading="lazy">` : `<span class="drow__thumb drow__thumb--k">${esc(initials(m.name))}</span>`}<div><b>${esc(m.name)}${m.active ? '' : ' <i class="pill">Hidden</i>'}</b><span>${esc(m.role)}${m.bio ? ' &middot; ' + esc(m.bio) : ''}</span></div>
+        <div class="row team__acts">${hasTeam() ? `<button class="pill team__swap${t === 'media' ? ' is-media' : ''}" type="button" data-to="${to}" title="Move to ${TABS[to][0]}" aria-label="${esc(m.name)} is on the ${TABS[t][0]} tab. Move to ${TABS[to][0]}">${ICO.swap}${TABS[t][0]}</button>` : ''}<button class="pill up" type="button" ${i ? '' : 'disabled'} aria-label="Move ${esc(m.name)} up">${ICO.up}</button><button class="pill down" type="button" ${i === rows.length - 1 ? 'disabled' : ''} aria-label="Move ${esc(m.name)} down">${ICO.down}</button><button class="pill edit" type="button" aria-label="Edit ${esc(m.name)}">${ICO.edit}<span>Edit</span></button><button class="pill pill--danger del" type="button" aria-label="Remove ${esc(m.name)}">${ICO.trash}<span>Remove</span></button></div></div>`; };
+    const render = flash => { if (blob){ URL.revokeObjectURL(blob); blob = null; }
+      panel.innerHTML = `<div class="team__editor">${formHtml(editing)}</div><div class="team__all"></div>`; wireForm(); renderList(flash); };
+    /* the list re-draws on its own (filters, moves, tab swaps) so a half-typed form is never thrown away */
+    const renderList = (flash, focus) => { const wrap = $('.team__all', panel), rows = inView();
+      wrap.innerHTML = headHtml() + `<div class="dash__list team__list">${rows.map((m, i) => rowHtml(m, i, rows)).join('') || `<p class="team__none">${members.length ? `No one is on the ${TABS[view][0]} tab yet. Press the tab button on someone's row, or edit them, to move them here.` : 'No team members yet. Add the first one above.'}</p>`}</div>`;
+      $$('.team__filters .chip', wrap).forEach(b => b.addEventListener('click', () => { view = b.dataset.v; renderList(null, `.team__filters [data-v="${view}"]`); }));
+      $$('.team__row', wrap).forEach(row => { const m = byId(row.dataset.id);
+        $('.team__swap', row)?.addEventListener('click', e => swap(m, e.currentTarget));
+        $('.up', row).addEventListener('click', () => move(m, -1)); $('.down', row).addEventListener('click', () => move(m, 1));
+        $('.edit', row).addEventListener('click', async e => { const f = $('.teamform', panel);
+          if (f?.dataset.dirty && !(await sure({ title: 'Discard your changes?', body: 'The form has changes that are not saved yet.', ok: 'Discard', danger: true, from: e.currentTarget }))) return;
+          editing = m; render(); const nf = $('.teamform', panel); nf.scrollIntoView({ behavior: 'smooth', block: 'start' }); nf.name.focus({ preventScroll: true }); });
+        $('.del', row).addEventListener('click', async e => { if (!(await sure({ title: `Remove ${m.name} from the team page?`, body: 'They will no longer show on the Worship Connect team page. You can add them again later.', ok: 'Remove', danger: true, from: e.currentTarget }))) return;
+          const { error } = await sb.from('team_members').delete().eq('id', m.id); if (error) return toast(friendly(error), false);
+          members = members.filter(x => x.id !== m.id); if (editing?.id === m.id){ editing = null; render(); } else renderList(); toast(`${m.name} removed from the team page.`); }); });
+      if (flash) { const el = $(`[data-id="${flash}"]`, wrap); if (el){ el.classList.add('is-new'); if (!focus) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } }
+      if (focus) $(focus, wrap)?.focus(); };
+    /* one tap moves someone between the two tabs; an open form for that person follows along so saving it cannot undo the move */
+    const swap = async (m, btn) => { const to = btn.dataset.to, at = inView().indexOf(m); btn.disabled = true;
+      const { error } = await sb.from('team_members').update({ team: to }).eq('id', m.id); if (error){ btn.disabled = false; return toast(friendly(error), false); }
+      m.team = to; if (editing?.id === m.id){ editing.team = to; const r = $(`.teamform input[name="team"][value="${to}"]`, panel); if (r) r.checked = true; }
+      const rows = inView(), stays = rows.includes(m), next = stays ? m : rows[at] || rows[at - 1];   /* in a filtered list they leave it, and focus goes to whoever took their place */
+      renderList(stays ? m.id : null, next ? `[data-id="${next.id}"] .team__swap` : '.team__filters .is-on'); toast(`${m.name} is now on the ${TABS[to][0]} tab.`); };
+    /* arrows move within what is showing: in Media, up swaps places with the media member above */
+    const move = (m, dir) => { const rows = inView(), other = rows[rows.indexOf(m) + dir]; if (!other) return;
+      const a = members.indexOf(m), b = members.indexOf(other); [members[a], members[b]] = [members[b], members[a]];
+      const btn = dir < 0 ? 'up' : 'down'; renderList(m.id, `[data-id="${m.id}"] .${btn}:not([disabled]), [data-id="${m.id}"] .edit`); persist(); };
+    /* saves run one after another, each writing the order as it stands then, so quick repeated clicks cannot land out of order */
+    let saving = Promise.resolve();
+    const persist = () => (saving = saving.then(async () => {
+      const res = await Promise.all(members.map((x, k) => x.sort === k ? null : sb.from('team_members').update({ sort: k }).eq('id', x.id).then(r => { if (!r.error) x.sort = k; return r; })));
+      if (res.some(r => r?.error)){ toast('The new order was not saved. Try again.', false); members = await load(); renderList(); } }));
+    const wireForm = () => { const f = $('.teamform', panel), status = $('.cmp__status', f), prev = $('.tm-prev', f), ph = $('.tm-prev__ph', prev), pick = $('.teamform__pick span', f), un = $('.teamform__unphoto', f), count = $('.teamform__count', f);
+      let file = null, dropped = false;
+      const say = (msg, err) => { status.textContent = msg; status.className = 'cmp__status' + (err ? ' is-err' : ''); };
+      const photo = () => blob || (dropped ? null : editing?.photo_url || null);
+      const paintText = () => { const v = n => f[n].value.trim(), put = (cls, text, empty) => { const el = $(cls, prev); el.textContent = text || empty; el.classList.toggle('is-empty', !text); };
+        put('.tm-prev__name', v('name'), 'Their name'); put('.tm-prev__role', v('role'), 'Their role'); put('.tm-prev__bio', v('bio'), ''); $('.tm-prev__bio', prev).hidden = !v('bio');
+        const mono = $('.tm-prev__mono', prev); if (mono) mono.textContent = initials(v('name') || '?');
+        const n = f.bio.value.length; count.textContent = `${n} / 200`; count.classList.toggle('is-near', n >= 180); };
+      const paintPhoto = () => { const url = photo(); ph.innerHTML = url ? `<img src="${esc(url)}" alt="">` : '<span class="tm-prev__mono"></span>'; pick.textContent = url ? 'Change photo' : 'Upload photo'; un.hidden = !url; paintText(); };
+      const take = fl => { if (!fl) return; f.photo.value = '';
+        if (!/^image\//.test(fl.type)) return say('Choose a photo: a JPG, PNG or WebP image.', true);
+        if (fl.size > 20e6) return say('That photo is over 20 MB. Choose a smaller one.', true);
+        if (blob) URL.revokeObjectURL(blob); file = fl; dropped = false; blob = URL.createObjectURL(fl); f.dataset.dirty = '1'; say(''); paintPhoto(); };
+      f.photo.addEventListener('change', () => take(f.photo.files[0]));
+      un.addEventListener('click', () => { if (blob){ URL.revokeObjectURL(blob); blob = null; } file = null; dropped = true; f.dataset.dirty = '1'; paintPhoto(); f.photo.focus(); });
+      ph.addEventListener('dragover', e => { e.preventDefault(); prev.classList.add('is-over'); });
+      ph.addEventListener('dragleave', () => prev.classList.remove('is-over'));
+      ph.addEventListener('drop', e => { e.preventDefault(); prev.classList.remove('is-over'); take(e.dataTransfer?.files[0]); });
+      f.addEventListener('input', e => { if (e.target.name !== 'photo') f.dataset.dirty = '1'; e.target.removeAttribute?.('aria-invalid'); if (['name', 'role', 'bio'].includes(e.target.name)) paintText(); });
+      f.addEventListener('submit', async e => { e.preventDefault(); const name = f.name.value.trim(), rl = f.role.value.trim();
+        const miss = [!name && f.name, !rl && f.role].filter(Boolean); miss.forEach(i => i.setAttribute('aria-invalid', 'true'));
+        if (miss.length){ miss[0].focus(); return say(miss.length > 1 ? 'Add their name and role.' : name ? 'Add their role on the team.' : 'Add their name.', true); }
+        const go = $('button[type="submit"]', f); go.disabled = true; say(file ? 'Uploading the photo...' : 'Saving...');
+        try { let photo_url = dropped ? null : editing?.photo_url || null; if (file) photo_url = (await uploadTo('feed', file, 'team')).url;
           const row = { site:'worship', name, role: rl, bio: f.bio.value.trim(), photo_url, active: f.active.checked };
           if (f.team) row.team = f.team.value;
-          const { error } = editing ? await sb.from('team_members').update(row).eq('id', editing.id) : await sb.from('team_members').insert({ ...row, sort: members.length, created_by: profile.id }); if (error) throw error;
-          editing = null; members = await load(); render(); toast('Team updated.'); } catch (err){ status.textContent = friendly(err); status.className = 'cmp__status is-err'; } });
+          const was = editing; const { error } = was ? await sb.from('team_members').update(row).eq('id', was.id) : await sb.from('team_members').insert({ ...row, sort: members.length, created_by: profile.id }); if (error) throw error;
+          editing = null; members = await load(); const id = was ? was.id : members[members.length - 1]?.id;
+          if (view !== 'all' && byId(id) && tabOf(byId(id)) !== view) view = 'all';   /* keep the saved member in sight */
+          render(id); toast(was ? `${name} saved.` : `${name} added to the team.`);
+        } catch (err){ go.disabled = false; say(friendly(err), true); } });
       $('.cancel', f)?.addEventListener('click', () => { editing = null; render(); });
-      $$('.edit', list).forEach(b => b.addEventListener('click', () => { editing = members.find(m => m.id === b.closest('.drow').dataset.id); render(); scrollTo({ top: panel.offsetTop - 100, behavior:'smooth' }); }));
-      $$('.del', list).forEach(b => b.addEventListener('click', async () => { const m = members.find(x => x.id === b.closest('.drow').dataset.id); if (!(await sure({ title: `Remove ${m.name} from the team page?`, body: 'They will no longer show on the Worship Connect team page. You can add them again later.', ok: 'Remove', danger: true, from: b }))) return; const { error } = await sb.from('team_members').delete().eq('id', m.id); if (error) toast(friendly(error), false); else { members = await load(); render(); } }));
-      const move = async (id, dir) => { const i = members.findIndex(m => m.id === id), j = i + dir; if (j < 0 || j >= members.length) return; [members[i], members[j]] = [members[j], members[i]]; await Promise.all(members.map((m, k) => sb.from('team_members').update({ sort: k }).eq('id', m.id))); render(); };
-      $$('.up', list).forEach(b => b.addEventListener('click', () => move(b.closest('.drow').dataset.id, -1))); $$('.down', list).forEach(b => b.addEventListener('click', () => move(b.closest('.drow').dataset.id, 1))); };
+      paintPhoto(); };
     render();
   }
   /* Upper Room library: everything on the shelves at a glance, with upload, preview and delete (the reading room is ccfczambia.org/library) */
@@ -1550,7 +1616,7 @@ const Tour = (() => {
     settings: () => [ { sel: '.dash__tab.is-on', title: 'Site text', body: '<p>Short texts the office changes often, like the service note. A change shows on the site straight away, and Yuriel answers from it too.</p>' } ],
     regs: () => [ { sel: '.dash__tab.is-on', title: 'Registrations', body: `<p>Everyone registered for Koinonia, each with their registration number. Deleting a registration here also removes its copy in Google Drive. ${personal}</p>` } ],
     apps: () => [ { sel: '.dash__tab.is-on', title: 'Applications', body: `<p>People asking to join Worship Connect. Move each one on as you get in touch. ${personal}</p>` } ],
-    team: () => [ { sel: '.dash__tab.is-on', title: 'The team', body: '<p>Who appears on the public team page, and their roles in the team.</p>' } ],
+    team: () => [ { sel: '.dash__tab.is-on', title: 'The team', body: '<p>Who appears on the public team page, their roles, and which tab they sit under there: Worshipers or Media.</p>' } ],
     library_tab: () => [ { sel: '.dash__tab.is-on', title: 'Upper Room library', body: '<p>Add, edit and remove material. Everyone signed in can open what is here.</p>' } ],
     users: () => [ { sel: '.dash__tab.is-on', title: 'Members and roles', body: `<p>Everyone with an account and the role they hold.${can.master(r()) ? '' : ' Your role can change any role except an Admin\'s.'} Every change is written to Role changes. ${personal}</p>` } ],
     audit: () => [ { sel: '.dash__tab.is-on', title: 'Role changes', body: '<p>Every role change: who made it, and when.</p>' } ],
