@@ -74,9 +74,13 @@ const FALLBACK = `I cannot reach my thinking right now. Try the Bible tab, or me
 function local(q){ const t = q.toLowerCase(); let best = null, bs = 0; for (const i of INTENTS){ const s = i.k.reduce((s,k) => s + (t.includes(k) ? (k.length > 6 ? 2 : 1) : 0), 0); if (s > bs){ bs = s; best = i; } } return best ? { text: best.a, go: best.go ? [abs(best.go[0]), best.go[1]] : undefined } : { text: FALLBACK }; }
 const ATTS = new WeakMap();   /* message -> files attached to it (kept in memory only, never in localStorage) */
 async function remote(history){
-  let used = null, attachments = [];
-  for (let i = history.length - 1; i >= 0; i--){ const d = history[i].att && ATTS.get(history[i]); if (d){ used = history[i]; attachments = d.map(({ kind, name, data }) => ({ kind, name, data })); break; } }
-  const messages = history.map(m => ({ role: m.role, content: m.content, ...(m === used ? { att: true } : {}) }));
+  /* the files of every message still in the window go along, newest first, so a follow-up can still see them; the function caps the total.
+     A message whose files are gone (the page was reloaded or changed) sends just their names, so Yuriel can ask for them again */
+  const attachments = [], messages = history.map(m => ({ role: m.role, content: m.content }));
+  let size = 0, count = 0;
+  for (let i = history.length - 1; i >= 0; i--){ if (!history[i].att) continue; const d = ATTS.get(history[i]), fit = d && d.filter(a => count < 6 && size + a.data.length <= 14e6 && (count++, size += a.data.length));
+    if (fit && fit.length){ messages[i].att = true; fit.forEach(({ kind, name, data }) => attachments.push({ kind, name, data, m: i })); }
+    else messages[i].gone = (history[i].names || (d || []).map(a => a.name)).slice(0, 6); }
   const r = await fetch(CFG.chatEndpoint, { method:'POST', headers:{ 'Content-Type':'application/json', ...(CFG.supabaseKey ? { apikey: CFG.supabaseKey, Authorization: 'Bearer ' + CFG.supabaseKey } : {}) }, body: JSON.stringify({ messages, page: HERE, mode: MODE === 'studio' ? 'studio' : 'site', attachments, ...(window.__mazarWho ? { who: window.__mazarWho } : {}) }) });
   if (!r.ok) throw new Error('chat endpoint ' + r.status); const ans = await r.json();
   if (!ans || typeof ans.text !== 'string') throw new Error('bad answer');
@@ -798,7 +802,7 @@ function app(){
         <div class="mz__view mz__view--ask" data-view="ask" role="tabpanel">
           <div class="mz__log" aria-live="polite"><div class="mz__stage" aria-hidden="true"></div></div>
           <div class="mz__sugg">${(PER_SITE.suggest || []).map((s, i) => `<button type="button" style="--i:${i}">${esc(s)}</button>`).join('')}</div>
-          <form class="mz__form">${STUDIO ? `<div class="mz__atts" hidden></div><button class="mz__attach" type="button" aria-label="Attach images or documents" title="Attach images, PDFs or documents">${I.clip}</button><input class="mz__file" type="file" multiple hidden accept="image/*,.pdf,.docx,.txt,.md,.markdown,.csv,.json,.html,.htm,.srt,.vtt">` : ''}<textarea name="q" rows="1" autocomplete="off" placeholder="${esc(PER_SITE.placeholder)}" aria-label="Message Yuriel" maxlength="2000"></textarea><button class="mz__send" type="submit" aria-label="Send">${I.send}</button></form>
+          <form class="mz__form"><div class="mz__atts" hidden></div><button class="mz__attach" type="button" aria-label="Attach images or documents" title="Attach photos, PDFs, Word, PowerPoint, Excel or text files">${I.clip}</button><input class="mz__file" type="file" multiple hidden accept="image/*,.pdf,.docx,.pptx,.xlsx,.txt,.md,.markdown,.csv,.json,.html,.htm,.srt,.vtt"><textarea name="q" rows="1" autocomplete="off" placeholder="${esc(PER_SITE.placeholder)}" aria-label="Message Yuriel" maxlength="2000"></textarea><button class="mz__send" type="submit" aria-label="Send">${I.send}</button></form>
         </div>
         <div class="mz__view mz__view--bible" data-view="bible" role="tabpanel" hidden>
           <div class="mz__bnav"><button class="mz__bbtn mz__bbook" type="button" aria-haspopup="dialog"><b>John 3</b>${I.down}</button><button class="mz__bbtn mz__bver" type="button" aria-haspopup="dialog"><b>WEB</b>${I.down}</button><span class="mz__bsp"></span><button class="mz__btn mz__bprev" type="button" aria-label="Previous chapter">${I.prev}</button><button class="mz__btn mz__bnext" type="button" aria-label="Next chapter">${I.next}</button></div>
@@ -919,42 +923,58 @@ function app(){
   /* ---- ask ---- */
   const queue = [];
   const ask = async q => { if (w.classList.contains('is-busy')){ if (q && queue[queue.length - 1] !== q && queue.length < 3){ queue.push(q); figs.forEach(f => f.pulse()); } return; } setTab('ask');
-    const sent = STUDIO ? atts.splice(0) : [], conv = state; if (STUDIO) renderAtts();
-    const entry = { role:'user', content: q || 'Please look at what I attached.' }; if (sent.length){ entry.att = true; ATTS.set(entry, sent); }
+    const sent = atts.splice(0), conv = state; renderAtts();
+    const entry = { role:'user', content: q || 'Please look at what I attached.' }; if (sent.length){ entry.att = true; entry.names = sent.map(a => a.name); ATTS.set(entry, sent); }
     history().push(entry); add('user', q, null, null, false, sent.map(a => ({ kind: a.kind, name: a.name, thumb: a.thumb }))); w.classList.add('has-history'); fitStage(); fig.resize(); const t = thinking(); w.classList.add('is-busy'); mood('think');
     let ans, failed = false; try { ans = CFG.chatEndpoint ? await remote(history().slice(-10)) : local(q); } catch (e){ ans = local(q); failed = !!CFG.chatEndpoint; }
     t.remove(); w.classList.remove('is-busy'); if (failed){ mood('error'); setTimeout(() => mood('idle'), 900); }
     if (conv !== state){ const i = convos.indexOf(conv); if (i >= 0){ conv.history = [...conv.history, { role:'assistant', content: ans.text }].slice(-24); conv.log = [...conv.log, { who: 'bot', text: ans.text, go: ans.go, actions: (ans.actions || []).slice(0, 6) }].slice(-60); conv.t = Date.now(); convos.splice(i, 1); convos.unshift(conv); ls.set(CONVOS_KEY, convos.slice(0, 40)); renderConvos(); } }   /* the person opened another conversation while Mazar was thinking: the answer is kept where the question was asked */
     else { history().push({ role:'assistant', content: ans.text }); add('bot', ans.text, ans.go, (ans.actions || []).slice(0, 6)); }
     if (queue.length) setTimeout(() => ask(queue.shift()), 700); };
-  const grow = () => { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 160) + 'px'; };
+  const grow = () => { input.style.height = 'auto'; if (input.scrollHeight) input.style.height = Math.min(input.scrollHeight, 160) + 'px'; };   /* a hidden panel measures 0: leave it at auto */
   input.addEventListener('input', () => { grow(); mood(input.value ? 'listen' : 'idle'); });
   input.addEventListener('focus', () => mood('listen')); input.addEventListener('blur', () => { if (!w.classList.contains('is-busy')) mood('idle'); });
   input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); form.requestSubmit(); } });
-  form.addEventListener('submit', e => { e.preventDefault(); const q = input.value.trim(); if (!q && !(STUDIO && atts.length)) return; input.value = ''; grow(); ask(q); });
+  form.addEventListener('submit', e => { e.preventDefault(); const q = input.value.trim(); if (!q && !atts.length) return; input.value = ''; grow(); ask(q); });
 
-  /* ---- attachments (Mazar platform only): images, PDFs, Word documents and text files ---- */
+  /* ---- attachments, on every surface: images, PDFs, Word, PowerPoint and Excel files, and text files. They stay in this tab's memory and are never saved ---- */
   const atts = []; const attBox = $('.mz__atts', w);
   const renderAtts = () => { if (!attBox) return; attBox.hidden = !atts.length && !attBox.dataset.note; attBox.innerHTML = atts.map((a, i) => `<span class="mz-att">${a.kind === 'image' ? `<img src="${a.thumb}" alt="">` : I.file}<b>${esc(a.name)}</b><button type="button" data-rm="${i}" aria-label="Remove ${esc(a.name)}">${I.close}</button></span>`).join('') + (attBox.dataset.note ? `<small class="mz-att__note">${esc(attBox.dataset.note)}</small>` : ''); };
   const attNote = m => { if (!attBox) return; attBox.dataset.note = m; renderAtts(); clearTimeout(attNote.t); attNote.t = setTimeout(() => { delete attBox.dataset.note; renderAtts(); }, 5000); };
   const imageData = async file => { const url = URL.createObjectURL(file); try { const im = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; }); const k = Math.min(1, 1600 / Math.max(im.naturalWidth, im.naturalHeight)); const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(im.naturalWidth * k)); c.height = Math.max(1, Math.round(im.naturalHeight * k)); const cx = c.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, c.width, c.height); cx.drawImage(im, 0, 0, c.width, c.height); const tk = Math.min(1, 180 / Math.max(c.width, c.height)); const tc = document.createElement('canvas'); tc.width = Math.max(1, Math.round(c.width * tk)); tc.height = Math.max(1, Math.round(c.height * tk)); tc.getContext('2d').drawImage(c, 0, 0, tc.width, tc.height); return { data: c.toDataURL('image/jpeg', .86), thumb: tc.toDataURL('image/jpeg', .7) }; } finally { URL.revokeObjectURL(url); } };
-  const docxText = async file => { const buf = new Uint8Array(await file.arrayBuffer()), dv = new DataView(buf.buffer), dec = new TextDecoder(); let e = -1; for (let i = buf.length - 22; i >= Math.max(0, buf.length - 66000); i--) if (dv.getUint32(i, true) === 0x06054b50){ e = i; break; } if (e < 0) throw new Error('not a zip');
-    let q = dv.getUint32(e + 16, true); for (let n = dv.getUint16(e + 10, true); n > 0; n--){ const method = dv.getUint16(q + 10, true), size = dv.getUint32(q + 20, true), nl = dv.getUint16(q + 28, true), xl = dv.getUint16(q + 30, true), cl = dv.getUint16(q + 32, true), off = dv.getUint32(q + 42, true), name = dec.decode(buf.subarray(q + 46, q + 46 + nl)); q += 46 + nl + xl + cl; if (name !== 'word/document.xml') continue;
+  /* Word, PowerPoint and Excel files are zips of XML: read the central directory, inflate only the parts wanted */
+  const unzip = async (file, want) => { const buf = new Uint8Array(await file.arrayBuffer()), dv = new DataView(buf.buffer), dec = new TextDecoder(), out = {}; let e = -1; for (let i = buf.length - 22; i >= Math.max(0, buf.length - 66000); i--) if (dv.getUint32(i, true) === 0x06054b50){ e = i; break; } if (e < 0) throw new Error('not a zip');
+    let q = dv.getUint32(e + 16, true); for (let n = dv.getUint16(e + 10, true); n > 0; n--){ const method = dv.getUint16(q + 10, true), size = dv.getUint32(q + 20, true), nl = dv.getUint16(q + 28, true), xl = dv.getUint16(q + 30, true), cl = dv.getUint16(q + 32, true), off = dv.getUint32(q + 42, true), name = dec.decode(buf.subarray(q + 46, q + 46 + nl)); q += 46 + nl + xl + cl; if (!want(name)) continue;
       const start = off + 30 + dv.getUint16(off + 26, true) + dv.getUint16(off + 28, true), raw = buf.subarray(start, start + size);
-      const xml = method === 0 ? dec.decode(raw) : await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();
-      return xml.replace(/<w:tab\/>/g, '\t').replace(/<w:br[^>]*\/>|<\/w:p>/g, '\n').replace(/<[^>]+>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&').replace(/\n{3,}/g, '\n\n').trim(); }
-    throw new Error('no document text'); };
+      out[name] = method === 0 ? dec.decode(raw) : await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text(); }
+    return out; };
+  const xmlDoc = t => new DOMParser().parseFromString(t, 'application/xml'), byNum = (a, b) => (+a.match(/(\d+)\.xml$/)[1]) - (+b.match(/(\d+)\.xml$/)[1]);
+  const docxText = async file => { const xml = (await unzip(file, n => n === 'word/document.xml'))['word/document.xml']; if (!xml) throw new Error('no document text');
+    return xml.replace(/<w:tab\/>/g, '\t').replace(/<w:br[^>]*\/>|<\/w:p>/g, '\n').replace(/<[^>]+>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&').replace(/\n{3,}/g, '\n\n').trim(); };
+  const pptxText = async file => { const z = await unzip(file, n => /^ppt\/(slides\/slide|notesSlides\/notesSlide)\d+\.xml$/.test(n)), paras = x => [...xmlDoc(x).getElementsByTagNameNS('*', 'p')].map(p => [...p.getElementsByTagNameNS('*', 't')].map(t => t.textContent).join('')).filter(t => t.trim());
+    const slides = Object.keys(z).filter(n => n.includes('/slides/')).sort(byNum); if (!slides.length) throw new Error('no slides');
+    return slides.map((n, i) => { const k = n.match(/(\d+)\.xml$/)[1], notes = z[`ppt/notesSlides/notesSlide${k}.xml`], nt = notes ? paras(notes).filter(t => !/^\d+$/.test(t.trim())) : [];
+      return `Slide ${i + 1}:\n${paras(z[n]).join('\n')}${nt.length ? `\nSpeaker notes: ${nt.join(' ')}` : ''}`; }).join('\n\n'); };
+  const xlsxText = async file => { const z = await unzip(file, n => n === 'xl/sharedStrings.xml' || n === 'xl/workbook.xml' || /^xl\/worksheets\/sheet\d+\.xml$/.test(n));
+    const shared = z['xl/sharedStrings.xml'] ? [...xmlDoc(z['xl/sharedStrings.xml']).getElementsByTagNameNS('*', 'si')].map(si => [...si.getElementsByTagNameNS('*', 't')].map(t => t.textContent).join('')) : [];
+    const names = z['xl/workbook.xml'] ? [...xmlDoc(z['xl/workbook.xml']).getElementsByTagNameNS('*', 'sheet')].map(s => s.getAttribute('name')) : [];
+    const col = r => { let c = 0; for (const ch of r.replace(/\d+/g, '')) c = c * 26 + ch.charCodeAt(0) - 64; return c - 1; };
+    const sheets = Object.keys(z).filter(n => n.startsWith('xl/worksheets/')).sort(byNum); if (!sheets.length) throw new Error('no sheets');
+    return sheets.map((n, i) => { const rows = [...xmlDoc(z[n]).getElementsByTagNameNS('*', 'row')].slice(0, 1500).map(row => { const cells = [];
+        for (const c of row.getElementsByTagNameNS('*', 'c')){ const v = c.getElementsByTagNameNS('*', 'v')[0], t = c.getAttribute('t'), txt = t === 's' && v ? (shared[+v.textContent] || '') : t === 'inlineStr' ? [...c.getElementsByTagNameNS('*', 't')].map(x => x.textContent).join('') : v ? v.textContent : ''; cells[c.getAttribute('r') ? col(c.getAttribute('r')) : cells.length] = txt.replace(/\s+/g, ' ').trim(); }
+        return Array.from(cells, x => x || '').join('\t').replace(/\t+$/, ''); }).filter(r => r.trim());
+      return `Sheet "${names[i] || 'Sheet ' + (i + 1)}" (tab-separated):\n${rows.join('\n')}`; }).join('\n\n'); };
   const addFiles = async files => { for (const f of [...files]){ if (atts.length >= 5){ attNote('Up to 5 files per message.'); break; } const ext = (f.name.split('.').pop() || '').toLowerCase();
       try {
         if (/^image\//.test(f.type)){ if (f.size > 25e6) throw new Error('big'); const d = await imageData(f); atts.push({ kind: 'image', name: f.name, ...d }); }
         else if (f.type === 'application/pdf' || ext === 'pdf'){ if (f.size > 8e6){ attNote(`${f.name} is over 8 MB. Try a smaller PDF.`); continue; } const d = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = rej; r.readAsDataURL(f); }); atts.push({ kind: 'pdf', name: f.name, data: d.replace(/^data:[^;,]*;/, 'data:application/pdf;') }); }
-        else if (ext === 'docx'){ atts.push({ kind: 'text', name: f.name, data: await docxText(f) }); }
+        else if (['docx','pptx','xlsx'].includes(ext)){ if (f.size > 25e6) throw new Error('big'); const t = await (ext === 'docx' ? docxText : ext === 'pptx' ? pptxText : xlsxText)(f); if (!t.trim()) throw new Error('empty'); atts.push({ kind: 'text', name: f.name, data: t }); }
         else if (/^text\//.test(f.type) || ['txt','md','markdown','csv','json','html','htm','srt','vtt'].includes(ext)){ if (f.size > 4e6) throw new Error('big'); let t = await f.text(); if (/^html?$/.test(ext)) t = new DOMParser().parseFromString(t, 'text/html').body.textContent || ''; atts.push({ kind: 'text', name: f.name, data: t.trim() }); }
-        else attNote('Yuriel reads images, PDFs, Word (.docx) and text files.');
+        else attNote(/^(doc|ppt|xls|pages|key|numbers)$/.test(ext) ? `Save ${f.name} as .${ext === 'doc' || ext === 'pages' ? 'docx' : ext === 'ppt' || ext === 'key' ? 'pptx' : 'xlsx'} or PDF and attach it again.` : 'Yuriel reads photos, PDFs, Word, PowerPoint, Excel and text files.');
       } catch (_) { attNote(`Couldn't open ${f.name}.`); }
     }
     renderAtts(); if (atts.length){ figs.forEach(f => f.joy()); mood('listen'); input.focus({ preventScroll: true }); } };
-  if (STUDIO){
+  if (attBox){
     attBox.addEventListener('click', e => { const b = e.target.closest('[data-rm]'); if (!b) return; atts.splice(+b.dataset.rm, 1); renderAtts(); });
     $('.mz__attach', w).addEventListener('click', () => $('.mz__file', w).click());
     $('.mz__file', w).addEventListener('change', e => { addFiles(e.target.files); e.target.value = ''; });
