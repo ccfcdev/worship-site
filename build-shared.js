@@ -46,6 +46,24 @@ function sitemapXml(origin, pages, today = new Date().toISOString().slice(0, 10)
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${rows.join('\n')}\n</urlset>\n`;
 }
 
+/* Honest <lastmod> dates. Google stops trusting a sitemap whose dates always say today, so a page's date moves only
+   when what it shows changes: its title, description and <main>, less file versions. sitemap-dates.json keeps each
+   page's fingerprint and date and is committed with the build, so the next build can compare. */
+function lastmods(dir, pages, today = new Date().toISOString().slice(0, 10)) {
+  const fs = require('fs'), path = require('path'), crypto = require('crypto'), store = path.join(dir, 'sitemap-dates.json');
+  let seen = {}; try { seen = JSON.parse(fs.readFileSync(store, 'utf8')); } catch (e) {}
+  const next = {}, out = pages.map(p => {
+    let html; try { html = fs.readFileSync(path.join(dir, p.file), 'utf8'); } catch (e) { return p; }
+    const part = re => (html.match(re) || [''])[0];
+    const shown = [part(/<title>[\s\S]*?<\/title>/), part(/<meta name="description"[^>]*>/), part(/<main[\s\S]*<\/main>/) || html].join('').replace(/\?v=[\w.-]+/g, '');
+    const h = crypto.createHash('sha1').update(shown).digest('hex').slice(0, 12), d = seen[p.file] && seen[p.file].h === h ? seen[p.file].d : today;
+    next[p.file] = { h, d };
+    return Object.assign({}, p, { lastmod: p.lastmod || d });
+  });
+  fs.writeFileSync(store, JSON.stringify(next, null, 1) + '\n');
+  return out;
+}
+
 /* Only the app shell is blocked from crawling. The account-only pages carry noindex instead, and a
    crawler has to be able to fetch a page to read that; blocking them here would leave them eligible
    to appear as a bare URL. */
@@ -419,5 +437,5 @@ function navMenu(id, label, items, { current = '', li = true, end = false, wide 
 const familySites = (except) => [['https://ccfczambia.org', 'CCFC Zambia', 'The church website'], ['https://koinonia.ccfczambia.org', 'Koinonia Experience', 'The family conference, Koi 26\' registration'],
   ['https://worship.ccfczambia.org', 'Worship Connect', 'The worship team and every set'], ['https://yuriel.ccfczambia.org', 'Yuriel', 'AI Bible companion and study']].filter(([h]) => !h.includes(except));
 
-module.exports = { navMenu, familySites, mazarMark, mazarNav, mazarMenu, headTags, clean, sitemapXml, robotsTxt, manifestJson, lint, urlOf, slug, esc, editable, loadPageContent, writeContentMap,
+module.exports = { navMenu, familySites, lastmods, mazarMark, mazarNav, mazarMenu, headTags, clean, sitemapXml, robotsTxt, manifestJson, lint, urlOf, slug, esc, editable, loadPageContent, writeContentMap,
   pageEditor: { parse: peParse, emit: peEmit, miniParse: peMiniParse, miniHtml: peMiniHtml, href: peHref, src: peSrc, dash: peDash, value: peValue } };
