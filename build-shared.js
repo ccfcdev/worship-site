@@ -406,5 +406,18 @@ function writeContentMap(dir, map, overrides = []) {
   return { slots: out.length, stale };
 }
 
-module.exports = { mazarMark, mazarNav, mazarMenu, headTags, clean, sitemapXml, robotsTxt, manifestJson, lint, urlOf, slug, esc, editable, loadPageContent, writeContentMap,
+/* Header dropdown menus (js/core.js UI.menu opens them: click, arrow keys, Escape). items: [href, label, note, memberOnly].
+   A link to another site opens in this tab, like the rest of the family's sites; only outside sites open a new one. */
+const NM_CHEV = '<svg class="nmenu__chev" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9.5l6 6 6-6"/></svg>';
+function navMenu(id, label, items, { current = '', li = true, end = false, wide = false } = {}) {
+  const tag = li ? 'li' : 'div', here = items.some(([h]) => h === current);
+  const out = h => /^https?:/.test(h) && !/ccfczambia\.org/.test(h) ? ' target="_blank" rel="noopener"' : '';
+  return `<${tag} class="nmenu${end ? ' nmenu--end' : ''}${wide ? ' nmenu--wide' : ''}"><button class="nmenu__btn" type="button" aria-expanded="false" aria-controls="nm-${id}"${here ? ' data-current' : ''}>${label}${NM_CHEV}</button>`
+    + `<div class="nmenu__panel" id="nm-${id}" hidden>${items.map(([h, l, note, member]) => `<a class="nmenu__item" href="${h}"${h === current ? ' aria-current="page"' : ''}${member ? ' data-member hidden' : ''}${out(h)}><b>${l}</b>${note ? `<small>${note}</small>` : ''}</a>`).join('')}</div></${tag}>`;
+}
+/* the same three-site menu on every public site */
+const familySites = (except) => [['https://ccfczambia.org', 'CCFC Zambia', 'The church website'], ['https://koinonia.ccfczambia.org', 'Koinonia Experience', 'The family conference, Koi 26\' registration'],
+  ['https://worship.ccfczambia.org', 'Worship Connect', 'The worship team and every set'], ['https://yuriel.ccfczambia.org', 'Yuriel', 'AI Bible companion and study']].filter(([h]) => !h.includes(except));
+
+module.exports = { navMenu, familySites, mazarMark, mazarNav, mazarMenu, headTags, clean, sitemapXml, robotsTxt, manifestJson, lint, urlOf, slug, esc, editable, loadPageContent, writeContentMap,
   pageEditor: { parse: peParse, emit: peEmit, miniParse: peMiniParse, miniHtml: peMiniHtml, href: peHref, src: peSrc, dash: peDash, value: peValue } };
