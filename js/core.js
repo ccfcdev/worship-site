@@ -18,13 +18,14 @@ const ROLES = {
   media:        { label:'Media',   short:'Media',   desc:'Posts photos, videos and content to the CCFC, Koinonia and Worship Connect feeds.' },
   blogger:      { label:'Writer', short:'Writer', desc:'Writes and publishes in the Church feed, and adds material to the Upper Room library.' },
   member:       { label:'Member',  short:'Member',  desc:'Follows the Church Feed, comments and reacts.' },
+  guest:        { label:'Guest',   short:'Guest',   desc:'A new account waiting for a church admin to give it a role. Until then it sees what every visitor sees.' },
 };
 const ADMINS = ['master_admin','admin'];
 const can = {
   post: (r, site=SITE_KEY) => ['master_admin','admin','leader','media'].includes(r) || (r === 'blogger' && site === 'ccfc'),
   moderate: r => ['master_admin','admin','leader'].includes(r),
   library: r => ['master_admin','admin','leader','blogger'].includes(r),   /* who may add to the Upper Room; reading is open to all */
-  staff: r => r && r !== 'member',
+  staff: r => !!r && r !== 'member' && r !== 'guest',
   admin: r => ADMINS.includes(r),
   leadership: r => ['master_admin','admin','leader'].includes(r),
   master: r => r === 'master_admin',
@@ -161,6 +162,8 @@ if (ready){
   sb = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseKey, { auth: { persistSession:true, autoRefreshToken:true, storageKey: STORAGE_KEY, storage: sharedDomain ? cookieStore : undefined } });
 }
 const role = () => profile?.role || null;
+/* a new account is a Guest until an admin gives it a role, and sees what a signed-out visitor sees */
+const isGuest = () => role() === 'guest', isMember = () => !!session && !isGuest();
 const here = () => location.origin + location.pathname;
 
 /* ================================================================ AUTH MODAL */
@@ -215,32 +218,196 @@ function authModal(){
   return { open, close };
 }
 
+/* ================================================================ MENUS AND DROPDOWNS
+   One controller opens every pop-up on the four sites: the header menus, the account menu and the custom
+   dropdowns that stand in for <select>. They all open from the control that called them (transform-origin is
+   the trigger), close on Escape, a click elsewhere or Tab, hand focus back, and only one is ever open.
+   Motion: a short "materialise" (opacity, scale, a little blur) that runs backwards from wherever it is if the
+   user changes their mind mid-way; reduced motion gets a plain fade. */
+const UI = (() => {
+  const rm = matchMedia('(prefers-reduced-motion: reduce)');
+  let open = null;   /* { trigger, panel, close } */
+  const show = (trigger, panel, opts = {}) => {
+    if (open && open.panel === panel) return open;
+    if (open) open.close(false);
+    panel.hidden = false; panel.getBoundingClientRect();   /* one layout so the opening transition runs */
+    panel.classList.add('is-open'); trigger.setAttribute('aria-expanded', 'true');
+    const me = { trigger, panel, close(focusBack){
+      if (open !== me) return; open = null;
+      panel.classList.remove('is-open'); trigger.setAttribute('aria-expanded', 'false');
+      setTimeout(() => { if (!panel.classList.contains('is-open')){ panel.hidden = true; opts.onClosed && opts.onClosed(); } }, rm.matches ? 0 : 220);
+      if (focusBack) trigger.focus({ preventScroll: true });
+      opts.onClose && opts.onClose(); } };
+    open = me; return me;
+  };
+  const closeAll = focusBack => { if (open) open.close(focusBack); };
+  document.addEventListener('pointerdown', e => { if (open && !open.panel.contains(e.target) && !open.trigger.contains(e.target)) open.close(false); }, true);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && open){ e.preventDefault(); e.stopPropagation(); open.close(true); } }, true);
+  addEventListener('resize', () => { if (open && !open.panel.classList.contains('csel__pop--sheet')) closeAll(false); });
+
+  /* arrow keys, Home and End walk the links in an open menu; Tab leaves and closes it */
+  const roving = (panel, items) => panel.addEventListener('keydown', e => {
+    const list = items(), i = list.indexOf(document.activeElement), go = j => { e.preventDefault(); list[(j + list.length) % list.length]?.focus(); };
+    if (e.key === 'ArrowDown') go(i + 1); else if (e.key === 'ArrowUp') go(i < 0 ? -1 : i - 1);
+    else if (e.key === 'Home') go(0); else if (e.key === 'End') go(list.length - 1);
+    else if (e.key === 'Tab') closeAll(false); });
+
+  /* a disclosure menu: a button that shows a panel of links */
+  function menu(btn, panel, { onOpen } = {}){
+    if (!btn || !panel || btn._menu) return; btn._menu = true;
+    const items = () => $$('a, button', panel).filter(x => !x.disabled && x.offsetParent !== null);
+    const isOpen = () => open && open.panel === panel;
+    const openIt = first => { show(btn, panel); onOpen && onOpen(); if (first !== undefined){ const l = items(); (first === 'last' ? l[l.length - 1] : l[0])?.focus(); } };
+    btn.addEventListener('click', () => isOpen() ? closeAll(false) : openIt());
+    btn.addEventListener('keydown', e => { if (e.key === 'ArrowDown'){ e.preventDefault(); openIt(0); } else if (e.key === 'ArrowUp'){ e.preventDefault(); openIt('last'); } });
+    /* like a menu bar: while one header menu is open, pointing at another switches to it */
+    btn.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse' && open && open.panel !== panel && open.panel.classList.contains('nmenu__panel') && panel.classList.contains('nmenu__panel')) openIt(); });
+    roving(panel, items);
+    panel.addEventListener('click', e => { if (e.target.closest('a')) closeAll(false); });
+  }
+
+  /* ---------------------------------------------------------------- custom dropdowns for <select>
+     The real <select> stays in the form, underneath, so values, form posts, change listeners and the
+     form-filling Yuriel does all keep working. Its look is read from the page (padding, border, colours,
+     radius) so each form keeps its own style. A select can opt out with data-native. */
+  const VALUE = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value'),
+        INDEX = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'selectedIndex');
+  const TICK = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+        CHEV = '<svg class="csel__chev" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l5 5 5-5"/></svg>';
+  let seq = 0;
+  const later = new IntersectionObserver(es => es.forEach(x => { if (x.isIntersecting){ later.unobserve(x.target); enhance(x.target); } }));
+  const nameOf = s => (s.labels && s.labels[0] ? s.labels[0].textContent : s.getAttribute('aria-label') || '').replace(/\s+/g, ' ').replace(/\(optional\)/i, '').trim();
+  function enhance(s){
+    if (s._csel || s.multiple || s.size > 1 || s.closest('[data-native]')) return;
+    if (!s.offsetWidth){ later.observe(s); return; }   /* in a hidden tab or dialog: wait until it shows */
+    s._csel = true;
+    const cs = getComputedStyle(s), par = s.parentElement, pcs = getComputedStyle(par);
+    const parW = par.clientWidth - parseFloat(pcs.paddingLeft) - parseFloat(pcs.paddingRight);
+    const wrap = document.createElement('span'); wrap.className = 'csel' + (s.offsetWidth >= parW - 2 ? ' csel--block' : '');
+    if (!wrap.classList.contains('csel--block')) wrap.style.minWidth = s.offsetWidth + 'px';
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'csel__btn'; b.id = s.id ? s.id + '-btn' : 'csel-' + (++seq);
+    b.setAttribute('aria-haspopup', 'listbox'); b.setAttribute('aria-expanded', 'false');
+    const keep = ['font-size', 'font-weight', 'font-family', 'letter-spacing', 'text-transform', 'color', 'background-color', 'border-top', 'border-right', 'border-bottom', 'border-left', 'border-radius', 'padding-top', 'padding-bottom', 'padding-left', 'min-height', 'box-shadow'];
+    keep.forEach(p => b.style.setProperty(p, cs.getPropertyValue(p)));
+    b.style.setProperty('padding-right', Math.max(parseFloat(cs.paddingRight) || 0, 36) + 'px');
+    if (cs.height && cs.boxSizing === 'border-box') b.style.minHeight = cs.height;
+    b.innerHTML = `<span class="csel__val"></span>${CHEV}`;
+    par.insertBefore(wrap, s); wrap.append(s, b);
+    s.classList.add('csel__native'); s.tabIndex = -1; s.setAttribute('aria-hidden', 'true');
+    const val = $('.csel__val', b);
+    const render = () => { const o = s.options[INDEX.get.call(s)], text = o ? o.text : '';
+      val.textContent = text; val.classList.toggle('is-ph', !o || (!o.value && (o.disabled || /^(choose|select|pick)\b/i.test(text))));
+      const n = nameOf(s); b.setAttribute('aria-label', (n ? n + ': ' : '') + (text || 'nothing chosen') + (s.required ? ', required' : ''));
+      b.disabled = s.disabled; };
+    /* code that sets .value or .selectedIndex directly also updates the label */
+    Object.defineProperty(s, 'value', { configurable: true, get(){ return VALUE.get.call(this); }, set(v){ VALUE.set.call(this, v); render(); } });
+    Object.defineProperty(s, 'selectedIndex', { configurable: true, get(){ return INDEX.get.call(this); }, set(v){ INDEX.set.call(this, v); render(); } });
+    ['change', 'input'].forEach(t => s.addEventListener(t, render));
+    s.form && s.form.addEventListener('reset', () => setTimeout(render));
+    new MutationObserver(render).observe(s, { childList: true, subtree: true, attributes: true, attributeFilter: ['disabled', 'selected', 'label'] });
+    s.addEventListener('focus', () => b.focus());   /* a <label for> or the browser's own validation lands on the button */
+    s.addEventListener('invalid', () => b.classList.add('is-invalid'));
+    s.addEventListener('change', () => b.classList.remove('is-invalid'));
+    b.addEventListener('click', () => open && open.trigger === b ? closeAll(false) : list(s, b));
+    b.addEventListener('keydown', e => { if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(e.key) || (e.altKey && e.key === 'ArrowDown')){ e.preventDefault(); list(s, b); } });
+    render();
+  }
+
+  function list(s, b){
+    if (b.disabled) return;
+    const sheet = innerWidth < 560, opts = [...s.options], pop = document.createElement('div'), id = b.id + '-list';
+    pop.className = 'csel__pop' + (sheet ? ' csel__pop--sheet' : ''); pop.id = id; pop.setAttribute('role', 'listbox'); pop.tabIndex = -1;
+    const n = nameOf(s); if (n) pop.setAttribute('aria-label', n);
+    let html = '', grp = null;
+    opts.forEach((o, i) => {
+      if (o.parentElement.tagName === 'OPTGROUP' && o.parentElement !== grp){ grp = o.parentElement; html += `<div class="csel__grp" role="presentation">${esc(grp.label)}</div>`; }
+      if (o.hidden) return;
+      const sel = i === INDEX.get.call(s), dis = o.disabled || (o.parentElement.tagName === 'OPTGROUP' && o.parentElement.disabled);
+      html += `<div class="csel__opt${sel ? ' is-sel' : ''}${!o.value && /^(choose|select|pick)\b/i.test(o.text) ? ' is-ph' : ''}" role="option" id="${id}-${i}" data-i="${i}" aria-selected="${sel}"${dis ? ' aria-disabled="true"' : ''}><span class="csel__tick">${TICK}</span><span class="csel__txt">${esc(o.text)}</span></div>`; });
+    pop.innerHTML = (sheet ? `<div class="csel__head"><i class="csel__grab" aria-hidden="true"></i><b>${esc(n || 'Choose')}</b></div>` : '') + `<div class="csel__list">${html}</div>`;
+    const scrim = sheet ? Object.assign(document.createElement('div'), { className: 'csel__scrim' }) : null;
+    if (scrim) document.body.append(scrim);
+    document.body.append(pop);
+    const all = () => $$('.csel__opt', pop), usable = () => all().filter(x => !x.hasAttribute('aria-disabled'));
+    let active = null;
+    const activate = (el, scroll = true) => { if (!el) return; active && active.classList.remove('is-act'); active = el; el.classList.add('is-act'); pop.setAttribute('aria-activedescendant', el.id); if (scroll) el.scrollIntoView({ block: 'nearest' }); };
+    const place = () => { if (sheet) return; const r = b.getBoundingClientRect(), w = Math.max(r.width, 220), below = innerHeight - r.bottom - 12, above = r.top - 12;
+      const want = Math.min($('.csel__list', pop).scrollHeight + 12, 320), down = below >= want || below >= above;
+      Object.assign(pop.style, { width: w + 'px', left: Math.min(Math.max(8, r.left), innerWidth - w - 8) + 'px', maxHeight: Math.max(120, Math.min(320, down ? below : above)) + 'px',
+        top: down ? r.bottom + 6 + 'px' : '', bottom: down ? '' : innerHeight - r.top + 6 + 'px', transformOrigin: (down ? 'top ' : 'bottom ') + Math.round(Math.min(r.width, w) / 2) + 'px' }); };
+    place();
+    const onScroll = () => place(); addEventListener('scroll', onScroll, { passive: true, capture: true });
+    const choose = el => { if (!el || el.hasAttribute('aria-disabled')) return; const i = +el.dataset.i;
+      if (i !== INDEX.get.call(s)){ INDEX.set.call(s, i); s.dispatchEvent(new Event('input', { bubbles: true })); s.dispatchEvent(new Event('change', { bubbles: true })); }
+      ctl.close(true); };
+    const ctl = show(b, pop, { onClose(){ removeEventListener('scroll', onScroll, { capture: true }); scrim && scrim.classList.remove('is-open'); },
+      onClosed(){ pop.remove(); scrim && scrim.remove(); } });
+    if (scrim){ scrim.getBoundingClientRect(); scrim.classList.add('is-open'); scrim.addEventListener('click', () => ctl.close(true)); }
+    activate(all().find(x => x.classList.contains('is-sel')) || usable()[0]);
+    pop.focus({ preventScroll: true });
+    let typed = '', tt;
+    pop.addEventListener('keydown', e => { const u = usable(), i = u.indexOf(active), step = j => { e.preventDefault(); activate(u[Math.max(0, Math.min(u.length - 1, j))]); };
+      if (e.key === 'ArrowDown') step(i + 1); else if (e.key === 'ArrowUp') step(i - 1);
+      else if (e.key === 'Home') step(0); else if (e.key === 'End') step(u.length - 1);
+      else if (e.key === 'PageDown') step(i + 8); else if (e.key === 'PageUp') step(i - 8);
+      else if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); choose(active); }
+      else if (e.key === 'Tab'){ e.preventDefault(); ctl.close(true); }
+      else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey){ clearTimeout(tt); typed += e.key.toLowerCase(); tt = setTimeout(() => { typed = ''; }, 600);
+        const hit = u.find(x => x.textContent.trim().toLowerCase().startsWith(typed)); if (hit) activate(hit); } });
+    pop.addEventListener('pointermove', e => { const el = e.target.closest('.csel__opt'); if (el && e.pointerType === 'mouse' && el !== active && !el.hasAttribute('aria-disabled')) activate(el, false); });
+    pop.addEventListener('click', e => choose(e.target.closest('.csel__opt')));
+    if (sheet) dragToDismiss(pop, () => ctl.close(true));
+  }
+
+  /* the phone sheet follows the finger down, resists going up, and is thrown away when the flick says so
+     (Apple's momentum projection), otherwise it settles back */
+  function dragToDismiss(pop, dismiss){
+    const head = $('.csel__head', pop); let y0 = 0, dy = 0, hist = [], dragging = false;
+    const project = v => (v / 1000) * 0.998 / (1 - 0.998);
+    head.addEventListener('pointerdown', e => { dragging = true; y0 = e.clientY; dy = 0; hist = [[e.timeStamp, e.clientY]]; head.setPointerCapture(e.pointerId); pop.style.transition = 'none'; });
+    head.addEventListener('pointermove', e => { if (!dragging) return; dy = e.clientY - y0; hist.push([e.timeStamp, e.clientY]); if (hist.length > 5) hist.shift();
+      const shown = dy >= 0 ? dy : -(Math.abs(dy) * 60) / (60 + Math.abs(dy) * 0.55);   /* rubber band above the rest point */
+      pop.style.transform = `translateY(${shown}px)`; });
+    const end = () => { if (!dragging) return; dragging = false; pop.style.transition = ''; pop.style.transform = '';
+      const [[t0, a], [t1, z]] = [hist[0], hist[hist.length - 1]], v = t1 > t0 ? ((z - a) / (t1 - t0)) * 1000 : 0;
+      if (dy + project(v) > pop.offsetHeight * 0.4) dismiss(); };
+    head.addEventListener('pointerup', end); head.addEventListener('pointercancel', end);
+  }
+
+  function selects(root = document){ $$('select', root).forEach(enhance); }
+  function init(){
+    $$('.nmenu').forEach(m => menu($('.nmenu__btn', m), $('.nmenu__panel', m)));
+    selects();
+    new MutationObserver(rs => { for (const r of rs) for (const n of r.addedNodes) if (n.nodeType === 1) n.tagName === 'SELECT' ? enhance(n) : n.querySelector && n.querySelector('select') && selects(n); })
+      .observe(document.body, { childList: true, subtree: true });
+  }
+  return { init, menu, closeAll, selects };
+})();
+
 /* ================================================================ ACCOUNT UI (nav, drawer, mobile menu) */
 function accountUI(modal){
   $$('.nav__account, .drawer__account, .menu__account').forEach(slot => {
     if (!session){ slot.innerHTML = `<button class="nav__signin" data-auth="in">Sign in</button>`; return; }
-    const name = profile?.full_name || session.user.email, r = role() || 'member', links = SITE.links(r).filter(Boolean);
+    const name = profile?.full_name || session.user.email, r = role() || 'member', links = isGuest() ? [[SITE_KEY === 'ccfc' ? '/account' : 'https://ccfczambia.org/account', 'Account Center']] : SITE.links(r).filter(Boolean);
     if (slot.classList.contains('drawer__account') || slot.classList.contains('menu__account')){
-      slot.innerHTML = `<div class="drawer__user">${avatar(name, profile?.avatar_url)}<div><b>${esc(name)}</b><span class="pill">${esc(ROLES[r].short)}</span></div></div>
+      slot.innerHTML = `<div class="drawer__user">${avatar(name, profile?.avatar_url)}<div><b>${esc(name)}</b><span class="pill">${esc(ROLES[r].short)}</span>${isGuest() ? '<small>Waiting for a church admin to give your account a role</small>' : ''}</div></div>
         ${links.map(([h,l]) => `<a href="${h}">${l}</a>`).join('')}<button class="nav__signout">Sign out</button>`;
     } else {
-      slot.innerHTML = `<div class="nav__user"><button class="nav__avatar" aria-haspopup="true" aria-expanded="false" title="${esc(name)}">${avatar(name, profile?.avatar_url)}</button>
-        <div class="nav__menu" hidden><b>${esc(name)}</b><span class="pill">${esc(ROLES[r].short)}</span>${links.map(([h,l]) => `<a href="${h}">${l}</a>`).join('')}<button class="nav__signout">Sign out</button></div></div>`;
-      const btn = $('.nav__avatar', slot), menu = $('.nav__menu', slot);
-      btn.addEventListener('click', () => { menu.hidden = !menu.hidden; btn.setAttribute('aria-expanded', !menu.hidden); });
-      document.addEventListener('click', e => { if (!slot.contains(e.target)){ menu.hidden = true; btn.setAttribute('aria-expanded', false); } });
+      slot.innerHTML = `<div class="nav__user"><button class="nav__avatar" aria-expanded="false" aria-controls="acct-menu" aria-label="Account menu for ${esc(name)}" title="${esc(name)}">${avatar(name, profile?.avatar_url)}</button>
+        <div class="nav__menu" id="acct-menu" hidden><div class="nav__menu-head"><b>${esc(name)}</b><span class="pill">${esc(ROLES[r].short)}</span>${isGuest() ? '<small>Waiting for a church admin to give your account a role</small>' : ''}</div>${links.map(([h,l]) => `<a href="${h}">${l}</a>`).join('')}<button class="nav__signout">Sign out</button></div></div>`;
+      UI.menu($('.nav__avatar', slot), $('.nav__menu', slot));
     }
     $$('.nav__signout', slot).forEach(b => b.addEventListener('click', async () => { clearPrime(); await sb.auth.signOut({ scope: 'local' }); location.href = '/'; }));
   });
   $$('[data-auth]').forEach(b => { if (b._bound) return; b._bound = true; b.addEventListener('click', e => { e.preventDefault(); modal.open(b.dataset.auth || 'in'); }); });
-  $$('[data-guest]').forEach(el => { el.hidden = !!session; }); $$('[data-member]').forEach(el => { el.hidden = !session; });
+  $$('[data-guest]').forEach(el => { el.hidden = !!session; }); $$('[data-member]').forEach(el => { el.hidden = !isMember(); });
   $$('[data-role-gate]').forEach(el => { const need = el.dataset.roleGate.split(','); el.hidden = !(role() && (need.includes('staff') ? can.staff(role()) : need.includes(role()))); });
 }
 async function loadProfile(){ if (!session){ profile = null; return; }
   let { data } = await sb.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
   if (!data){   /* first sign-in through Google / Facebook before the trigger row is visible: create a Member profile */
     const u = session.user, m = u.user_metadata || {};
-    const row = { id:u.id, email:u.email || m.email || '', full_name: m.full_name || m.name || (u.email||'').split('@')[0] || '', avatar_url: m.avatar_url || m.picture || null, role:'member' };
+    const row = { id:u.id, email:u.email || m.email || '', full_name: m.full_name || m.name || (u.email||'').split('@')[0] || '', avatar_url: m.avatar_url || m.picture || null, };   /* no role: the database default applies (Guest once migration 20261102120000 has run) */
     const ins = await sb.from('profiles').insert(row).select('*').maybeSingle();
     if (ins.error && await accountGone(ins.error)) return;
     data = ins.data || (await sb.from('profiles').select('*').eq('id', u.id).maybeSingle()).data || row;
@@ -384,6 +551,7 @@ async function feedAnnouncements(root, site){
    signed out, but someone can still arrive on the page from a bookmark or a shared link, so the
    page says what it is and offers a way in rather than showing an empty list. */
 function memberWall(what, why){
+  if (isGuest()) return `<div class="empty"><h3>${esc(what)} opens once the church gives you access</h3><p>Your account is new. A church admin will give it a role soon, and until then you see what every visitor sees.</p></div>`;
   return `<div class="empty"><h3>${esc(what)} is for the church family</h3><p>${esc(why)}</p>
     <div class="row mt-2"><button class="btn" data-auth="in">Sign in</button><button class="btn btn--ghost" data-auth="up">Create account</button></div></div>`;
 }
@@ -391,7 +559,7 @@ async function feedPage(modal){
   const root = $('#feed'); if (!root) return; const site = root.dataset.site || SITE_KEY;
   const list = $('.feed__list', root), composerSlot = $('.feed__composer', root), filters = $('.feed__filters', root);
   if (!ready){ list.innerHTML = `<div class="empty"><h3>The feed is almost ready</h3><p>Accounts and the feed switch on as soon as the church team finishes setup. Follow us on Facebook in the meantime.</p></div>`; return; }
-  if (!session){ list.innerHTML = memberWall('The church feed', 'News, photos and videos the church shares with its members. Create an account or sign in to read it.');
+  if (!isMember()){ list.innerHTML = memberWall('The church feed', 'News, photos and videos the church shares with its members. Create an account or sign in to read it.');
     if (composerSlot) composerSlot.innerHTML = ''; if (filters) filters.innerHTML = ''; accountUI(modal); return; }
   const q = new URLSearchParams(location.search); let kind = q.get('kind') || '', page = 0; const PAGE = 20; let mine = new Set(); const lb = lightbox();
   if (filters){ const kinds = ['', ...SITES[site].kinds]; filters.innerHTML = kinds.map(k => `<button class="chip ${k === kind ? 'is-on' : ''}" data-k="${k}">${k ? KINDS[k] : 'All'}</button>`).join('');
@@ -418,7 +586,7 @@ async function feedPage(modal){
   }
   function wirePost(el, p){ if (!el || el._wired) return; el._wired = true;
     const like = $('.post__like', el), cbtn = $('.post__cbtn', el), cbox = $('.post__comments', el), share = $('.post__share', el);
-    like.addEventListener('click', async () => { if (!session){ modal.open('in'); return; } const on = like.classList.contains('is-on'), n = $('span', like);
+    like.addEventListener('click', async () => { if (!session){ modal.open('in'); return; } if (isGuest()) return toast('Your account is waiting for a church admin to give you access.'); const on = like.classList.contains('is-on'), n = $('span', like);
       like.classList.toggle('is-on', !on); like.classList.add('is-pop'); setTimeout(() => like.classList.remove('is-pop'), 400); like.setAttribute('aria-pressed', !on); n.textContent = Math.max(0, +n.textContent + (on ? -1 : 1));
       if (on){ await sb.from('reactions').delete().match({ post_id:p.id, user_id:session.user.id }); mine.delete(p.id); } else { const { error } = await sb.from('reactions').insert({ post_id:p.id, user_id:session.user.id }); if (error){ like.classList.remove('is-on'); n.textContent = Math.max(0, +n.textContent-1); } else mine.add(p.id); } });
     const loadC = wireComments(cbox, 'post_id', p.id, modal, () => { $('span', cbtn).textContent = +$('span', cbtn).textContent + 1; });
@@ -600,7 +768,7 @@ function libraryKit(getItems, onChanged){
 async function libraryPage(modal){
   const root = $('#library'); if (!root) return; const gate = $('.lib__gate', root), app = $('.lib__app', root);
   if (!ready){ gate.innerHTML = `<h2>Almost ready</h2><p class="sub">The library opens as soon as accounts are switched on.</p>`; return; }
-  if (!session){ gate.innerHTML = memberWall('The Upper Room library', 'Books, notes and slides the church shares with its members. Create an account or sign in to open it.');
+  if (!isMember()){ gate.innerHTML = memberWall('The Upper Room library', 'Books, notes and slides the church shares with its members. Create an account or sign in to open it.');
     gate.hidden = false; app.hidden = true; accountUI(modal); return; }
   gate.hidden = true; app.hidden = false;
   const list = $('.lib__list', app), search = $('.lib__search', app), chips = $('.lib__chips', app), tools = $('.lib__tools', app);
@@ -1141,7 +1309,7 @@ async function dashboardPage(modal){
     panel.innerHTML = `<div class="dash__toolbar"><input class="dash__search" placeholder="Search by name or email" aria-label="Search users"><select class="rolesel dash__rolefilter"><option value="">All roles</option>${Object.entries(ROLES).map(([k,v]) => `<option value="${k}">${v.label}</option>`).join('')}</select></div><div class="dash__list"></div>`;
     const list = $('.dash__list', panel), search = $('.dash__search', panel), rf = $('.dash__rolefilter', panel);
     const { data } = await sb.from('profiles').select('id, email, full_name, avatar_url, role, created_at').order('created_at', { ascending:false });
-    const assignable = r === 'master_admin' ? Object.keys(ROLES) : ['leader','media','blogger','member'];
+    const assignable = r === 'master_admin' ? Object.keys(ROLES) : ['leader','media','blogger','member','guest'];
     const canDelete = u => !!CFG.usersEndpoint && can.admin(r) && u.id !== profile.id && (r === 'master_admin' || !ADMINS.includes(u.role)); let busy = false;
     const render = () => { const qq = search.value.toLowerCase();
       list.innerHTML = (data||[]).filter(u => (!rf.value || u.role === rf.value) && (!qq || (u.full_name+u.email).toLowerCase().includes(qq))).map(u => { const locked = r !== 'master_admin' && ADMINS.includes(u.role);
@@ -1770,6 +1938,7 @@ const Tour = (() => {
 
 async function boot(){
   Consent.init();
+  try { UI.init(); } catch (e) { console.error('CCFC menus', e); }
   const pageContent = applyPageContent();   /* starts straight away; the ?edit=1 view waits for the sign-in below */
   const modal = authModal();
   if (ready){

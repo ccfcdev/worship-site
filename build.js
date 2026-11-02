@@ -56,7 +56,8 @@ const JOINFAQ = [
 ];
 const MENU = [['index.html','Home','The praise and worship team'],['videos.html','Videos','Every set we have recorded'],['latest.html','Latest','New sets, songs, rehearsal news'],['team.html','The team','Who leads worship'],['join.html','Join the team','Vocals, band, sound, media']];
 function layout(p){
-  const links = [['index.html','Home'],['videos.html','Videos'],['latest.html','Latest'],['team.html','Team'],['join.html','Join the team']].map(([f,l]) => `<li><a href="${f}"${f===p.file?' aria-current="page"':''}>${l}</a></li>`).join('');
+  const links = [['index.html','Home'],['videos.html','Videos'],['latest.html','Latest'],['team.html','Team'],['join.html','Join the team']].map(([f,l]) => `<li><a href="${f}"${f===p.file?' aria-current="page"':''}>${l}</a></li>`).join('')
+    + SEO.navMenu('sites', 'Our sites', SEO.familySites('worship.'), { current: p.file, end: true });   /* the family's other sites */
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -71,7 +72,7 @@ ${SEO.headTags({ origin: ORIGIN, file: p.file, title: WSEO[p.file][0], desc: WSE
 <header class="nav"><div class="wrap">
   <a class="nav__brand" href="index.html" aria-label="Worship Connect, home"><img src="assets/logo/ccfc-mark-white.png?v=2" alt="Christ Connect Family Church"><b>WORSHIP<i>Connect</i></b></a>
   <ul class="nav__links">${links}</ul>
-  <div class="row">${SEO.mazarNav()}<span class="nav__account"></span><a class="btn btn--ghost nav__home" href="${MAIN}" title="Back to the main church website" aria-label="Church website">${ICON.back}<span class="nav__home-t">Church website</span></a><a class="btn nav__cta" href="join.html"><span class="nav__cta-long">Join the team</span><span class="nav__cta-short">Join</span> ${ICON.arrow}</a><button class="nav__burger" aria-label="Open menu" aria-expanded="false" aria-controls="menu"><i></i><span>Menu</span></button></div>
+  <div class="row">${SEO.mazarNav()}<span class="nav__account"></span><a class="btn nav__cta" href="join.html"><span class="nav__cta-long">Join the team</span><span class="nav__cta-short">Join</span> ${ICON.arrow}</a><button class="nav__burger" aria-label="Open menu" aria-expanded="false" aria-controls="menu"><i></i><span>Menu</span></button></div>
 </div></header>
 <div class="menu__veil"></div>
 <nav class="menu" aria-label="Site menu" id="menu">

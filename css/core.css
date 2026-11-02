@@ -37,12 +37,12 @@
 .nav__avatar{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;padding:0;overflow:hidden;box-shadow:0 0 0 2px rgba(255,255,255,.25)}
 .nav__avatar .ava{width:40px;height:40px;background:var(--k-accent);color:var(--k-on-accent)}
 [hidden]{display:none!important}
-.nav__menu{animation:navMenuIn .22s var(--ease) both;transform-origin:top right;position:absolute;right:0;top:calc(100% + 10px);min-width:230px;background:var(--k-panel);color:var(--k-ink);border:1px solid var(--k-line);padding:1rem 1.1rem;display:grid;gap:.4rem;box-shadow:var(--k-shadow);z-index:80;border-radius:14px}
-.nav__menu b{font-family:var(--font-display);color:var(--k-head)}
-.nav__menu a,.nav__menu button{text-align:left;padding:.4rem 0;font-size:.95rem;color:var(--k-ink);font-weight:500}
-.nav__menu a:hover,.nav__menu button:hover{color:var(--k-accent)}
-.nav__menu .pill{justify-self:start}
-@keyframes navMenuIn{from{opacity:0;transform:translateY(-6px) scale(.98)}to{opacity:1;transform:none}}
+.nav__menu{position:absolute;right:0;top:calc(100% + 12px);min-width:248px;padding:.4rem;display:grid;gap:1px;z-index:80;transform-origin:calc(100% - 20px) top}
+.nav__menu-head{display:grid;gap:.35rem;justify-items:start;padding:.7rem .75rem .75rem;margin-bottom:.25rem;border-bottom:1px solid color-mix(in srgb,var(--k-ink) 10%,transparent)}
+.nav__menu-head b{font-family:var(--font-display);color:var(--k-head);font-size:1rem;line-height:1.25}
+.nav__menu a,.nav__menu button{display:block;width:100%;text-align:left;padding:.6rem .75rem;border-radius:10px;font-size:.93rem;color:var(--k-ink);font-weight:500}
+.nav__menu a:hover,.nav__menu button:hover,.nav__menu a:focus-visible,.nav__menu button:focus-visible{background:color-mix(in srgb,var(--k-ink) 7%,transparent);color:var(--k-ink);outline:none}
+.nav__menu .nav__signout{margin-top:.25rem;color:#B8321A}
 .menu__account{display:grid;gap:.4rem;padding-top:1rem;margin-top:1rem;border-top:1px solid var(--k-line)}
 .menu__account .nav__signin{justify-self:start;background:var(--k-accent);color:var(--k-on-accent);padding:.75rem 1.2rem}
 .menu__account a{font-weight:500;padding:.35rem 0}
@@ -801,3 +801,87 @@ html{overflow-x:clip}
 .tour__off{display:block;margin:.55rem 0 0;font-size:.78rem}
 .tour button:focus-visible{outline:2px solid var(--k-accent);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){.tour,.tour__hole{transition:none}}
+
+/* ================================================================ MENUS, DROPDOWNS AND FEEL (js/core.js, UI)
+   One material for every pop-up: a translucent panel that keeps the page faintly visible behind it, a hairline
+   edge and a soft shadow, larger surfaces casting deeper shadows. It grows out of the control that opened it. */
+.nmenu__panel,.nav__menu,.csel__pop{
+  background:color-mix(in srgb,var(--k-panel) 86%,transparent);
+  -webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%);
+  border:1px solid color-mix(in srgb,var(--k-ink) 11%,transparent);color:var(--k-ink);border-radius:16px;
+  box-shadow:0 28px 60px -28px rgba(8,8,30,.5),0 2px 8px rgba(8,8,30,.08);
+  opacity:0;transform:translateY(-4px) scale(.96);filter:blur(3px);pointer-events:none;
+  transition:opacity .15s ease-in,transform .18s ease-in,filter .15s ease-in}
+.nmenu__panel.is-open,.nav__menu.is-open,.csel__pop.is-open{opacity:1;transform:none;filter:none;pointer-events:auto;
+  transition:opacity .2s ease-out,transform .34s cubic-bezier(.2,.9,.25,1),filter .2s ease-out}
+
+/* header menus */
+.nmenu{position:relative;display:flex;align-items:center;list-style:none}
+.nmenu__btn{display:inline-flex;align-items:center;gap:.25rem;font:inherit;font-size:.93rem;font-weight:500;color:inherit;opacity:.9;padding:.3rem 0;white-space:nowrap;cursor:pointer;background:none;border:0}
+.nmenu__btn:hover,.nmenu__btn[aria-expanded=true],.nmenu__btn[data-current]{opacity:1}
+.nmenu__chev{width:15px;height:15px;transition:transform .3s cubic-bezier(.2,.9,.25,1)}
+.nmenu__btn[aria-expanded=true] .nmenu__chev{transform:rotate(180deg)}
+.nmenu__panel{position:absolute;top:calc(100% + 16px);left:50%;margin-left:-160px;width:320px;padding:.4rem;z-index:90;transform-origin:50% 0;display:grid;gap:1px}
+.nmenu--end .nmenu__panel{left:auto;right:-12px;margin-left:0;transform-origin:calc(100% - 30px) 0}
+.nmenu__item{display:block;padding:.65rem .8rem;border-radius:11px;color:var(--k-ink);text-decoration:none}
+.nmenu__item b{display:block;font-weight:600;font-size:.95rem;line-height:1.3;color:var(--k-ink);letter-spacing:-.005em}
+.nmenu__item small{display:block;margin-top:.1rem;font-size:.81rem;line-height:1.35;color:var(--k-muted)}
+.nmenu__item:hover,.nmenu__item:focus-visible{background:color-mix(in srgb,var(--k-ink) 7%,transparent);outline:none}
+.nmenu__item[aria-current=page]{background:color-mix(in srgb,var(--k-accent) 13%,transparent)}
+.nmenu__item[aria-current=page] b{color:var(--k-accent)}
+
+/* custom dropdowns: the button takes the look of the <select> it replaces; the real one waits underneath */
+.csel{position:relative;display:inline-block;vertical-align:middle;max-width:100%}
+.csel--block{display:block;width:100%}
+.csel__native{position:absolute!important;inset:0;width:100%!important;height:100%!important;opacity:0;pointer-events:none;margin:0}
+.csel__btn{position:relative;display:flex;align-items:center;width:100%;text-align:left;cursor:pointer;line-height:1.3;
+  transition:border-color .2s,box-shadow .2s,transform .1s ease-out}
+.csel__btn:hover{border-color:color-mix(in srgb,var(--k-accent) 55%,transparent)!important}
+.csel__btn[aria-expanded=true]{border-color:var(--k-accent)!important;box-shadow:0 0 0 4px color-mix(in srgb,var(--k-accent) 16%,transparent)!important}
+.csel__btn.is-invalid{border-color:#B8321A!important}
+.csel__btn:disabled{opacity:.55;cursor:default}
+.csel__val{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.csel__val.is-ph{opacity:.6}
+.csel__chev{position:absolute;right:12px;top:50%;width:18px;height:18px;margin-top:-9px;opacity:.7;transition:transform .3s cubic-bezier(.2,.9,.25,1)}
+.csel__btn[aria-expanded=true] .csel__chev{transform:rotate(180deg)}
+.csel__pop{position:fixed;z-index:1200;display:flex;flex-direction:column;overflow:hidden;padding:0;font-size:.95rem}
+.csel__pop:focus{outline:none}
+.csel__list{overflow-y:auto;overscroll-behavior:contain;padding:.35rem}
+.csel__opt{display:flex;align-items:center;gap:.5rem;padding:.6rem .7rem .6rem .45rem;border-radius:10px;cursor:pointer;line-height:1.3;user-select:none;color:var(--k-ink)}
+.csel__opt.is-act{background:color-mix(in srgb,var(--k-ink) 8%,transparent)}
+.csel__opt.is-sel{font-weight:600}
+.csel__opt.is-ph{color:var(--k-muted)}
+.csel__opt[aria-disabled]{opacity:.4;cursor:default}
+.csel__tick{width:18px;height:18px;flex:none;color:var(--k-accent);visibility:hidden}
+.csel__tick svg{width:18px;height:18px;display:block}
+.csel__opt.is-sel .csel__tick{visibility:visible}
+.csel__grp{padding:.65rem .75rem .25rem;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--k-faint)}
+/* phones: the list rises as a sheet from the bottom edge, above a dimmed page */
+.csel__pop--sheet{left:0!important;right:0;bottom:0;top:auto;max-height:min(70vh,520px);border-radius:20px 20px 0 0;border-bottom:0;padding-bottom:env(safe-area-inset-bottom);
+  transform:translateY(100%);filter:none;transition:transform .26s cubic-bezier(.4,0,.8,.6),opacity .2s}
+.csel__pop--sheet.is-open{transform:none;transition:transform .42s cubic-bezier(.2,.9,.25,1),opacity .2s}
+.csel__pop--sheet .csel__opt{padding:.85rem .8rem .85rem .5rem;font-size:1rem}
+.csel__head{display:grid;justify-items:center;gap:.45rem;padding:.55rem 1rem .6rem;cursor:grab;touch-action:none;border-bottom:1px solid color-mix(in srgb,var(--k-ink) 9%,transparent)}
+.csel__head b{font-family:var(--font-display);font-size:.98rem;color:var(--k-head)}
+.csel__grab{width:38px;height:5px;border-radius:9px;background:color-mix(in srgb,var(--k-ink) 25%,transparent)}
+.csel__scrim{position:fixed;inset:0;z-index:1150;background:rgba(6,6,20,.38);opacity:0;transition:opacity .25s}
+.csel__scrim.is-open{opacity:1}
+
+/* feel: the press shows the moment it lands; one keyboard focus ring everywhere */
+.btn:active,.chip:active,.pill:active,.nmenu__btn:active,.csel__btn:active,.nav__signin:active,.nav__mazar:active,.nav__menubtn:active,.nav__burger:active,.nav__avatar:active{transform:scale(.97);transition-duration:.08s}
+:where(a,button,input,textarea,select,summary,[tabindex]):focus-visible{outline:2px solid var(--k-accent);outline-offset:3px}
+
+@media (prefers-reduced-motion:reduce){
+  .nmenu__panel,.nav__menu,.csel__pop,.csel__pop--sheet,.nmenu__panel.is-open,.nav__menu.is-open,.csel__pop.is-open{transform:none;filter:none;transition:opacity .15s linear}
+  .nmenu__chev,.csel__chev{transition:none}}
+@media (prefers-reduced-transparency:reduce){
+  .nmenu__panel,.nav__menu,.csel__pop{background:var(--k-panel);-webkit-backdrop-filter:none;backdrop-filter:none}}
+@media (prefers-contrast:more){
+  .nmenu__panel,.nav__menu,.csel__pop{background:var(--k-panel);border-color:var(--k-ink)}
+  .csel__opt.is-act,.nmenu__item:hover{outline:2px solid var(--k-ink)}}
+
+.nmenu--wide .nmenu__panel{width:560px;margin-left:-280px;grid-template-columns:1fr 1fr;column-gap:2px}
+/* panels inside the header can't blur the page (the header's own blur is their backdrop), so they are near-solid */
+.nmenu__panel,.nav__menu{background:var(--k-panel);-webkit-backdrop-filter:none;backdrop-filter:none}
+.is-invalid .csel__btn,.csel__btn[aria-invalid=true]{border-color:#E5533D!important}
+.nav__menu-head small,.drawer__user small{display:block;font-size:.8rem;line-height:1.35;color:var(--k-muted);max-width:26ch}

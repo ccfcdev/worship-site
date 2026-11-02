@@ -48,9 +48,9 @@ p{margin:0}
 .nav__brand b{font-family:var(--font-display);font-weight:800;letter-spacing:-.02em;font-size:1.1rem;line-height:1}
 .nav__brand b i{font-family:var(--font-script);font-style:italic;font-weight:400;color:var(--orange-2);letter-spacing:0;margin-left:.15em}
 .nav__links{display:none;gap:1.6rem;list-style:none;margin:0;padding:0;align-items:center}
-.nav__links a{white-space:nowrap;font-size:.93rem;font-weight:500;opacity:.9;position:relative;padding:.3rem 0}
-.nav__links a::after{content:"";position:absolute;left:0;bottom:0;width:100%;height:1.5px;background:var(--orange);transform:scaleX(0);transform-origin:right;transition:transform .45s var(--ease)}
-.nav__links a:hover::after,.nav__links a[aria-current=page]::after{transform:scaleX(1);transform-origin:left}
+.nav__links > li > a{white-space:nowrap;font-size:.93rem;font-weight:500;opacity:.9;position:relative;padding:.3rem 0}
+.nav__links > li > a::after{content:"";position:absolute;left:0;bottom:0;width:100%;height:1.5px;background:var(--orange);transform:scaleX(0);transform-origin:right;transition:transform .45s var(--ease)}
+.nav__links > li > a:hover::after,.nav__links > li > a[aria-current=page]::after{transform:scaleX(1);transform-origin:left}
 .nav__cta{display:none;padding:.75rem 1.25rem;font-size:.9rem}
 .nav__burger{display:inline-flex;align-items:center;gap:.5rem;height:44px;padding:0 .9rem 0 1rem;border-radius:var(--pill);background:rgba(255,255,255,.14);font-weight:600;font-size:.9rem}
 .nav__burger i{display:block;width:18px;height:2px;background:currentColor;position:relative}
@@ -311,7 +311,7 @@ p{margin:0}
 .script{color:var(--gold-2)}
 .hero__meta b,.detail b,.spk span,.libcard__kind{color:var(--gold)}
 .link{color:var(--gold-2)}
-.nav__links a::after{background:var(--gold)}
+.nav__links > li > a::after{background:var(--gold)}
 .role b,.song b{color:var(--white)}
 .roles,.songs,.facts,.details,.detail,.hero__meta,.ed,.vcard,.reg,.reg__side{border-color:rgba(231,184,74,.22)}
 .songs,.roles,.facts{background:rgba(231,184,74,.22)}
@@ -376,3 +376,5 @@ h2::after{content:"";display:block;width:56px;height:3px;background:var(--gold);
 .nav__signin{white-space:nowrap}
 @media (min-width:960px) and (max-width:1299px){.nav .nav__cta-long{display:none}.nav .nav__cta-short{display:inline}.nav__links{gap:1.1rem}}
 @media (min-width:960px) and (max-width:1139px){.nav__links{display:none}}
+/* the drawer has Our sites; below 1420px the header row is already full */
+@media (min-width:960px) and (max-width:1419px){.nav__links .nmenu{display:none}}
