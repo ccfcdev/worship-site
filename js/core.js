@@ -678,7 +678,7 @@ function libraryKit(getItems, onChanged){
   const pub = path => sb.storage.from('library').getPublicUrl(path).data.publicUrl;
   const extOf = n => (String(n).split('.').pop() || '').toLowerCase();
   const TYPE = e => ({ pdf:'pdf', ppt:'slides', pptx:'slides', key:'slides', odp:'slides', doc:'doc', docx:'doc', odt:'doc', rtf:'doc', txt:'doc', xls:'sheet', xlsx:'sheet', csv:'sheet', mp3:'audio', m4a:'audio', wav:'audio', ogg:'audio', mp4:'video', mov:'video', webm:'video', jpg:'image', jpeg:'image', png:'image', webp:'image', gif:'image' })[e] || 'file';
-  const KIND_FOR = t => ({ pdf:'book', slides:'slides', doc:'notes', sheet:'notes', audio:'audio', video:'video', image:'other', file:'other' })[t];
+  const KIND_FOR = t => ({ pdf:'', slides:'slides', doc:'notes', sheet:'notes', audio:'audio', video:'video', image:'other', file:'other' })[t];
   const art = (t, e) => `<span class="lcov__art lcov__art--${t}"><i>${esc(e.toUpperCase() || 'FILE')}</i></span>`;
   let pdfjs = null;
   const loadPdf = () => pdfjs || (pdfjs = new Promise((ok, no) => { const sc = document.createElement('script'); sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'; sc.onload = () => { window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; ok(window.pdfjsLib); }; sc.onerror = no; document.head.appendChild(sc); }));
@@ -718,12 +718,12 @@ function libraryKit(getItems, onChanged){
     $('.upl__x', dlg).addEventListener('click', close); $('.upl__cancel', dlg).addEventListener('click', close);
     dlg.addEventListener('click', e => { if (e.target === dlg) close(); }); dlg.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
     const refresh = () => { go.disabled = !queue.some(q => q.state === 'ready'); $('.upl__shared', dlg).hidden = !queue.length; drop.classList.toggle('is-compact', queue.length > 0); go.textContent = queue.filter(q => q.state === 'ready').length > 1 ? `Upload ${queue.filter(q => q.state === 'ready').length} files` : 'Upload'; };
-    const addFiles = fl => { [...fl].forEach(file => {
+    const addFiles = fl => { if (busy) return; [...fl].forEach(file => {
       if (file.size > 50 * 1048576){ statusEl.textContent = `${file.name} is larger than 50 MB, the storage limit.`; return; }
       const e = extOf(file.name), t = TYPE(e); const q = { file, t, state: 'ready', cover: null };
       const el = document.createElement('div'); el.className = 'upf'; q.el = el;
       el.innerHTML = `<div class="upf__thumb">${art(t, e)}<span class="upf__spin" aria-hidden="true"></span></div>
-        <div class="upf__body"><input class="upf__title" value="${esc(file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' '))}" aria-label="Title for ${esc(file.name)}"><div class="upf__meta"><select class="upf__kind" aria-label="Type">${Object.entries(KINDS).map(([k, v]) => `<option value="${k}" ${k === KIND_FOR(t) ? 'selected' : ''}>${v}</option>`).join('')}</select><span>${esc(e.toUpperCase())} &middot; ${fmtBytes(file.size)}</span><span class="upf__extra"></span></div><div class="upf__bar"><i></i></div></div>
+        <div class="upf__body"><input class="upf__title" value="${esc(file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' '))}" aria-label="Title for ${esc(file.name)}"><div class="upf__meta"><select class="upf__kind" aria-label="Category" required><option value="" disabled ${!KIND_FOR(t) ? 'selected' : ''}>Choose category</option>${Object.entries(KINDS).map(([k, v]) => `<option value="${k}" ${k === KIND_FOR(t) ? 'selected' : ''}>${v}</option>`).join('')}</select><span>${esc(e.toUpperCase())} &middot; ${fmtBytes(file.size)}</span><span class="upf__extra"></span></div><div class="upf__bar"><i></i></div></div>
         <button type="button" class="upf__rm" aria-label="Remove ${esc(file.name)}">&times;</button>`;
       $('.upf__rm', el).addEventListener('click', () => { if (q.state === 'uploading') return; queue.splice(queue.indexOf(q), 1); el.remove(); refresh(); });
       filesEl.appendChild(el); queue.push(q); requestAnimationFrame(() => el.classList.add('is-in')); setTimeout(() => el.classList.add('is-in'), 60);
@@ -735,18 +735,31 @@ function libraryKit(getItems, onChanged){
     ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('is-over'); }));
     ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('is-over'); }));
     drop.addEventListener('drop', e => addFiles(e.dataTransfer.files));
-    go.addEventListener('click', async () => { const series = $('#upl-series', dlg).value.trim(), desc = $('#upl-desc', dlg).value.trim(); busy = true; go.disabled = true; let done = 0, failed = 0;
-      for (const q of queue.filter(x => x.state === 'ready')){
-        const title = $('.upf__title', q.el).value.trim() || q.file.name; q.state = 'uploading'; q.el.classList.add('is-uploading'); const bar = $('.upf__bar i', q.el);
+    go.addEventListener('click', async () => {
+      if (busy) return;
+      const pending = queue.filter(q => q.state === 'ready');
+      for (const q of pending){
+        const select = $('.upf__kind', q.el);
+        if (!Object.hasOwn(KINDS, select.value)){
+          statusEl.textContent = `Choose a category for ${q.file.name}. PDFs can be books, slides or notes.`;
+          select.focus(); select.reportValidity(); return;
+        }
+      }
+      // Snapshot every choice before async uploads begin, including files waiting in the queue.
+      const uploads = pending.map(q => ({ q, kind: $('.upf__kind', q.el).value, title: $('.upf__title', q.el).value.trim() || q.file.name }));
+      const series = $('#upl-series', dlg).value.trim(), desc = $('#upl-desc', dlg).value.trim(); busy = true;
+      $$('input, select, textarea, .upf__rm', dlg).forEach(el => { el.disabled = true; }); go.disabled = true; let done = 0, failed = 0;
+      for (const { q, kind, title } of uploads){
+        q.state = 'uploading'; q.el.classList.add('is-uploading'); const bar = $('.upf__bar i', q.el);
         try {
           const base = `${series ? slugify(series) : 'general'}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}`; const path = `${base}.${extOf(q.file.name) || 'bin'}`;
           await send(path, q.file, q.file.type, p => { bar.style.width = Math.round(p * 100) + '%'; });
           let cover_path = null; if (q.cover){ cover_path = `covers/${base.split('/').pop()}.jpg`; await send(cover_path, q.cover, 'image/jpeg'); }
-          const { error } = await sb.from('library_items').insert({ uploader_id: profile.id, kind: $('.upf__kind', q.el).value, title, description: desc, series, path, file_name: q.file.name, size_bytes: q.file.size, cover_path }); if (error) throw error;
+          const { error } = await sb.from('library_items').insert({ uploader_id: profile.id, kind, title, description: desc, series, path, file_name: q.file.name, size_bytes: q.file.size, cover_path }); if (error) throw error;
           q.state = 'done'; q.el.classList.remove('is-uploading'); q.el.classList.add('is-done'); bar.style.width = '100%'; done++;
         } catch (err){ q.state = 'ready'; q.el.classList.remove('is-uploading'); q.el.classList.add('is-error'); $('.upf__extra', q.el).textContent = friendly(err); failed++; }
       }
-      busy = false; statusEl.textContent = failed ? `${done} uploaded, ${failed} failed. Fix and try again.` : `${done} added to the library.`; refresh(); onChanged();
+      busy = false; $$('input, select, textarea, .upf__rm', dlg).forEach(el => { el.disabled = false; }); statusEl.textContent = failed ? `${done} uploaded, ${failed} failed. Fix and try again.` : `${done} added to the library.`; refresh(); onChanged();
       if (!failed) setTimeout(close, 1100); });
     setTimeout(() => drop.focus && $('.upl__x', dlg).focus(), 50);
   }
