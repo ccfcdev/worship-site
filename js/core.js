@@ -267,8 +267,8 @@ const UI = (() => {
   }
 
   /* ---------------------------------------------------------------- custom dropdowns for <select>
-     The real <select> stays in the form, underneath, so values, form posts, change listeners and the
-     form-filling Yuriel does all keep working. Its look is read from the page (padding, border, colours,
+     The real <select> stays in the form, underneath, so values, form posts and change listeners all
+     keep working. Its look is read from the page (padding, border, colours,
      radius) so each form keeps its own style. A select can opt out with data-native. */
   const VALUE = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value'),
         INDEX = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'selectedIndex');
@@ -1444,12 +1444,6 @@ async function accountPage(modal){
         </form>
         <small class="acct__note">${providers.every(p => p !== 'email') ? 'Setting a password also lets you sign in with your email, alongside ' + providers.map(p => p[0].toUpperCase() + p.slice(1)).join(' and ') + '.' : ''}</small>
       </section>
-      <section class="acct__card acct__apps">
-        <h2>Connected apps</h2>
-        <div class="acct__app"><span class="acct__app-ico" aria-hidden="true"><svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="17" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M24 12c.8 8.4 3.6 11.2 12 12-8.4.8-11.2 3.6-12 12-.8-8.4-3.6-11.2-12-12 8.4-.8 11.2-3.6 12-12z" fill="currentColor"/></svg></span><div><b>Yuriel</b><span class="acct__app-status">Checking...</span></div></div>
-        <div class="acct__app-list"></div>
-        <small class="acct__note">Yuriel is the church's AI Bible companion app, with its own accounts. Connecting shows your church name and role there and lets you sign in to Yuriel with this account. Your Yuriel conversations stay private to you.</small>
-      </section>
       <section class="acct__card acct__meta">
         <h2>Your account</h2>
         <dl class="drow__dl"><dt>Role</dt><dd>${esc(ROLES[role()||'member'].label)}: ${esc(ROLES[role()||'member'].desc)}</dd><dt>Signs in with</dt><dd>${esc(providers.map(p => p === 'email' ? 'Email and password' : p[0].toUpperCase() + p.slice(1)).join(', '))}</dd><dt>Member since</dt><dd>${esc(fullDate(profile.created_at))}</dd><dt>Works on</dt><dd>ccfczambia.org, koinonia.ccfczambia.org, worship.ccfczambia.org</dd></dl>
@@ -1457,18 +1451,6 @@ async function accountPage(modal){
       </section>
     </div>`;
     const setStatus = (f, msg, ok) => { const st = $('.form__status', f); st.textContent = msg; st.className = 'form__status ' + (ok ? 'is-ok' : 'is-err'); };
-    if (new URLSearchParams(location.search).get('connect') === 'mazar' && !$('.acct__connect', root)){ const note = document.createElement('div'); note.className = 'acct__connect'; note.innerHTML = `<b>You're signed in.</b> Go back to Yuriel to finish connecting. ${window.opener ? 'This window closes by itself.' : '<a class="link" href="https://yuriel.ccfczambia.org/?account=connect">Return to Yuriel</a>'}`; app.prepend(note); }
-    /* Mazar keeps its accounts in its own database (CFG.mazarUrl); its mazar-account function checks this church sign-in and answers for it */
-    const mazarFn = async (action) => { const { data: { session: s } } = await sb.auth.getSession(); if (!s || !CFG.mazarUrl) throw new Error('Not available right now.');
-      const r = await fetch(CFG.mazarUrl + '/functions/v1/mazar-account', { method:'POST', headers:{ 'Content-Type':'application/json', apikey: CFG.mazarKey }, body: JSON.stringify({ action, ccfc_token: s.access_token }) });
-      const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'Not available right now.'); return j; };
-    const loadApps = async () => { const box = $('.acct__apps', app); if (!box) return; const st = $('.acct__app-status', box), list = $('.acct__app-list', box);
-      let m; try { ({ mazar: m } = await mazarFn('ccfc-apps')); } catch (e){ st.textContent = 'Not available right now.'; return; }
-      if (!m){ st.innerHTML = 'Not connected. <a class="link" href="https://yuriel.ccfczambia.org/?account=connect" target="_blank" rel="noopener">Connect in Yuriel</a>'; list.innerHTML = ''; return; }
-      st.textContent = 'Connected';
-      list.innerHTML = `<div class="drow"><div><b>${esc(m.name || 'Your Yuriel account')}</b><span>${m.linked_at ? 'Connected ' + esc(when(m.linked_at)) : ''}</span></div><div class="row"><a class="pill" href="https://yuriel.ccfczambia.org" target="_blank" rel="noopener">Open Yuriel</a><button class="pill pill--danger" data-unlink>Disconnect</button></div></div>`;
-      $$('[data-unlink]', list).forEach(b => b.addEventListener('click', async () => { if (!(await sure({ title: 'Disconnect Yuriel from your church account?', body: 'Your Yuriel account and conversations stay as they are. You can connect again any time.', ok: 'Disconnect', danger: true, from: b }))) return; try { await mazarFn('ccfc-disconnect'); toast('Disconnected from Yuriel.'); loadApps(); } catch (e){ toast(e.message, false); } })); };
-    loadApps();
     const file = $('.acct__camera input', app); const pick = () => file.click();
     $('.acct__pick', app).addEventListener('click', pick); $('.acct__camera', app).addEventListener('click', e => { e.preventDefault(); pick(); });
     file.addEventListener('change', async () => { const fl = file.files[0]; if (!fl) return; if (!fl.type.startsWith('image')){ toast('Please choose an image.', false); return; }
@@ -1810,7 +1792,7 @@ const Tour = (() => {
   const r = () => role() || 'member';
   const and = xs => xs.length < 2 ? (xs[0] || '') : xs.slice(0, -1).join(', ') + ' and ' + xs[xs.length - 1];
   const first = () => String(profile?.full_name || '').trim().split(/\s+/)[0] || '';
-  const ACCOUNT = '.nav__account .nav__avatar, .nav__menubtn, .nav__burger', YURIEL = '.nav__mazar, .mz__fab';
+  const ACCOUNT = '.nav__account .nav__avatar, .nav__menubtn, .nav__burger';
   const personal = 'These hold people\'s personal details: open them when there is a reason to.';
   const roleCard = rr => `<p class="tour__role"><b>${esc(ROLES[rr].label)}</b>${esc(ROLES[rr].desc)}</p>`;   /* the role guide's own wording */
 
@@ -1822,8 +1804,7 @@ const Tour = (() => {
       { sel: '.dash__tabs', title: 'Your tabs', body: '<p>Only what your role can use appears here. Each tab shows you around the first time you open it.</p>' } ];
     return [
       { title: first() ? `Welcome, ${first()}` : 'Welcome', body: `<p>You are signed in to ${esc(SITE.label)}. Your role:</p>${roleCard(rr)}` },
-      { sel: ACCOUNT, title: 'Your account menu', body: `<p>Everything your account opens on this site is here: ${esc(and(links))}.</p>` },
-      { sel: YURIEL, title: 'Ask Yuriel', body: '<p>The church\'s AI Bible companion. Ask about the Bible or anything on this site. It can prepare a form or a calendar entry for you, but you always press the final button.</p>' } ];
+      { sel: ACCOUNT, title: 'Your account menu', body: `<p>Everything your account opens on this site is here: ${esc(and(links))}.</p>` } ];
   };
   const PAGES = {
     feed: () => [
@@ -1837,19 +1818,15 @@ const Tour = (() => {
     account: () => [
       { sel: '#account .acct__photo', title: 'Your photo', body: '<p>Other members see your name, photo and role, and nothing else.</p>' },
       { sel: '#account .acct__form', title: 'Your details', body: '<p>Your name and phone number. Only the church\'s administrators can see your phone number and email address.</p>' },
-      { sel: '#account .acct__apps', title: 'Connected apps', body: '<p>Connect Yuriel to sign in there with this account. Your Yuriel conversations stay private to you.</p>' },
       { sel: '#account .acct__meta', title: 'Your role', body: '<p>What your role can do and how you sign in. <b>Show me around again</b> brings this tour back whenever you want it.</p>' } ],
     register: () => [
-      { sel: 'form.reg:not(.join)', title: "Register for Koi 26'", body: '<p>One form per person. You get a registration number and a confirmation email straight away, with the delegate fee that applies to you. The email confirms your registration, not payment.</p>' },
-      { sel: YURIEL, title: 'Yuriel can fill it in', body: '<p>Ask Yuriel to register you and it fills in this form for you to check. You always press submit yourself.</p>' } ],
+      { sel: 'form.reg:not(.join)', title: "Register for Koi 26'", body: '<p>One form per person. You get a registration number and a confirmation email straight away, with the delegate fee that applies to you. The email confirms your registration, not payment.</p>' } ],
     join: () => [
       { sel: 'form.join', title: 'Join Worship Connect', body: '<p>Tell the team about yourself and your gifts. The team\'s leaders read every application and get in touch.</p>' } ],
-    yuriel: () => [
-      { sel: '#mazar-page', title: 'Yuriel', body: '<p>Ask anything about the Bible or the church, open a passage in the Bible tab, or ask it to prepare a small job. For your conversations on every device, use yuriel.ccfczambia.org.</p>' } ],
     /* the admin panel's tabs, one tour each, whichever site they are opened on */
     assistant: () => [ { sel: '.dash__tab.is-on', title: 'Yuriel Prime', body: '<p>Ask it to change, check or write something. It plans first, shows exactly what would change, and does nothing until you press <b>Apply</b>. Never paste anybody\'s personal details into it.</p>' } ],
     posts: () => [ { sel: '.dash__panel .feed__composer', title: 'Post to this site', body: '<p>Write news or an announcement, or add photos and videos. Everyone signed in sees it in the site\'s feed. Below, edit, pin or remove what has been posted.</p>' } ],
-    settings: () => [ { sel: '.dash__tab.is-on', title: 'Site text', body: '<p>Short texts the office changes often, like the service note. A change shows on the site straight away, and Yuriel answers from it too.</p>' } ],
+    settings: () => [ { sel: '.dash__tab.is-on', title: 'Site text', body: '<p>Short texts the office changes often, like the service note. A change shows on the site straight away.</p>' } ],
     regs: () => [ { sel: '.dash__tab.is-on', title: 'Registrations', body: `<p>Everyone registered for Koinonia, each with their registration number. Deleting a registration here also removes its copy in Google Drive. ${personal}</p>` } ],
     apps: () => [ { sel: '.dash__tab.is-on', title: 'Applications', body: `<p>People asking to join Worship Connect. Move each one on as you get in touch. ${personal}</p>` } ],
     team: () => [ { sel: '.dash__tab.is-on', title: 'The team', body: '<p>Who appears on the public team page, their roles, and which tab they sit under there: Worshipers or Media.</p>' } ],
@@ -1860,7 +1837,7 @@ const Tour = (() => {
   };
   /* which of the pages above this is, from what it contains */
   const pageOf = () => $('#feed') ? 'feed' : $('#library') ? 'library' : $('#account') ? 'account' : $('form.join') ? 'join'
-    : $('form.reg') ? 'register' : $('#mazar-page') ? 'yuriel' : null;
+    : $('form.reg') ? 'register' : null;
 
   const visible = el => { if (!el || !el.getClientRects().length) return false; const b = el.getBoundingClientRect(), cs = getComputedStyle(el);
     return b.width > 0 && b.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none'; };
