@@ -88,12 +88,10 @@ function lint(p, title, desc) {
   return w;
 }
 
-/* Mazar, the AI Bible companion: its mark (a star of light in a broken halo) and the navbar / menu buttons that open it (js/mazar.js binds [data-mazar]) */
+/* Yuriel's mark (a star of light in a broken halo). The public Yuriel was retired on 22 November 2026; its navbar and menu buttons are gone. */
 function mazarMark(id = 'mzm') {
   return `<svg class="mz-mark" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><defs><linearGradient id="${id}" x1="8" y1="6" x2="40" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="var(--mz-light,#FFF7DC)"/><stop offset=".55" stop-color="var(--mz-glow,#EBC872)"/><stop offset="1" stop-color="var(--mz-glow-2,#B98A3E)"/></linearGradient></defs><path d="M24 6.5a17.5 17.5 0 1 1-12.4 5.1" fill="none" stroke="url(#${id})" stroke-width="1.6" stroke-linecap="round"/><path d="M24 2v6M24 40v6" stroke="url(#${id})" stroke-width="1.2" stroke-linecap="round" opacity=".8"/><path d="M24 12c.8 8.4 3.6 11.2 12 12-8.4.8-11.2 3.6-12 12-.8-8.4-3.6-11.2-12-12 8.4-.8 11.2-3.6 12-12z" fill="url(#${id})"/></svg>`;
 }
-const mazarNav = () => `<button class="nav__mazar" type="button" data-mazar aria-label="Open Yuriel, the AI Bible companion">${mazarMark('mzm-nav')}<span>Yuriel</span></button>`;
-const mazarMenu = () => `<button class="mzq" type="button" data-mazar>${mazarMark('mzm-menu')}<span><b>Ask Yuriel</b><small>AI Bible companion, prayer and small tasks</small></span></button>`;
 
 /* ================================================================ PAGE EDITOR
    Master Admins change the static pages through Mazar Prime (table public.page_content, one row per changed slot).
@@ -433,9 +431,9 @@ function navMenu(id, label, items, { current = '', li = true, end = false, wide 
   return `<${tag} class="nmenu${end ? ' nmenu--end' : ''}${wide ? ' nmenu--wide' : ''}"><button class="nmenu__btn" type="button" aria-expanded="false" aria-controls="nm-${id}"${here ? ' data-current' : ''}>${label}${NM_CHEV}</button>`
     + `<div class="nmenu__panel" id="nm-${id}" hidden>${items.map(([h, l, note, member]) => `<a class="nmenu__item" href="${h}"${h === current ? ' aria-current="page"' : ''}${member ? ' data-member hidden' : ''}${out(h)}><b>${l}</b>${note ? `<small>${note}</small>` : ''}</a>`).join('')}</div></${tag}>`;
 }
-/* the same three-site menu on every public site */
+/* the same three-site menu on every public site (Yuriel's studio was retired on 22 November 2026) */
 const familySites = (except) => [['https://ccfczambia.org', 'CCFC Zambia', 'The church website'], ['https://koinonia.ccfczambia.org', 'Koinonia Experience', 'The family conference, Koi 26\' registration'],
-  ['https://worship.ccfczambia.org', 'Worship Connect', 'The worship team and every set'], ['https://yuriel.ccfczambia.org', 'Yuriel', 'AI Bible companion and study']].filter(([h]) => !h.includes(except));
+  ['https://worship.ccfczambia.org', 'Worship Connect', 'The worship team and every set']].filter(([h]) => !h.includes(except));
 
-module.exports = { navMenu, familySites, lastmods, mazarMark, mazarNav, mazarMenu, headTags, clean, sitemapXml, robotsTxt, manifestJson, lint, urlOf, slug, esc, editable, loadPageContent, writeContentMap,
+module.exports = { navMenu, familySites, lastmods, mazarMark, headTags, clean, sitemapXml, robotsTxt, manifestJson, lint, urlOf, slug, esc, editable, loadPageContent, writeContentMap,
   pageEditor: { parse: peParse, emit: peEmit, miniParse: peMiniParse, miniHtml: peMiniHtml, href: peHref, src: peSrc, dash: peDash, value: peValue } };
