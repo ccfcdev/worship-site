@@ -62,7 +62,7 @@ function layout(p){
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-${SEO.headTags({ origin: ORIGIN, file: p.file, title: WSEO[p.file][0], desc: WSEO[p.file][1], noindex: p.noindex, ogImage: 'assets/og/' + (CARD[p.file] || 'default') + '.jpg', ogAlt: WSEO[p.file][0].split(' | ')[0] + ', Worship Connect, CCFC Zambia', siteName: 'Worship Connect', themeColor: '#0A0A0B', preloadImage: p.file === 'index.html' ? '/assets/img/hero-poster-v2.webp' : null, preloadMedia: '(min-width:768px)' })}
+${SEO.headTags({ origin: ORIGIN, file: p.file, title: WSEO[p.file][0], desc: WSEO[p.file][1], noindex: p.noindex, ogImage: 'assets/og/' + (CARD[p.file] || 'default') + '.jpg', ogAlt: WSEO[p.file][0].split(' | ')[0] + ', Worship Connect, CCFC Zambia', siteName: 'Worship Connect', themeColor: '#0A0A0B', preloadImage: p.file === 'index.html' ? '/assets/img/hero-wc-poster.webp' : null, preloadMedia: '(min-width:768px)' })}
 <link rel="preload" href="assets/fonts/BricolageGrotesque-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/fonts.css?v=${V.fonts}"><link rel="stylesheet" href="css/site.css?v=${V.css}"><link rel="stylesheet" href="css/core.css?v=${V.core}">
 <script type="application/ld+json">${JSON.stringify({'@context':'https://schema.org','@type':'MusicGroup',name:'Worship Connect',description:'Praise and worship team of Christ Connect Family Church Zambia',url:ORIGIN + '/',genre:'Gospel',foundingLocation:{'@type':'Place',name:'Lusaka, Zambia'},sameAs:[YT],memberOf:{'@type':'Church',name:'Christ Connect Family Church Zambia',url:'https://ccfczambia.org/'}})}</script>${p.jsonld ? `<script type="application/ld+json">${JSON.stringify(p.jsonld)}</script>` : ''}
@@ -98,7 +98,7 @@ const closeBlock = () => `<section class="close"><div class="bg">${img('p-singer
 
 const home = { file:'index.html', title:'Home', og:'worship-1', desc:'Worship Connect, the praise and worship team of Christ Connect Family Church Zambia. Watch every set, learn the songs, join the team.',
   body:`
-<section class="hero"><div class="hero__media">${img('k25-choir','Worship Connect leading praise at Koinonia 25',HERO_HOME,true)}<video data-src720="assets/img/hero-720.mp4" data-src="assets/img/hero-1080-v2.mp4" data-src4k="assets/img/hero-4k.mp4" poster="assets/img/hero-poster-v2.webp" muted loop playsinline autoplay preload="metadata" aria-hidden="true"></video></div><div class="hero__scrim"></div>
+<section class="hero"><div class="hero__media">${img('k25-choir','Worship Connect leading praise at Koinonia 25',HERO_HOME,true)}<video data-src720="assets/img/hero-720-v3.mp4" data-src="assets/img/hero-1080-v3.mp4" data-src4k="assets/img/hero-4k-v3.mp4" poster="assets/img/hero-wc-poster.webp" muted loop playsinline autoplay preload="metadata" aria-hidden="true"></video></div><div class="hero__scrim"></div>
   <div class="wrap"><div class="hero__copy">
     <h1 class="wordmark">WORSHIP<br><em>CONNECT</em></h1>
     <p>The praise and worship team of Christ Connect Family Church Zambia. Songs in English, Bemba and Nyanja, sung so the whole family can lift one voice.</p>
