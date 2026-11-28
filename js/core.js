@@ -1533,7 +1533,7 @@ const Consent = (() => {
   const analytics = () => { if (window.__ccfcVA || !onDomain || (window.CCFC_SITE && window.CCFC_SITE.admin)) return; window.__ccfcVA = true;
     window.va = window.va || function(){ (window.vaq = window.vaq || []).push(arguments); };
     window.si = window.si || function(){ (window.siq = window.siq || []).push(arguments); };
-    ['/_vercel/insights/script.js', '/_vercel/speed-insights/script.js'].forEach(src => { const sc = document.createElement('script'); sc.defer = true; sc.src = src; document.head.appendChild(sc); }); };
+    [].forEach(src => { const sc = document.createElement('script'); sc.defer = true; sc.src = src; document.head.appendChild(sc); }); };
   const loadFrame = f => { if (f.getAttribute('src')) return; f.setAttribute('src', f.dataset.consentSrc); const g = f.parentElement.querySelector('.cgate'); if (g) g.remove(); };
   const gates = () => $$('iframe[data-consent-src]').forEach(f => {
     if (state && state.media) return loadFrame(f);
